@@ -1,20 +1,19 @@
 package se.smartairbase.mcpclient.service;
 
 import org.springframework.stereotype.Service;
-import se.smartairbase.mcpclient.controller.dto.AssignMissionRequest;
-import se.smartairbase.mcpclient.controller.dto.AutoPlayResponse;
-import se.smartairbase.mcpclient.controller.dto.DiceRollRequest;
-import se.smartairbase.mcpclient.controller.dto.LandAircraftRequest;
+import se.smartairbase.mcpclient.controller.dto.AircraftStateDTO;
+import se.smartairbase.mcpclient.controller.dto.AssignMissionRequestDTO;
+import se.smartairbase.mcpclient.controller.dto.BaseStateDTO;
+import se.smartairbase.mcpclient.controller.dto.AutoPlayResponseDTO;
+import se.smartairbase.mcpclient.controller.dto.DiceRollRequestDTO;
+import se.smartairbase.mcpclient.controller.dto.GameStateDTO;
+import se.smartairbase.mcpclient.controller.dto.LandAircraftRequestDTO;
+import se.smartairbase.mcpclient.controller.dto.LandingOptionDTO;
+import se.smartairbase.mcpclient.controller.dto.LandingOptionsDTO;
+import se.smartairbase.mcpclient.controller.dto.MissionStateDTO;
 import se.smartairbase.mcpclient.domain.BaseReference;
 import se.smartairbase.mcpclient.domain.DiceOutcomeReference;
-import se.smartairbase.mcpclient.domain.GameRulesReference;
 import se.smartairbase.mcpclient.domain.MissionReference;
-import se.smartairbase.mcpclient.service.model.AircraftStateView;
-import se.smartairbase.mcpclient.service.model.BaseStateView;
-import se.smartairbase.mcpclient.service.model.GameStateView;
-import se.smartairbase.mcpclient.service.model.LandingOptionView;
-import se.smartairbase.mcpclient.service.model.LandingOptionsView;
-import se.smartairbase.mcpclient.service.model.MissionStateView;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -26,6 +25,13 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Client-side autopilot for mission planning and landing decisions.
+ *
+ * <p>The MCP server remains authoritative for all rule validation. This service
+ * only decides which valid action to attempt next based on current game state
+ * and the local scenario reference.</p>
+ */
 @Service
 public class AutoPlayService {
 
@@ -40,12 +46,12 @@ public class AutoPlayService {
     /**
      * Starts the next round and lets the client perform planning automatically.
      */
-    public AutoPlayResponse startNextRound(String gameId) {
+    public AutoPlayResponseDTO startNextRound(String gameId) {
         List<String> messages = new ArrayList<>();
         List<String> autoAssignments = new ArrayList<>();
         List<String> autoLandings = new ArrayList<>();
 
-        GameStateView stateBefore = mcpClient.getGameStateView(gameId);
+        GameStateDTO stateBefore = mcpClient.getGameStateView(gameId);
         if (!"ACTIVE".equals(stateBefore.game().status())) {
             return buildResponse(stateBefore, false, autoAssignments, autoLandings, messages);
         }
@@ -53,25 +59,25 @@ public class AutoPlayService {
         mcpClient.startRound(gameId);
         messages.add("Round started");
 
-        GameStateView planningState = mcpClient.getGameStateView(gameId);
+        GameStateDTO planningState = mcpClient.getGameStateView(gameId);
         for (MissionAssignment assignment : chooseMissionAssignments(planningState)) {
-            mcpClient.assignMission(gameId, new AssignMissionRequest(assignment.aircraftCode(), assignment.missionCode()));
+            mcpClient.assignMission(gameId, new AssignMissionRequestDTO(assignment.aircraftCode(), assignment.missionCode()));
             autoAssignments.add(assignment.aircraftCode() + " -> " + assignment.missionCode());
         }
 
         mcpClient.resolveMissions(gameId);
         messages.add(autoAssignments.isEmpty() ? "No valid mission assignments were available" : "Mission planning resolved");
 
-        GameStateView afterResolution = mcpClient.getGameStateView(gameId);
+        GameStateDTO afterResolution = mcpClient.getGameStateView(gameId);
         boolean roundCompleted = maybeCompleteRound(gameId, afterResolution, messages);
-        GameStateView finalState = mcpClient.getGameStateView(gameId);
+        GameStateDTO finalState = mcpClient.getGameStateView(gameId);
         return buildResponse(finalState, roundCompleted, autoAssignments, autoLandings, messages);
     }
 
     /**
      * Records the player's dice roll and lets the client resolve all landing decisions automatically.
      */
-    public AutoPlayResponse resolveDiceRoll(String gameId, DiceRollRequest request) {
+    public AutoPlayResponseDTO resolveDiceRoll(String gameId, DiceRollRequestDTO request) {
         List<String> messages = new ArrayList<>();
         List<String> autoAssignments = List.of();
         List<String> autoLandings = new ArrayList<>();
@@ -79,18 +85,18 @@ public class AutoPlayService {
         mcpClient.recordDiceRoll(gameId, request);
         messages.add("Dice roll recorded for " + request.aircraftCode());
 
-        GameStateView state = mcpClient.getGameStateView(gameId);
+        GameStateDTO state = mcpClient.getGameStateView(gameId);
         if ("LANDING".equals(state.game().roundPhase())) {
             autoResolveLandings(gameId, state, autoLandings, messages);
         }
 
-        GameStateView afterLanding = mcpClient.getGameStateView(gameId);
+        GameStateDTO afterLanding = mcpClient.getGameStateView(gameId);
         boolean roundCompleted = maybeCompleteRound(gameId, afterLanding, messages);
-        GameStateView finalState = mcpClient.getGameStateView(gameId);
+        GameStateDTO finalState = mcpClient.getGameStateView(gameId);
         return buildResponse(finalState, roundCompleted, autoAssignments, autoLandings, messages);
     }
 
-    private boolean maybeCompleteRound(String gameId, GameStateView state, List<String> messages) {
+    private boolean maybeCompleteRound(String gameId, GameStateDTO state, List<String> messages) {
         if (!state.game().roundOpen() || !state.game().canCompleteRound()) {
             return false;
         }
@@ -100,21 +106,21 @@ public class AutoPlayService {
         return true;
     }
 
-    private void autoResolveLandings(String gameId, GameStateView state, List<String> autoLandings, List<String> messages) {
-        GameStateView current = state;
+    private void autoResolveLandings(String gameId, GameStateDTO state, List<String> autoLandings, List<String> messages) {
+        GameStateDTO current = state;
         while (true) {
-            List<AircraftStateView> pendingLandings = current.aircraft().stream()
+            List<AircraftStateDTO> pendingLandings = current.aircraft().stream()
                     .filter(aircraft -> "AWAITING_LANDING".equals(aircraft.status()))
                     .sorted(Comparator.comparingInt(this::landingPriority).reversed()
-                            .thenComparingInt(AircraftStateView::fuel))
+                            .thenComparingInt(AircraftStateDTO::fuel))
                     .toList();
 
             if (pendingLandings.isEmpty()) {
                 return;
             }
 
-            AircraftStateView aircraft = pendingLandings.getFirst();
-            LandingOptionsView landingOptions = mcpClient.getLandingOptionsView(gameId, aircraft.code());
+            AircraftStateDTO aircraft = pendingLandings.getFirst();
+            LandingOptionsDTO landingOptions = mcpClient.getLandingOptionsView(gameId, aircraft.code());
             LandingDecision decision = chooseLandingBase(current, aircraft, landingOptions);
 
             if (decision.sendToHolding()) {
@@ -123,7 +129,7 @@ public class AutoPlayService {
                 messages.add(aircraft.code() + " sent to holding");
             }
             else {
-                mcpClient.landAircraft(gameId, new LandAircraftRequest(aircraft.code(), decision.baseCode()));
+                mcpClient.landAircraft(gameId, new LandAircraftRequestDTO(aircraft.code(), decision.baseCode()));
                 autoLandings.add(aircraft.code() + " -> " + decision.baseCode());
                 messages.add(aircraft.code() + " landed at " + decision.baseCode());
             }
@@ -132,21 +138,19 @@ public class AutoPlayService {
         }
     }
 
-    private List<MissionAssignment> chooseMissionAssignments(GameStateView state) {
-        GameRulesReference rules = rulesReferenceService.getRules();
-        Map<String, MissionReference> missionsByCode = rules.missions().stream()
-                .collect(Collectors.toMap(MissionReference::code, mission -> mission));
+    private List<MissionAssignment> chooseMissionAssignments(GameStateDTO state) {
+        Map<String, MissionReference> missionsByCode = missionReferenceByCode();
 
-        List<AircraftStateView> readyAircraft = state.aircraft().stream()
+        List<AircraftStateDTO> readyAircraft = state.aircraft().stream()
                 .filter(aircraft -> "READY".equals(aircraft.status()))
                 .filter(aircraft -> aircraft.currentBase() != null)
                 .filter(aircraft -> !aircraft.inHolding())
                 .filter(aircraft -> aircraft.allowedActions() != null && aircraft.allowedActions().contains("ASSIGN_MISSION"))
                 .toList();
 
-        List<MissionStateView> availableMissions = state.missions().stream()
+        List<MissionStateDTO> availableMissions = state.missions().stream()
                 .filter(mission -> "AVAILABLE".equals(mission.status()))
-                .sorted(Comparator.comparingInt((MissionStateView mission) -> missionDifficulty(missionsByCode.get(mission.code())))
+                .sorted(Comparator.comparingInt((MissionStateDTO mission) -> missionDifficulty(missionsByCode.get(mission.missionType())))
                         .reversed())
                 .toList();
 
@@ -154,9 +158,9 @@ public class AutoPlayService {
                 .assignments();
     }
 
-    private AssignmentSearchResult searchAssignments(List<MissionStateView> missions,
+    private AssignmentSearchResult searchAssignments(List<MissionStateDTO> missions,
                                                      int index,
-                                                     List<AircraftStateView> aircraft,
+                                                     List<AircraftStateDTO> aircraft,
                                                      Set<String> usedAircraft,
                                                      List<MissionAssignment> currentAssignments,
                                                      Map<String, MissionReference> missionsByCode) {
@@ -164,14 +168,14 @@ public class AutoPlayService {
             return scoreAssignments(currentAssignments, aircraft, missionsByCode);
         }
 
-        MissionStateView mission = missions.get(index);
+        MissionStateDTO mission = missions.get(index);
         AssignmentSearchResult best = searchAssignments(missions, index + 1, aircraft, usedAircraft, currentAssignments, missionsByCode);
 
-        for (AircraftStateView candidate : aircraft) {
+        for (AircraftStateDTO candidate : aircraft) {
             if (usedAircraft.contains(candidate.code())) {
                 continue;
             }
-            MissionReference missionReference = missionsByCode.get(mission.code());
+            MissionReference missionReference = missionsByCode.get(mission.missionType());
             if (!canAircraftFlyMission(candidate, missionReference)) {
                 continue;
             }
@@ -190,16 +194,16 @@ public class AutoPlayService {
     }
 
     private AssignmentSearchResult scoreAssignments(List<MissionAssignment> assignments,
-                                                    List<AircraftStateView> aircraft,
+                                                    List<AircraftStateDTO> aircraft,
                                                     Map<String, MissionReference> missionsByCode) {
-        Map<String, AircraftStateView> aircraftByCode = aircraft.stream()
-                .collect(Collectors.toMap(AircraftStateView::code, aircraftState -> aircraftState));
+        Map<String, AircraftStateDTO> aircraftByCode = aircraft.stream()
+                .collect(Collectors.toMap(AircraftStateDTO::code, aircraftState -> aircraftState));
 
         int totalMissionValue = 0;
         int totalWaste = 0;
         for (MissionAssignment assignment : assignments) {
-            MissionReference mission = missionsByCode.get(assignment.missionCode());
-            AircraftStateView aircraftState = aircraftByCode.get(assignment.aircraftCode());
+            MissionReference mission = missionsByCode.get(missionTypeCode(assignment.missionCode()));
+            AircraftStateDTO aircraftState = aircraftByCode.get(assignment.aircraftCode());
             totalMissionValue += missionDifficulty(mission);
             totalWaste += (aircraftState.fuel() - mission.fuelCost())
                     + ((aircraftState.weapons() - mission.weaponCost()) * 20)
@@ -209,7 +213,7 @@ public class AutoPlayService {
         return new AssignmentSearchResult(List.copyOf(assignments), assignments.size(), totalMissionValue, totalWaste);
     }
 
-    private boolean canAircraftFlyMission(AircraftStateView aircraft, MissionReference mission) {
+    private boolean canAircraftFlyMission(AircraftStateDTO aircraft, MissionReference mission) {
         if (mission == null) {
             return false;
         }
@@ -229,50 +233,45 @@ public class AutoPlayService {
         return mission.flightHours() * 100 + mission.fuelCost() * 10 + mission.weaponCost() * 40;
     }
 
-    private LandingDecision chooseLandingBase(GameStateView state, AircraftStateView aircraft, LandingOptionsView landingOptions) {
-        List<LandingOptionView> validOptions = landingOptions.options().stream()
-                .filter(LandingOptionView::canLand)
+    private LandingDecision chooseLandingBase(GameStateDTO state, AircraftStateDTO aircraft, LandingOptionsDTO landingOptions) {
+        List<LandingOptionDTO> validOptions = landingOptions.options().stream()
+                .filter(LandingOptionDTO::canLand)
                 .toList();
         if (validOptions.isEmpty()) {
             return LandingDecision.holding();
         }
 
-        GameRulesReference rules = rulesReferenceService.getRules();
-        Map<String, BaseReference> baseReferenceByCode = rules.bases().stream()
-                .collect(Collectors.toMap(BaseReference::code, base -> base));
-        Map<String, BaseStateView> baseStateByCode = state.bases().stream()
-                .collect(Collectors.toMap(BaseStateView::code, base -> base));
-        List<MissionReference> remainingMissions = remainingMissionReferences(state, rules);
+        Map<String, BaseReference> baseReferenceByCode = baseReferenceByCode();
+        Map<String, BaseStateDTO> baseStateByCode = state.bases().stream()
+                .collect(Collectors.toMap(BaseStateDTO::code, base -> base));
+        List<MissionReference> remainingMissions = remainingMissionReferences(state);
+        boolean alternativeRearmBaseExists = validOptions.stream()
+                .map(candidate -> baseReferenceByCode.get(candidate.baseCode()))
+                .anyMatch(candidateBase -> candidateBase != null
+                        && !"A".equals(candidateBase.code())
+                        && canRearm(candidateBase));
 
-        LandingOptionView best = validOptions.stream()
+        LandingOptionDTO best = validOptions.stream()
                 .max(Comparator.comparingInt(option -> landingScore(
                         aircraft,
                         option,
                         baseReferenceByCode.get(option.baseCode()),
                         baseStateByCode.get(option.baseCode()),
                         remainingMissions,
-                        validOptions)))
+                        validOptions,
+                        alternativeRearmBaseExists)))
                 .orElseThrow();
 
         return LandingDecision.land(best.baseCode());
     }
 
-    private List<MissionReference> remainingMissionReferences(GameStateView state, GameRulesReference rules) {
-        Map<String, MissionReference> missionByCode = rules.missions().stream()
-                .collect(Collectors.toMap(MissionReference::code, mission -> mission));
-        return state.missions().stream()
-                .filter(mission -> !"COMPLETED".equals(mission.status()))
-                .map(mission -> missionByCode.get(mission.code()))
-                .filter(Objects::nonNull)
-                .toList();
-    }
-
-    private int landingScore(AircraftStateView aircraft,
-                             LandingOptionView option,
+    private int landingScore(AircraftStateDTO aircraft,
+                             LandingOptionDTO option,
                              BaseReference baseReference,
-                             BaseStateView baseState,
+                             BaseStateDTO baseState,
                              List<MissionReference> remainingMissions,
-                             List<LandingOptionView> validOptions) {
+                             List<LandingOptionDTO> validOptions,
+                             boolean alternativeRearmBaseExists) {
         int score = 0;
         String damage = aircraft.damage();
         int maxRemainingWeaponCost = remainingMissions.stream().mapToInt(MissionReference::weaponCost).max().orElse(0);
@@ -303,11 +302,7 @@ public class AutoPlayService {
                 if (baseState != null && baseState.weaponsStock() >= maxRemainingWeaponCost) {
                     score += 60;
                 }
-                if ("A".equals(option.baseCode())
-                        && validOptions.stream().anyMatch(candidate -> {
-                            BaseReference candidateBase = baseReferenceFor(validOptions, candidate.baseCode(), baseReference, remainingMissions);
-                            return candidateBase != null && !"A".equals(candidateBase.code()) && canRearm(candidateBase);
-                        })) {
+                if ("A".equals(option.baseCode()) && alternativeRearmBaseExists) {
                     score -= 20;
                 }
             }
@@ -329,16 +324,6 @@ public class AutoPlayService {
         return score;
     }
 
-    private BaseReference baseReferenceFor(List<LandingOptionView> validOptions,
-                                           String baseCode,
-                                           BaseReference ignored,
-                                           List<MissionReference> remainingMissions) {
-        return rulesReferenceService.getRules().bases().stream()
-                .filter(base -> base.code().equals(baseCode))
-                .findFirst()
-                .orElse(null);
-    }
-
     private boolean supportsDamage(BaseReference base, String damage) {
         if (base == null || damage == null || "NONE".equals(damage)) {
             return true;
@@ -350,7 +335,7 @@ public class AutoPlayService {
         return capabilities.contains("repair") || capabilities.contains("light repair");
     }
 
-    private boolean canStartMaintenance(BaseReference base, BaseStateView state, String damage) {
+    private boolean canStartMaintenance(BaseReference base, BaseStateDTO state, String damage) {
         if (base == null || state == null || "NONE".equals(damage)) {
             return false;
         }
@@ -378,7 +363,31 @@ public class AutoPlayService {
         return rule != null ? rule.sparePartsCost() : 0;
     }
 
-    private int landingPriority(AircraftStateView aircraft) {
+    private List<MissionReference> remainingMissionReferences(GameStateDTO state) {
+        Map<String, MissionReference> missionByCode = missionReferenceByCode();
+        return state.missions().stream()
+                .filter(mission -> !"COMPLETED".equals(mission.status()))
+                .map(mission -> missionByCode.get(mission.missionType()))
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    private Map<String, MissionReference> missionReferenceByCode() {
+        return rulesReferenceService.getRules().missions().stream()
+                .collect(Collectors.toMap(MissionReference::code, mission -> mission));
+    }
+
+    private String missionTypeCode(String missionCode) {
+        int separator = missionCode.indexOf('-');
+        return separator > 0 ? missionCode.substring(0, separator) : missionCode;
+    }
+
+    private Map<String, BaseReference> baseReferenceByCode() {
+        return rulesReferenceService.getRules().bases().stream()
+                .collect(Collectors.toMap(BaseReference::code, base -> base));
+    }
+
+    private int landingPriority(AircraftStateDTO aircraft) {
         return switch (aircraft.damage()) {
             case "FULL_SERVICE_REQUIRED" -> 5;
             case "MAJOR_REPAIR" -> 4;
@@ -398,18 +407,18 @@ public class AutoPlayService {
         return byDamage;
     }
 
-    private AutoPlayResponse buildResponse(GameStateView state,
-                                           boolean roundCompleted,
-                                           List<String> autoAssignments,
-                                           List<String> autoLandings,
-                                           List<String> messages) {
+    private AutoPlayResponseDTO buildResponse(GameStateDTO state,
+                                              boolean roundCompleted,
+                                              List<String> autoAssignments,
+                                              List<String> autoLandings,
+                                              List<String> messages) {
         List<String> pendingDiceAircraft = state.aircraft().stream()
                 .filter(aircraft -> "AWAITING_DICE_ROLL".equals(aircraft.status()))
-                .map(AircraftStateView::code)
+                .map(AircraftStateDTO::code)
                 .sorted()
                 .toList();
         boolean gameFinished = !"ACTIVE".equals(state.game().status());
-        return new AutoPlayResponse(
+        return new AutoPlayResponseDTO(
                 state,
                 nextAction(state, pendingDiceAircraft),
                 roundCompleted,
@@ -421,7 +430,7 @@ public class AutoPlayService {
         );
     }
 
-    private String nextAction(GameStateView state, List<String> pendingDiceAircraft) {
+    private String nextAction(GameStateDTO state, List<String> pendingDiceAircraft) {
         if (!"ACTIVE".equals(state.game().status())) {
             return "GAME_OVER";
         }

@@ -1,6 +1,6 @@
-package se.smartairbase.mcpclient.service.model;
+package se.smartairbase.mcpclient.controller.dto;
 
-public record MissionStateView(
+public record MissionStateDTO(
         String code,
         String missionType,
         String status,

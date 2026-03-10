@@ -1,6 +1,7 @@
 package se.smartairbase.mcpserver.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import se.smartairbase.mcpserver.domain.game.BaseState;
 import se.smartairbase.mcpserver.domain.game.GameBase;
 import se.smartairbase.mcpserver.mcp.dto.BaseStateDto;
@@ -25,6 +26,7 @@ public class BaseService {
     /**
      * Returns the current state of one base in a specific game.
      */
+    @Transactional(readOnly = true)
     public BaseStateDto getBaseState(Long gameId, String baseCode) {
         GameBase base = gameBaseRepository.findByGame_IdAndCode(gameId, baseCode)
                 .orElseThrow(() -> new IllegalArgumentException("Base not found: " + baseCode));

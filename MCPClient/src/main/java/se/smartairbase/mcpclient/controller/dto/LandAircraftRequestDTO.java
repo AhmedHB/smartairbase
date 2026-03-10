@@ -2,8 +2,8 @@ package se.smartairbase.mcpclient.controller.dto;
 
 import jakarta.validation.constraints.NotBlank;
 
-public record AssignMissionRequest(
+public record LandAircraftRequestDTO(
         @NotBlank String aircraftCode,
-        @NotBlank String missionCode
+        @NotBlank String baseCode
 ) {
 }

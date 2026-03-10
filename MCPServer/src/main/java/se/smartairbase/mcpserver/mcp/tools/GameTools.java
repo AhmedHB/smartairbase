@@ -5,6 +5,8 @@ import org.springframework.stereotype.Component;
 import se.smartairbase.mcpserver.service.GameService;
 import se.smartairbase.mcpserver.service.GameQueryService;
 
+import java.util.Map;
+
 @Component
 public class GameTools {
 
@@ -21,8 +23,11 @@ public class GameTools {
             name = "create_game",
             description = "Create a new game from a scenario"
     )
-    public Object createGame(String scenarioName, String version) {
-        return gameService.createGameFromScenario(scenarioName, version);
+    public Object createGame(String scenarioName,
+                             String version,
+                             Integer aircraftCount,
+                             Map<String, Integer> missionTypeCounts) {
+        return gameService.createGameFromScenario(scenarioName, version, null, aircraftCount, missionTypeCounts);
     }
 
     @Tool(

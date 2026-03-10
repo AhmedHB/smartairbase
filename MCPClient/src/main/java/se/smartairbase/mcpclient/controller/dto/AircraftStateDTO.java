@@ -1,8 +1,8 @@
-package se.smartairbase.mcpclient.service.model;
+package se.smartairbase.mcpclient.controller.dto;
 
 import java.util.List;
 
-public record AircraftStateView(
+public record AircraftStateDTO(
         String code,
         String status,
         String currentBase,

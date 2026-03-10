@@ -1,6 +1,5 @@
 package se.smartairbase.mcpclient.controller;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,18 +9,23 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import se.smartairbase.mcpclient.controller.dto.AutoPlayResponse;
+import se.smartairbase.mcpclient.controller.dto.AutoPlayResponseDTO;
 import se.smartairbase.mcpclient.domain.GameRulesReference;
 import se.smartairbase.mcpclient.service.AutoPlayService;
 import se.smartairbase.mcpclient.service.GameRulesReferenceService;
 import se.smartairbase.mcpclient.service.SmartAirBaseMcpClient;
-import se.smartairbase.mcpclient.controller.dto.AssignMissionRequest;
-import se.smartairbase.mcpclient.controller.dto.CreateGameRequest;
-import se.smartairbase.mcpclient.controller.dto.DiceRollRequest;
-import se.smartairbase.mcpclient.controller.dto.LandAircraftRequest;
+import se.smartairbase.mcpclient.controller.dto.AssignMissionRequestDTO;
+import se.smartairbase.mcpclient.controller.dto.ActionResultDTO;
+import se.smartairbase.mcpclient.controller.dto.AircraftStateDTO;
+import se.smartairbase.mcpclient.controller.dto.CreateGameRequestDTO;
+import se.smartairbase.mcpclient.controller.dto.DiceRollRequestDTO;
+import se.smartairbase.mcpclient.controller.dto.BaseStateDTO;
+import se.smartairbase.mcpclient.controller.dto.GameStateDTO;
+import se.smartairbase.mcpclient.controller.dto.GameSummaryDTO;
+import se.smartairbase.mcpclient.controller.dto.LandAircraftRequestDTO;
+import se.smartairbase.mcpclient.controller.dto.LandingOptionsDTO;
+import se.smartairbase.mcpclient.controller.dto.RoundExecutionResultDTO;
 
-@RestController
-@RequestMapping(path = "/api", produces = MediaType.APPLICATION_JSON_VALUE)
 /**
  * HTTP facade for the browser-based Smart Air Base client.
  *
@@ -29,6 +33,8 @@ import se.smartairbase.mcpclient.controller.dto.LandAircraftRequest;
  * server through {@link SmartAirBaseMcpClient} and exposes a small read endpoint
  * for the local rules reference.</p>
  */
+@RestController
+@RequestMapping(path = "/api", produces = MediaType.APPLICATION_JSON_VALUE)
 public class GameController {
 
     private final SmartAirBaseMcpClient mcpClient;
@@ -55,7 +61,7 @@ public class GameController {
      * Creates a new game from the requested scenario/version pair.
      */
     @PostMapping("/games")
-    public JsonNode createGame(@Valid @RequestBody CreateGameRequest request) {
+    public GameSummaryDTO createGame(@Valid @RequestBody CreateGameRequestDTO request) {
         return mcpClient.createGame(request);
     }
 
@@ -63,7 +69,7 @@ public class GameController {
      * Returns the current consolidated game state.
      */
     @GetMapping("/games/{gameId}")
-    public JsonNode getGameState(@PathVariable String gameId) {
+    public GameStateDTO getGameState(@PathVariable String gameId) {
         return mcpClient.getGameState(gameId);
     }
 
@@ -71,7 +77,7 @@ public class GameController {
      * Starts a new round for the selected game.
      */
     @PostMapping("/games/{gameId}/rounds/start")
-    public JsonNode startRound(@PathVariable String gameId) {
+    public RoundExecutionResultDTO startRound(@PathVariable String gameId) {
         return mcpClient.startRound(gameId);
     }
 
@@ -79,7 +85,7 @@ public class GameController {
      * Starts the next round and lets the client assign missions automatically.
      */
     @PostMapping("/games/{gameId}/rounds/next")
-    public AutoPlayResponse startNextRound(@PathVariable String gameId) {
+    public AutoPlayResponseDTO startNextRound(@PathVariable String gameId) {
         return autoPlayService.startNextRound(gameId);
     }
 
@@ -87,7 +93,7 @@ public class GameController {
      * Assigns one mission to one aircraft.
      */
     @PostMapping("/games/{gameId}/missions/assign")
-    public JsonNode assignMission(@PathVariable String gameId, @Valid @RequestBody AssignMissionRequest request) {
+    public ActionResultDTO assignMission(@PathVariable String gameId, @Valid @RequestBody AssignMissionRequestDTO request) {
         return mcpClient.assignMission(gameId, request);
     }
 
@@ -95,7 +101,7 @@ public class GameController {
      * Resolves all currently assigned missions in the active round.
      */
     @PostMapping("/games/{gameId}/missions/resolve")
-    public JsonNode resolveMissions(@PathVariable String gameId) {
+    public RoundExecutionResultDTO resolveMissions(@PathVariable String gameId) {
         return mcpClient.resolveMissions(gameId);
     }
 
@@ -103,7 +109,7 @@ public class GameController {
      * Records the dice outcome for one aircraft.
      */
     @PostMapping("/games/{gameId}/dice-rolls")
-    public JsonNode recordDiceRoll(@PathVariable String gameId, @Valid @RequestBody DiceRollRequest request) {
+    public ActionResultDTO recordDiceRoll(@PathVariable String gameId, @Valid @RequestBody DiceRollRequestDTO request) {
         return mcpClient.recordDiceRoll(gameId, request);
     }
 
@@ -111,8 +117,8 @@ public class GameController {
      * Records one dice roll and lets the client resolve landings and round completion automatically.
      */
     @PostMapping("/games/{gameId}/dice-rolls/auto")
-    public AutoPlayResponse resolveDiceRollAutomatically(@PathVariable String gameId,
-                                                         @Valid @RequestBody DiceRollRequest request) {
+    public AutoPlayResponseDTO resolveDiceRollAutomatically(@PathVariable String gameId,
+                                                            @Valid @RequestBody DiceRollRequestDTO request) {
         return autoPlayService.resolveDiceRoll(gameId, request);
     }
 
@@ -120,7 +126,7 @@ public class GameController {
      * Lists landing bases that are currently valid for one aircraft.
      */
     @GetMapping("/games/{gameId}/landing-bases")
-    public JsonNode listAvailableLandingBases(@PathVariable String gameId, @RequestParam String aircraftCode) {
+    public LandingOptionsDTO listAvailableLandingBases(@PathVariable String gameId, @RequestParam String aircraftCode) {
         return mcpClient.listAvailableLandingBases(gameId, aircraftCode);
     }
 
@@ -128,7 +134,7 @@ public class GameController {
      * Lands an aircraft at a selected base.
      */
     @PostMapping("/games/{gameId}/landings")
-    public JsonNode landAircraft(@PathVariable String gameId, @Valid @RequestBody LandAircraftRequest request) {
+    public ActionResultDTO landAircraft(@PathVariable String gameId, @Valid @RequestBody LandAircraftRequestDTO request) {
         return mcpClient.landAircraft(gameId, request);
     }
 
@@ -136,7 +142,7 @@ public class GameController {
      * Sends an aircraft to holding if landing is not possible.
      */
     @PostMapping("/games/{gameId}/holding")
-    public JsonNode sendAircraftToHolding(@PathVariable String gameId, @RequestParam String aircraftCode) {
+    public ActionResultDTO sendAircraftToHolding(@PathVariable String gameId, @RequestParam String aircraftCode) {
         return mcpClient.sendAircraftToHolding(gameId, aircraftCode);
     }
 
@@ -144,7 +150,7 @@ public class GameController {
      * Completes the active round after all pending decisions are resolved.
      */
     @PostMapping("/games/{gameId}/rounds/complete")
-    public JsonNode completeRound(@PathVariable String gameId) {
+    public RoundExecutionResultDTO completeRound(@PathVariable String gameId) {
         return mcpClient.completeRound(gameId);
     }
 
@@ -152,7 +158,7 @@ public class GameController {
      * Returns the current runtime state for one aircraft.
      */
     @GetMapping("/games/{gameId}/aircraft/{aircraftCode}")
-    public JsonNode getAircraftState(@PathVariable String gameId, @PathVariable String aircraftCode) {
+    public AircraftStateDTO getAircraftState(@PathVariable String gameId, @PathVariable String aircraftCode) {
         return mcpClient.getAircraftState(gameId, aircraftCode);
     }
 
@@ -160,7 +166,7 @@ public class GameController {
      * Returns the current runtime state for one base.
      */
     @GetMapping("/games/{gameId}/bases/{baseCode}")
-    public JsonNode getBaseState(@PathVariable String gameId, @PathVariable String baseCode) {
+    public BaseStateDTO getBaseState(@PathVariable String gameId, @PathVariable String baseCode) {
         return mcpClient.getBaseState(gameId, baseCode);
     }
 }

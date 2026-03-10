@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class McpToolExecutorTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private record CreateGameResponse(String gameId) {}
 
     @Test
     void resolvesToolBySuffix() {
@@ -26,7 +27,11 @@ class McpToolExecutorTest {
                 objectMapper
         );
 
-        String gameId = executor.execute(SmartAirBaseTool.CREATE_GAME, Map.of("scenarioName", "smartairbase")).get("gameId").asText();
+        String gameId = executor.execute(
+                SmartAirBaseTool.CREATE_GAME,
+                Map.of("scenarioName", "smartairbase"),
+                CreateGameResponse.class
+        ).gameId();
 
         assertThat(gameId).isEqualTo("g-1");
     }
