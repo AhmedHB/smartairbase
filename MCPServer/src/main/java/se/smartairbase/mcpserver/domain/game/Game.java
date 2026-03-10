@@ -8,6 +8,12 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "game")
+/**
+ * Root aggregate for one playable game instance.
+ *
+ * <p>The game tracks high-level lifecycle such as active/won/lost status and
+ * the latest round number. Detailed mutable state is stored in child tables.</p>
+ */
 public class Game {
 
     @Id

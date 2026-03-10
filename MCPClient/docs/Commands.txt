@@ -38,3 +38,139 @@ mvn spring-boot:run -Pcloud \
   -Dspring-boot.run.jvmArguments="--enable-native-access=ALL-UNNAMED"
 
 //-----------------------------------------------------
+
+Ja. Här är ett sammanhängande exempel mot klientens API på http://localhost:8080.
+I exemplet:
+scenario = smartairbase
+version = 7
+vi antar att första rundan använder F1 -> M1 och F2 -> M2
+ersätt GAME_ID med värdet från create game
+
+1. Create Game
+curl -X POST http://localhost:8080/api/games \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scenarioName": "smartairbase",
+    "version": "7"
+  }'
+Exempel på svar:
+{
+  "gameId": 1,
+  "name": "smartairbase-v7",
+  "scenarioName": "smartairbase",
+  "scenarioVersion": "7",
+  "status": "ACTIVE"
+}
+2. Get Rules
+curl http://localhost:8080/api/reference/rules
+
+3. Get Initial Game State
+curl http://localhost:8080/api/games/GAME_ID
+
+4. Start Round
+curl -X POST http://localhost:8080/api/games/GAME_ID/rounds/start
+
+5. Assign Missions
+curl -X POST http://localhost:8080/api/games/GAME_ID/missions/assign \
+  -H "Content-Type: application/json" \
+  -d '{
+    "aircraftCode": "F1",
+    "missionCode": "M1"
+  }'
+
+curl -X POST http://localhost:8080/api/games/GAME_ID/missions/assign \
+  -H "Content-Type: application/json" \
+  -d '{
+    "aircraftCode": "F2",
+    "missionCode": "M2"
+  }'
+
+6. Resolve Missions
+curl -X POST http://localhost:8080/api/games/GAME_ID/missions/resolve
+
+7. Inspect Game State After Mission Resolution
+curl http://localhost:8080/api/games/GAME_ID
+
+8. Record Dice Rolls Exempel:
+
+F1 = 1
+
+F2 = 4
+
+curl -X POST http://localhost:8080/api/games/GAME_ID/dice-rolls \
+  -H "Content-Type: application/json" \
+  -d '{
+    "aircraftCode": "F1",
+    "diceValue": 1
+  }'
+
+curl -X POST http://localhost:8080/api/games/GAME_ID/dice-rolls \
+  -H "Content-Type: application/json" \
+  -d '{
+    "aircraftCode": "F2",
+    "diceValue": 4
+  }'
+
+9. List Landing Bases
+curl "http://localhost:8080/api/games/GAME_ID/landing-bases?aircraftCode=F1"
+
+curl "http://localhost:8080/api/games/GAME_ID/landing-bases?aircraftCode=F2"
+
+10. Land Aircraft Exempel: båda landar på bas A
+curl -X POST http://localhost:8080/api/games/GAME_ID/landings \
+  -H "Content-Type: application/json" \
+  -d '{
+    "aircraftCode": "F1",
+    "baseCode": "A"
+  }'
+
+curl -X POST http://localhost:8080/api/games/GAME_ID/landings \
+  -H "Content-Type: application/json" \
+  -d '{
+    "aircraftCode": "F2",
+    "baseCode": "A"
+  }'
+
+Om inget flygplan kan landa:
+curl -X POST "http://localhost:8080/api/games/GAME_ID/holding?aircraftCode=F2"
+
+11. Complete Round
+curl -X POST http://localhost:8080/api/games/GAME_ID/rounds/complete
+
+12. Get Game State After Round Completion
+curl http://localhost:8080/api/games/GAME_ID
+
+13. Optional Detail Calls Aircraft:
+curl http://localhost:8080/api/games/GAME_ID/aircraft/F1
+
+Base:
+curl http://localhost:8080/api/games/GAME_ID/bases/A
+
+Typical Full Sequence
+curl -X POST http://localhost:8080/api/games -H "Content-Type: application/json" -d '{"scenarioName":"smartairbase","version":"7"}'
+
+curl http://localhost:8080/api/games/GAME_ID
+
+curl -X POST http://localhost:8080/api/games/GAME_ID/rounds/start
+
+curl -X POST http://localhost:8080/api/games/GAME_ID/missions/assign -H "Content-Type: application/json" -d '{"aircraftCode":"F1","missionCode":"M1"}'
+
+curl -X POST http://localhost:8080/api/games/GAME_ID/missions/assign -H "Content-Type: application/json" -d '{"aircraftCode":"F2","missionCode":"M2"}'
+
+curl -X POST http://localhost:8080/api/games/GAME_ID/missions/resolve
+
+curl -X POST http://localhost:8080/api/games/GAME_ID/dice-rolls -H "Content-Type: application/json" -d '{"aircraftCode":"F1","diceValue":1}'
+
+curl -X POST http://localhost:8080/api/games/GAME_ID/dice-rolls -H "Content-Type: application/json" -d '{"aircraftCode":"F2","diceValue":4}'
+
+curl "http://localhost:8080/api/games/GAME_ID/landing-bases?aircraftCode=F1"
+
+curl "http://localhost:8080/api/games/GAME_ID/landing-bases?aircraftCode=F2"
+
+curl -X POST http://localhost:8080/api/games/GAME_ID/landings -H "Content-Type: application/json" -d '{"aircraftCode":"F1","baseCode":"A"}'
+
+curl -X POST http://localhost:8080/api/games/GAME_ID/landings -H "Content-Type: application/json" -d '{"aircraftCode":"F2","baseCode":"A"}'
+
+curl -X POST http://localhost:8080/api/games/GAME_ID/rounds/complete
+
+curl http://localhost:8080/api/games/GAME_ID

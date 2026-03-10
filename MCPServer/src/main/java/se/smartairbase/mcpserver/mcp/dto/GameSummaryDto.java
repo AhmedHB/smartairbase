@@ -1,4 +1,6 @@
 package se.smartairbase.mcpserver.mcp.dto;
 
-public record GameSummaryDto(Long gameId, String name, String scenarioName, String scenarioVersion, String status, Integer currentRound) {
+public record GameSummaryDto(Long gameId, String name, String scenarioName, String scenarioVersion, String status,
+                             Integer currentRound, String roundPhase, boolean roundOpen,
+                             boolean canStartRound, boolean canCompleteRound) {
 }

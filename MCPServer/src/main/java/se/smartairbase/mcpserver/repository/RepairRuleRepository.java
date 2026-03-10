@@ -9,4 +9,6 @@ public interface RepairRuleRepository extends JpaRepository<RepairRule, Long> {
 
     Optional<RepairRule> findByDiceValue(Integer diceValue);
 
+    Optional<RepairRule> findByRequiresFullServiceTrue();
+
 }

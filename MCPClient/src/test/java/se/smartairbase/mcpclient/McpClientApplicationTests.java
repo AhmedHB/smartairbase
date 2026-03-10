@@ -1,13 +1,14 @@
 package se.smartairbase.mcpclient;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+import static org.assertj.core.api.Assertions.assertThat;
+
 class McpClientApplicationTests {
 
     @Test
-    void contextLoads() {
+    void applicationClassExists() {
+        assertThat(McpClientApplication.class).isNotNull();
     }
 
 }

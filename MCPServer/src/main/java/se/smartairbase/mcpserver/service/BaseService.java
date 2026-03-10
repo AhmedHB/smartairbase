@@ -8,6 +8,9 @@ import se.smartairbase.mcpserver.repository.BaseStateRepository;
 import se.smartairbase.mcpserver.repository.GameBaseRepository;
 
 @Service
+/**
+ * Read service for a single base and its current stocks/capacity usage.
+ */
 public class BaseService {
 
     private final GameBaseRepository gameBaseRepository;
@@ -19,6 +22,9 @@ public class BaseService {
         this.baseStateRepository = baseStateRepository;
     }
 
+    /**
+     * Returns the current state of one base in a specific game.
+     */
     public BaseStateDto getBaseState(Long gameId, String baseCode) {
         GameBase base = gameBaseRepository.findByGame_IdAndCode(gameId, baseCode)
                 .orElseThrow(() -> new IllegalArgumentException("Base not found: " + baseCode));

@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="sv">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Smart Air Base MCP Client</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<main class="layout">
+    <section class="hero card">
+        <div>
+            <p class="eyebrow">Smart Air Base</p>
+            <h1>MCP-spelklient</h1>
+            <p class="lead">Styr rundor, uppdrag, tärningsslag och landningar mot MCP-servern från en enda vy.</p>
+        </div>
+        <form id="create-game-form" class="inline-form">
+            <label>
+                Scenario
+                <input name="scenarioName" value="smartairbase" required>
+            </label>
+            <label>
+                Version
+                <input name="version" value="7" required>
+            </label>
+            <button type="submit">Skapa spel</button>
+        </form>
+    </section>
+
+    <section class="grid">
+        <article class="card">
+            <h2>Aktivt spel</h2>
+            <label>
+                Game ID
+                <input id="game-id" placeholder="Klistra in gameId eller skapa spel">
+            </label>
+            <div class="button-row">
+                <button data-action="refresh-state">Hämta state</button>
+                <button data-action="start-round">Starta runda</button>
+                <button data-action="resolve-missions">Lös uppdrag</button>
+                <button data-action="complete-round">Avsluta runda</button>
+            </div>
+            <pre id="game-state" class="json-view">Ingen state hämtad ännu.</pre>
+        </article>
+
+        <article class="card">
+            <h2>Regelreferens</h2>
+            <div id="rules-summary" class="rules-summary">Laddar regler...</div>
+        </article>
+    </section>
+
+    <section class="grid">
+        <article class="card">
+            <h2>Planering och tärning</h2>
+            <form id="assign-mission-form">
+                <label>
+                    Aircraft
+                    <input name="aircraftCode" placeholder="F1" required>
+                </label>
+                <label>
+                    Mission
+                    <input name="missionCode" placeholder="M1" required>
+                </label>
+                <button type="submit">Tilldela uppdrag</button>
+            </form>
+            <form id="dice-roll-form">
+                <label>
+                    Aircraft
+                    <input name="aircraftCode" placeholder="F1" required>
+                </label>
+                <label>
+                    Tärning
+                    <input name="diceValue" type="number" min="1" max="6" required>
+                </label>
+                <button type="submit">Registrera slag</button>
+            </form>
+        </article>
+
+        <article class="card">
+            <h2>Landning och baser</h2>
+            <form id="landing-bases-form">
+                <label>
+                    Aircraft
+                    <input name="aircraftCode" placeholder="F1" required>
+                </label>
+                <button type="submit">Lista landningsbaser</button>
+            </form>
+            <form id="land-aircraft-form">
+                <label>
+                    Aircraft
+                    <input name="aircraftCode" placeholder="F1" required>
+                </label>
+                <label>
+                    Bas
+                    <input name="baseCode" placeholder="A" required>
+                </label>
+                <button type="submit">Landa flygplan</button>
+            </form>
+            <form id="holding-form">
+                <label>
+                    Aircraft
+                    <input name="aircraftCode" placeholder="F1" required>
+                </label>
+                <button type="submit">Skicka till holding</button>
+            </form>
+            <pre id="landing-output" class="json-view">Ingen landningsdata ännu.</pre>
+        </article>
+    </section>
+
+    <section class="grid">
+        <article class="card">
+            <h2>Detaljer</h2>
+            <form id="aircraft-state-form">
+                <label>
+                    Aircraft
+                    <input name="aircraftCode" placeholder="F1" required>
+                </label>
+                <button type="submit">Hämta aircraft state</button>
+            </form>
+            <form id="base-state-form">
+                <label>
+                    Bas
+                    <input name="baseCode" placeholder="A" required>
+                </label>
+                <button type="submit">Hämta base state</button>
+            </form>
+            <pre id="detail-output" class="json-view">Ingen detaljdata ännu.</pre>
+        </article>
+
+        <article class="card">
+            <h2>Logg</h2>
+            <div id="event-log" class="event-log"></div>
+        </article>
+    </section>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>
