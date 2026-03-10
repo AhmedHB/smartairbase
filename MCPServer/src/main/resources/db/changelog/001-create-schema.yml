@@ -950,6 +950,9 @@ databaseChangeLog:
                   type: INTEGER
                   constraints:
                     nullable: false
+              - column:
+                  name: last_dice_value
+                  type: INTEGER
 
         - addForeignKeyConstraint:
             baseTableName: aircraft_state
@@ -989,6 +992,9 @@ databaseChangeLog:
               ALTER TABLE aircraft_state
               ADD CONSTRAINT chk_aircraft_state_holding_rounds CHECK (holding_rounds >= 0);
 
+              ALTER TABLE aircraft_state
+              ADD CONSTRAINT chk_aircraft_state_last_dice_value CHECK (last_dice_value IS NULL OR (last_dice_value BETWEEN 1 AND 6));
+
   - changeSet:
       id: 001-017-create-game-round
       author: openai
@@ -1012,6 +1018,11 @@ databaseChangeLog:
               - column:
                   name: round_number
                   type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: phase
+                  type: VARCHAR(30)
                   constraints:
                     nullable: false
               - column:

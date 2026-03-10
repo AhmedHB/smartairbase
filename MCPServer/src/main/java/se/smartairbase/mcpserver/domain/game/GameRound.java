@@ -1,11 +1,18 @@
 package se.smartairbase.mcpserver.domain.game;
 
 import jakarta.persistence.*;
+import se.smartairbase.mcpserver.domain.game.enums.RoundPhase;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "game_round", uniqueConstraints = @UniqueConstraint(name = "uk_game_round", columnNames = {"game_id", "round_number"}))
+/**
+ * Persistent record of one round in a game.
+ *
+ * <p>The round is also the anchor for the phase-based state machine. A round is
+ * considered open until {@code endedAt} is set.</p>
+ */
 public class GameRound {
 
     @Id
@@ -20,6 +27,10 @@ public class GameRound {
     @Column(name = "round_number", nullable = false)
     private Integer roundNumber;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "phase", nullable = false, length = 30)
+    private RoundPhase phase;
+
     @Column(name = "started_at", nullable = false)
     private LocalDateTime startedAt;
 
@@ -29,10 +40,19 @@ public class GameRound {
     protected GameRound() {
     }
 
-    public GameRound(Game game, Integer roundNumber, LocalDateTime startedAt) {
+    public GameRound(Game game, Integer roundNumber, RoundPhase phase, LocalDateTime startedAt) {
         this.game = game;
         this.roundNumber = roundNumber;
+        this.phase = phase;
         this.startedAt = startedAt;
+    }
+
+    public void setPhase(RoundPhase phase) {
+        this.phase = phase;
+    }
+
+    public boolean isOpen() {
+        return endedAt == null;
     }
 
     public void end(LocalDateTime endedAt) {
@@ -42,6 +62,7 @@ public class GameRound {
     public Long getId() { return id; }
     public Game getGame() { return game; }
     public Integer getRoundNumber() { return roundNumber; }
+    public RoundPhase getPhase() { return phase; }
     public LocalDateTime getStartedAt() { return startedAt; }
     public LocalDateTime getEndedAt() { return endedAt; }
 }

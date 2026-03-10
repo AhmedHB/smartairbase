@@ -13,6 +13,12 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+/**
+ * Creates persistent game instances from seeded scenario data.
+ *
+ * <p>This service materializes the scenario into live game tables so that all
+ * later mutations operate on isolated per-game state.</p>
+ */
 public class GameService {
 
     private final ScenarioRepository scenarioRepository;
@@ -57,6 +63,10 @@ public class GameService {
     }
 
     @Transactional
+    /**
+     * Creates a new game from a named scenario version and populates all runtime
+     * tables such as bases, aircraft, missions and their initial state rows.
+     */
     public GameSummaryDto createGameFromScenario(String scenarioName, String version, String gameName) {
         Scenario scenario = scenarioRepository.findByNameAndVersion(scenarioName, version)
                 .orElseThrow(() -> new IllegalArgumentException("Scenario not found: " + scenarioName + " v" + version));
@@ -101,6 +111,7 @@ public class GameService {
                 "Game created from scenario " + scenario.getName() + " v" + scenario.getVersion(),
                 LocalDateTime.now()));
 
-        return new GameSummaryDto(game.getId(), game.getName(), scenario.getName(), scenario.getVersion(), game.getStatus().name(), game.getCurrentRound());
+        return new GameSummaryDto(game.getId(), game.getName(), scenario.getName(), scenario.getVersion(),
+                game.getStatus().name(), game.getCurrentRound(), null, false, true, false);
     }
 }

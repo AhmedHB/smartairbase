@@ -5,6 +5,12 @@ import se.smartairbase.mcpserver.domain.rule.enums.DamageType;
 
 @Entity
 @Table(name = "aircraft_state")
+/**
+ * Mutable runtime state for one aircraft inside a specific game.
+ *
+ * <p>This entity contains operational values such as resources, current base,
+ * damage outcome, repair timers and holding status.</p>
+ */
 public class AircraftState {
 
     @Id
@@ -46,6 +52,9 @@ public class AircraftState {
     @Column(name = "holding_rounds", nullable = false)
     private Integer holdingRounds = 0;
 
+    @Column(name = "last_dice_value")
+    private Integer lastDiceValue;
+
     protected AircraftState() {
     }
 
@@ -66,6 +75,10 @@ public class AircraftState {
         this.assignedMission = null;
     }
 
+    /**
+     * Applies mission consumption to the aircraft after a mission has been
+     * resolved. Values are clamped at zero to protect persistence invariants.
+     */
     public void applyMissionCosts(int fuelCost, int weaponCost, int flightTimeCost) {
         this.fuel = Math.max(0, this.fuel - fuelCost);
         this.weapons = Math.max(0, this.weapons - weaponCost);
@@ -100,6 +113,10 @@ public class AircraftState {
         this.holdingRounds = holdingRounds;
     }
 
+    public void setLastDiceValue(Integer lastDiceValue) {
+        this.lastDiceValue = lastDiceValue;
+    }
+
     public Long getId() { return id; }
     public GameAircraft getGameAircraft() { return gameAircraft; }
     public GameBase getCurrentBase() { return currentBase; }
@@ -111,4 +128,5 @@ public class AircraftState {
     public Integer getRepairRoundsRemaining() { return repairRoundsRemaining; }
     public boolean isInHolding() { return inHolding; }
     public Integer getHoldingRounds() { return holdingRounds; }
+    public Integer getLastDiceValue() { return lastDiceValue; }
 }

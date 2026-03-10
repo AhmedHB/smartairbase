@@ -1,390 +1,187 @@
 # MCPServer
 
-![Java](https://img.shields.io/badge/Java-21+-blue) ![Spring
-Boot](https://img.shields.io/badge/Spring_Boot-4.0.3-brightgreen)
-![Maven](https://img.shields.io/badge/build-Maven-red)
-![Docker](https://img.shields.io/badge/Docker-required-blue)
-![npm](https://img.shields.io/badge/npm-required-orange)
+Backend for the Smart Air Base game, exposed as MCP tools over SSE with Spring AI MCP Server.
 
-------------------------------------------------------------------------
+## Overview
 
-# 🚀 Overview
+The server is the authoritative game engine. It owns:
 
-**MCPServer** is the backend service for the **Smart Air Base** strategy
-game.
+- game state
+- rule validation
+- round progression
+- mission execution
+- persistence in PostgreSQL
 
-The server exposes game functionality through **MCP tools**, allowing
-MCP-compatible clients such as AI agents, development tools, or custom
-frontends to interact with the game world.
+The MCP client controls the flow of the game by calling tools step by step. The server validates every transition.
 
-MCPServer is responsible for:
+## Architecture
 
--   Managing game state
--   Enforcing game rules
--   Executing missions and actions
--   Persisting game data
-
-All persistent data is stored in **PostgreSQL**, while **Liquibase**
-manages schema evolution and seed data.
-
-The server exposes its functionality through **MCP tools over
-Server-Sent Events (SSE)** using **Spring AI MCP Server**.
-
-The backend acts as the **authoritative game engine**, meaning all rule
-validation and state transitions occur on the server.
-
-------------------------------------------------------------------------
-
-# 🏗 System Architecture
-
-    Client / AI Agent
-            │
-            ▼
-    MCP Tool Invocation (SSE)
-            │
-            ▼
-    MCPServer (Spring Boot + Spring AI MCP)
-            │
-            ▼
-    Service Layer (Game Logic)
-            │
-            ▼
-    PostgreSQL Database
-
-------------------------------------------------------------------------
-
-# 📦 Project Structure
-
-    MCPServer/
-    ├── src/main/java/           Application source code
-    ├── src/main/resources/      Configuration & Liquibase changelogs
-    ├── docs/                    Documentation
-    ├── docker-compose.yml       PostgreSQL container setup
-    ├── pom.xml                  Maven configuration
-    └── README.md
-
-------------------------------------------------------------------------
-
-# 🧠 MCP Tools
-
-MCP tools represent **deterministic operations** within the game.\
-They can be invoked by MCP clients to interact with the game world.
-
-Each tool:
-
--   performs a specific operation
--   validates input
--   executes business logic
--   returns structured JSON
-
-Tools are grouped by domain.
-
-------------------------------------------------------------------------
-
-# 🎮 Game Tools
-
-### createGame
-
-Creates a new game instance.
-
-Typical use:
-
--   initialize a game
--   reset the system state
-
-Example request:
-
-``` json
-{
-  "tool": "createGame"
-}
+```text
+Client / MCP Agent
+        |
+        v
+MCP Tool Invocation (SSE)
+        |
+        v
+Spring Boot + Spring AI MCP Server
+        |
+        v
+Service Layer
+        |
+        v
+PostgreSQL
 ```
 
-Example response:
+## Project Structure
 
-``` json
-{
-  "gameId": 1,
-  "status": "CREATED",
-  "round": 1
-}
+```text
+MCPServer/
+├── src/main/java/           Application source code
+├── src/main/resources/      Config, Liquibase, seed data
+├── docs/                    Rules and change logs
+├── docker-compose.yml       PostgreSQL container
+├── pom.xml                  Maven config
+└── README.md
 ```
 
-------------------------------------------------------------------------
+## Current MCP Tools
 
-### getGame
+### Game
 
-Returns information about the current game state.
+- `create_game(scenarioName, version)`
+  - Creates a new game from seeded scenario data.
+- `get_game_state(gameId)`
+  - Returns the current game summary, bases, aircraft, missions, round phase, and allowed actions.
 
-Example:
+### Mission
 
-``` json
-{
-  "tool": "getGame",
-  "gameId": 1
-}
+- `assign_mission(gameId, aircraftCode, missionCode)`
+  - Assigns a mission to a ready aircraft during the planning phase.
+
+### Round
+
+- `start_round(gameId)`
+  - Opens a new round if the game is active and no round is already open.
+- `resolve_missions(gameId)`
+  - Resolves all assigned missions and moves affected aircraft to `AWAITING_DICE_ROLL`.
+- `record_dice_roll(gameId, aircraftCode, diceValue)`
+  - Stores the player-provided dice roll for an aircraft.
+- `list_available_landing_bases(gameId, aircraftCode)`
+  - Lists valid landing bases for the aircraft after damage resolution.
+- `land_aircraft(gameId, aircraftCode, baseCode)`
+  - Lands the aircraft at the selected base and starts maintenance if possible.
+- `send_aircraft_to_holding(gameId, aircraftCode)`
+  - Sends the aircraft to holding if no base can receive it.
+- `complete_round(gameId)`
+  - Finalizes the round, advances maintenance, applies holding effects, performs supply deliveries, and checks win/loss.
+
+### Aircraft and Bases
+
+- `get_aircraft_state(gameId, aircraftCode)`
+  - Returns the detailed state of one aircraft.
+- `get_base_state(gameId, baseCode)`
+  - Returns the detailed state of one base.
+
+## Round Model
+
+The game now uses a phase-based round flow.
+
+### Round Phases
+
+- `PLANNING`
+- `DICE_ROLL`
+- `LANDING`
+- `ROUND_COMPLETE`
+
+### Typical Round Sequence
+
+1. Call `start_round`
+2. Call `assign_mission` zero or more times
+3. Call `resolve_missions`
+4. For each aircraft waiting on dice: call `record_dice_roll`
+5. For each aircraft waiting on landing:
+   - call `list_available_landing_bases`
+   - then `land_aircraft` or `send_aircraft_to_holding`
+6. Call `complete_round`
+
+The next round cannot start until the previous round is completed. A new round also cannot start if the game is already won or lost.
+
+## State Model
+
+### Aircraft Statuses
+
+Important statuses used by the current flow:
+
+- `READY`
+- `ON_MISSION`
+- `AWAITING_DICE_ROLL`
+- `AWAITING_LANDING`
+- `WAITING_MAINTENANCE`
+- `IN_MAINTENANCE`
+- `HOLDING`
+- `CRASHED`
+
+### Game State Output
+
+`get_game_state` includes:
+
+- current round number
+- game status
+- active round phase
+- whether a round is open
+- whether the client can start or complete a round
+- aircraft allowed actions
+
+## Database and Liquibase
+
+Schema and seed data are managed with Liquibase.
+
+Relevant files:
+
+- `src/main/resources/db/changelog/001-create-schema.yml`
+- `src/main/resources/db/changelog/002-load-data.yml`
+- `src/main/resources/db/changelog/003-create-game-schema.yml`
+
+Seed data includes:
+
+- aircraft types
+- base types and services
+- mission types
+- repair rules
+- SmartAirBase scenario v7
+
+## Running Locally
+
+### Start PostgreSQL
+
+```bash
+docker-compose up -d
 ```
 
-Response:
+### Run the server
 
-``` json
-{
-  "gameId": 1,
-  "round": 3,
-  "status": "RUNNING"
-}
+```bash
+./mvnw spring-boot:run
 ```
 
-------------------------------------------------------------------------
+The server uses the datasource configured in `src/main/resources/application.yaml`.
 
-# 🛩 Aircraft Tools
+## Verification
 
-### listAircraft
+Basic verification command:
 
-Returns all aircraft in the game.
-
-Example request:
-
-``` json
-{
-  "tool": "listAircraft"
-}
+```bash
+./mvnw test
 ```
 
-Response:
+If you have changed Liquibase checksums on an already-used local database, recreate metadata during verification with:
 
-``` json
-[
-  {
-    "id": 1,
-    "name": "F-16",
-    "status": "AVAILABLE"
-  }
-]
+```bash
+./mvnw test -Dspring.liquibase.clear-checksums=true -Dspring.liquibase.drop-first=true
 ```
 
-------------------------------------------------------------------------
-
-### getAircraft
-
-Returns detailed information about a specific aircraft.
-
-Example:
-
-``` json
-{
-  "tool": "getAircraft",
-  "aircraftId": 1
-}
-```
-
-------------------------------------------------------------------------
-
-# 🏠 Base Tools
-
-### listBases
-
-Returns all air bases.
-
-Example:
-
-``` json
-{
-  "tool": "listBases"
-}
-```
-
-------------------------------------------------------------------------
-
-### getBase
-
-Returns detailed information about a specific base.
-
-Example:
-
-``` json
-{
-  "tool": "getBase",
-  "baseId": 2
-}
-```
-
-Response:
-
-``` json
-{
-  "id": 2,
-  "name": "Northern Air Base",
-  "capacity": 10
-}
-```
-
-------------------------------------------------------------------------
-
-# 🎯 Mission Tools
-
-### listMissions
-
-Returns available missions.
-
-Example:
-
-``` json
-{
-  "tool": "listMissions"
-}
-```
-
-------------------------------------------------------------------------
-
-### assignMission
-
-Assigns an aircraft to a mission.
-
-Example:
-
-``` json
-{
-  "tool": "assignMission",
-  "aircraftId": 3,
-  "missionId": 7
-}
-```
-
-------------------------------------------------------------------------
-
-# 🔄 Round Tools
-
-### startRound
-
-Starts a new round in the simulation.
-
-Example:
-
-``` json
-{
-  "tool": "startRound"
-}
-```
-
-------------------------------------------------------------------------
-
-### endRound
-
-Ends the current round and processes results.
-
-Example:
-
-``` json
-{
-  "tool": "endRound"
-}
-```
-
-------------------------------------------------------------------------
-
-# 🔁 Example Game Flow
-
-Typical interaction flow:
-
-1.  Client connects to SSE endpoint
-2.  Client lists available MCP tools
-3.  Client calls `createGame`
-4.  Client queries bases and aircraft
-5.  Client assigns missions
-6.  Client advances the simulation with `startRound` and `endRound`
-
-Sequence example:
-
-    Client → MCPServer : createGame
-    Client → MCPServer : listAircraft
-    Client → MCPServer : assignMission
-    Client → MCPServer : startRound
-    Client → MCPServer : endRound
-
-------------------------------------------------------------------------
-
-# ⚙️ Running the Server
-
-## Prerequisites
-
-Install:
-
--   Java 21
--   Maven
--   Docker
--   npm
-
-------------------------------------------------------------------------
-
-## Start PostgreSQL
-
-    docker-compose up -d
-
-------------------------------------------------------------------------
-
-## Start MCPServer
-
-    mvn spring-boot:run
-
-Server runs on:
-
-    http://localhost:9090
-
-SSE endpoint:
-
-    http://localhost:9090/sse
-
-------------------------------------------------------------------------
-
-# 🔎 MCP Inspector
-
-To inspect available MCP tools:
-
-    npx @modelcontextprotocol/inspector
-
-Then connect to:
-
-    http://localhost:9090/sse
-
-Inspector allows you to:
-
--   list tools
--   manually call tools
--   inspect responses
-
-------------------------------------------------------------------------
-
-# 🔐 Security Notes
-
-Database credentials are currently stored in:
-
-    application.yaml
-
-For production environments:
-
--   move secrets to environment variables
--   never commit credentials
--   use secure configuration management
-
-------------------------------------------------------------------------
-
-# 📌 Summary
-
-MCPServer provides:
-
--   A Spring Boot MCP backend
--   Deterministic MCP tools for gameplay operations
--   PostgreSQL persistence
--   Liquibase-managed schema evolution
--   SSE-based tool communication
--   Integration with MCP-compatible AI agents
-
-The server acts as the **central game engine** for the Smart Air Base
-system.
-
-------------------------------------------------------------------------
-
-# 📄 License
-
-Specify license here.
+## Notes
+
+- The server validates rules; the client orchestrates the user experience.
+- Dice rolls are now player-provided, not randomly generated by the backend.
+- The latest implementation notes are documented in `docs/CHANGELOG_2026-03-10_stepwise_round.md`.
