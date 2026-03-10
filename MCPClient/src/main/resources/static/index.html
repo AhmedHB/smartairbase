@@ -36,9 +36,7 @@
             </label>
             <div class="button-row">
                 <button data-action="refresh-state">Hämta state</button>
-                <button data-action="start-round">Starta runda</button>
-                <button data-action="resolve-missions">Lös uppdrag</button>
-                <button data-action="complete-round">Avsluta runda</button>
+                <button data-action="next-round">Starta nästa runda</button>
             </div>
             <pre id="game-state" class="json-view">Ingen state hämtad ännu.</pre>
         </article>
@@ -51,18 +49,8 @@
 
     <section class="grid">
         <article class="card">
-            <h2>Planering och tärning</h2>
-            <form id="assign-mission-form">
-                <label>
-                    Aircraft
-                    <input name="aircraftCode" placeholder="F1" required>
-                </label>
-                <label>
-                    Mission
-                    <input name="missionCode" placeholder="M1" required>
-                </label>
-                <button type="submit">Tilldela uppdrag</button>
-            </form>
+            <h2>Spelarflöde</h2>
+            <p class="lead">Systemet planerar uppdrag och väljer landningsbaser automatiskt. Spelaren startar nästa runda och registrerar tärningsslag.</p>
             <form id="dice-roll-form">
                 <label>
                     Aircraft
@@ -77,32 +65,8 @@
         </article>
 
         <article class="card">
-            <h2>Landning och baser</h2>
-            <form id="landing-bases-form">
-                <label>
-                    Aircraft
-                    <input name="aircraftCode" placeholder="F1" required>
-                </label>
-                <button type="submit">Lista landningsbaser</button>
-            </form>
-            <form id="land-aircraft-form">
-                <label>
-                    Aircraft
-                    <input name="aircraftCode" placeholder="F1" required>
-                </label>
-                <label>
-                    Bas
-                    <input name="baseCode" placeholder="A" required>
-                </label>
-                <button type="submit">Landa flygplan</button>
-            </form>
-            <form id="holding-form">
-                <label>
-                    Aircraft
-                    <input name="aircraftCode" placeholder="F1" required>
-                </label>
-                <button type="submit">Skicka till holding</button>
-            </form>
+            <h2>Automatiska beslut</h2>
+            <p class="lead">Klienten väljer automatiskt flygplan för uppdrag, landningsbaser och avslutar rundan när allt är klart.</p>
             <pre id="landing-output" class="json-view">Ingen landningsdata ännu.</pre>
         </article>
     </section>

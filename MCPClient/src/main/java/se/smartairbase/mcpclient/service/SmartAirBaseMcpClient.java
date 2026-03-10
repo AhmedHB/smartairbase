@@ -1,12 +1,15 @@
 package se.smartairbase.mcpclient.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import se.smartairbase.mcpclient.domain.SmartAirBaseTool;
 import se.smartairbase.mcpclient.controller.dto.AssignMissionRequest;
 import se.smartairbase.mcpclient.controller.dto.CreateGameRequest;
 import se.smartairbase.mcpclient.controller.dto.DiceRollRequest;
 import se.smartairbase.mcpclient.controller.dto.LandAircraftRequest;
+import se.smartairbase.mcpclient.service.model.GameStateView;
+import se.smartairbase.mcpclient.service.model.LandingOptionsView;
 
 import java.util.Map;
 
@@ -20,9 +23,11 @@ import java.util.Map;
 public class SmartAirBaseMcpClient {
 
     private final McpToolExecutor toolExecutor;
+    private final ObjectMapper objectMapper;
 
-    public SmartAirBaseMcpClient(McpToolExecutor toolExecutor) {
+    public SmartAirBaseMcpClient(McpToolExecutor toolExecutor, ObjectMapper objectMapper) {
         this.toolExecutor = toolExecutor;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -37,6 +42,10 @@ public class SmartAirBaseMcpClient {
      */
     public JsonNode getGameState(String gameId) {
         return toolExecutor.execute(SmartAirBaseTool.GET_GAME_STATE, Map.of("gameId", gameId));
+    }
+
+    public GameStateView getGameStateView(String gameId) {
+        return objectMapper.convertValue(getGameState(gameId), GameStateView.class);
     }
 
     /**
@@ -83,6 +92,10 @@ public class SmartAirBaseMcpClient {
                 "gameId", gameId,
                 "aircraftCode", aircraftCode
         ));
+    }
+
+    public LandingOptionsView getLandingOptionsView(String gameId, String aircraftCode) {
+        return objectMapper.convertValue(listAvailableLandingBases(gameId, aircraftCode), LandingOptionsView.class);
     }
 
     /**

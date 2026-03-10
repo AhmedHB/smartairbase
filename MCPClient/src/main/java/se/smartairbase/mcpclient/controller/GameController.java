@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import se.smartairbase.mcpclient.controller.dto.AutoPlayResponse;
 import se.smartairbase.mcpclient.domain.GameRulesReference;
+import se.smartairbase.mcpclient.service.AutoPlayService;
 import se.smartairbase.mcpclient.service.GameRulesReferenceService;
 import se.smartairbase.mcpclient.service.SmartAirBaseMcpClient;
 import se.smartairbase.mcpclient.controller.dto.AssignMissionRequest;
@@ -30,10 +32,14 @@ import se.smartairbase.mcpclient.controller.dto.LandAircraftRequest;
 public class GameController {
 
     private final SmartAirBaseMcpClient mcpClient;
+    private final AutoPlayService autoPlayService;
     private final GameRulesReferenceService gameRulesReferenceService;
 
-    public GameController(SmartAirBaseMcpClient mcpClient, GameRulesReferenceService gameRulesReferenceService) {
+    public GameController(SmartAirBaseMcpClient mcpClient,
+                          AutoPlayService autoPlayService,
+                          GameRulesReferenceService gameRulesReferenceService) {
         this.mcpClient = mcpClient;
+        this.autoPlayService = autoPlayService;
         this.gameRulesReferenceService = gameRulesReferenceService;
     }
 
@@ -70,6 +76,14 @@ public class GameController {
     }
 
     /**
+     * Starts the next round and lets the client assign missions automatically.
+     */
+    @PostMapping("/games/{gameId}/rounds/next")
+    public AutoPlayResponse startNextRound(@PathVariable String gameId) {
+        return autoPlayService.startNextRound(gameId);
+    }
+
+    /**
      * Assigns one mission to one aircraft.
      */
     @PostMapping("/games/{gameId}/missions/assign")
@@ -91,6 +105,15 @@ public class GameController {
     @PostMapping("/games/{gameId}/dice-rolls")
     public JsonNode recordDiceRoll(@PathVariable String gameId, @Valid @RequestBody DiceRollRequest request) {
         return mcpClient.recordDiceRoll(gameId, request);
+    }
+
+    /**
+     * Records one dice roll and lets the client resolve landings and round completion automatically.
+     */
+    @PostMapping("/games/{gameId}/dice-rolls/auto")
+    public AutoPlayResponse resolveDiceRollAutomatically(@PathVariable String gameId,
+                                                         @Valid @RequestBody DiceRollRequest request) {
+        return autoPlayService.resolveDiceRoll(gameId, request);
     }
 
     /**

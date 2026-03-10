@@ -83,14 +83,8 @@ document.querySelectorAll("[data-action]").forEach((button) => {
                 await refreshGameState();
                 return;
             }
-            if (action === "start-round") {
-                data = await api(`/api/games/${encodeURIComponent(gameId)}/rounds/start`, {method: "POST"});
-            }
-            if (action === "resolve-missions") {
-                data = await api(`/api/games/${encodeURIComponent(gameId)}/missions/resolve`, {method: "POST"});
-            }
-            if (action === "complete-round") {
-                data = await api(`/api/games/${encodeURIComponent(gameId)}/rounds/complete`, {method: "POST"});
+            if (action === "next-round") {
+                data = await api(`/api/games/${encodeURIComponent(gameId)}/rounds/next`, {method: "POST"});
             }
             renderJson(gameStateOutput, data);
             appendLog(`Åtgärd ${action} utförd`, data);
@@ -101,80 +95,19 @@ document.querySelectorAll("[data-action]").forEach((button) => {
     });
 });
 
-document.getElementById("assign-mission-form").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    try {
-        const gameId = requireGameId();
-        const data = await api(`/api/games/${encodeURIComponent(gameId)}/missions/assign`, {
-            method: "POST",
-            body: JSON.stringify(formJson(event.target))
-        });
-        renderJson(gameStateOutput, data);
-        appendLog("Uppdrag tilldelat", data);
-    }
-    catch (error) {
-        appendLog(error.message);
-    }
-});
-
 document.getElementById("dice-roll-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     try {
         const gameId = requireGameId();
         const payload = formJson(event.target);
         payload.diceValue = Number(payload.diceValue);
-        const data = await api(`/api/games/${encodeURIComponent(gameId)}/dice-rolls`, {
+        const data = await api(`/api/games/${encodeURIComponent(gameId)}/dice-rolls/auto`, {
             method: "POST",
             body: JSON.stringify(payload)
         });
         renderJson(gameStateOutput, data);
-        appendLog("Tärningsslag registrerat", data);
-    }
-    catch (error) {
-        appendLog(error.message);
-    }
-});
-
-document.getElementById("landing-bases-form").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    try {
-        const gameId = requireGameId();
-        const aircraftCode = formJson(event.target).aircraftCode;
-        const data = await api(`/api/games/${encodeURIComponent(gameId)}/landing-bases?aircraftCode=${encodeURIComponent(aircraftCode)}`);
         renderJson(landingOutput, data);
-        appendLog("Landningsbaser hämtade", data);
-    }
-    catch (error) {
-        appendLog(error.message);
-    }
-});
-
-document.getElementById("land-aircraft-form").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    try {
-        const gameId = requireGameId();
-        const data = await api(`/api/games/${encodeURIComponent(gameId)}/landings`, {
-            method: "POST",
-            body: JSON.stringify(formJson(event.target))
-        });
-        renderJson(landingOutput, data);
-        appendLog("Flygplan landat", data);
-    }
-    catch (error) {
-        appendLog(error.message);
-    }
-});
-
-document.getElementById("holding-form").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    try {
-        const gameId = requireGameId();
-        const aircraftCode = formJson(event.target).aircraftCode;
-        const data = await api(`/api/games/${encodeURIComponent(gameId)}/holding?aircraftCode=${encodeURIComponent(aircraftCode)}`, {
-            method: "POST"
-        });
-        renderJson(landingOutput, data);
-        appendLog("Flygplan skickat till holding", data);
+        appendLog("Tärningsslag registrerat och rundan uppdaterad", data);
     }
     catch (error) {
         appendLog(error.message);
