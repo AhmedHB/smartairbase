@@ -1,11 +1,9 @@
 package se.smartairbase.mcpclient.controller.dto;
 
-import se.smartairbase.mcpclient.service.model.GameStateView;
-
 import java.util.List;
 
-public record AutoPlayResponse(
-        GameStateView gameState,
+public record AutoPlayResponseDTO(
+        GameStateDTO gameState,
         String nextAction,
         boolean roundCompleted,
         boolean gameFinished,

@@ -1,6 +1,7 @@
 package se.smartairbase.mcpserver.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import se.smartairbase.mcpserver.domain.game.AircraftState;
 import se.smartairbase.mcpserver.domain.game.GameAircraft;
 import se.smartairbase.mcpserver.domain.game.enums.AircraftStatus;
@@ -30,6 +31,7 @@ public class AircraftService {
      * Returns the persisted state for a single aircraft together with the
      * actions the client may legally offer next.
      */
+    @Transactional(readOnly = true)
     public AircraftStateDto getAircraftState(Long gameId, String aircraftCode) {
         GameAircraft aircraft = gameAircraftRepository.findByGame_IdAndCode(gameId, aircraftCode)
                 .orElseThrow(() -> new IllegalArgumentException("Aircraft not found: " + aircraftCode));

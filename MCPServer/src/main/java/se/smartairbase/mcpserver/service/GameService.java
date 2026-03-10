@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 
 @Service
 /**
@@ -59,7 +60,7 @@ public class GameService {
 
     @Transactional
     public GameSummaryDto createGameFromScenario(String scenarioName, String version) {
-        return createGameFromScenario(scenarioName, version, null);
+        return createGameFromScenario(scenarioName, version, null, null, null);
     }
 
     @Transactional
@@ -68,7 +69,24 @@ public class GameService {
      * tables such as bases, aircraft, missions and their initial state rows.
      */
     public GameSummaryDto createGameFromScenario(String scenarioName, String version, String gameName) {
-        Scenario scenario = scenarioRepository.findByNameAndVersion(scenarioName, version)
+        return createGameFromScenario(scenarioName, version, gameName, null, null);
+    }
+
+    @Transactional
+    public GameSummaryDto createGameFromScenario(String scenarioName,
+                                                 String version,
+                                                 String gameName,
+                                                 Integer aircraftCount,
+                                                 Map<String, Integer> missionTypeCounts) {
+        String normalizedName = normalizeScenarioName(scenarioName);
+        String normalizedVersion = normalizeScenarioVersion(version);
+
+        Scenario scenario = scenarioRepository.findAll().stream()
+                .filter(candidate -> candidate.getName() != null
+                        && candidate.getVersion() != null
+                        && candidate.getName().equalsIgnoreCase(normalizedName)
+                        && normalizeScenarioVersion(candidate.getVersion()).equals(normalizedVersion))
+                .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Scenario not found: " + scenarioName + " v" + version));
 
         Game game = new Game(scenario, gameName == null || gameName.isBlank() ? scenarioName + " " + version : gameName);
@@ -86,24 +104,38 @@ public class GameService {
         }
 
         List<ScenarioAircraft> scenarioAircraft = scenarioAircraftRepository.findByScenario_Id(scenario.getId());
-        for (ScenarioAircraft sa : scenarioAircraft) {
-            GameBase startBase = gameBaseByCode.get(sa.getStartBaseCode());
-            if (startBase == null) {
-                throw new IllegalStateException("Missing start base: " + sa.getStartBaseCode());
-            }
-            GameAircraft ga = gameAircraftRepository.save(new GameAircraft(game, sa.getCode(), sa.getAircraftType()));
+        int requestedAircraftCount = aircraftCount != null ? aircraftCount : scenarioAircraft.size();
+        if (requestedAircraftCount <= 0) {
+            throw new IllegalArgumentException("Aircraft count must be at least 1");
+        }
+        int totalParkingCapacity = scenarioBases.stream().mapToInt(ScenarioBase::getParkingCapacity).sum();
+        if (requestedAircraftCount > totalParkingCapacity) {
+            throw new IllegalArgumentException("Aircraft count exceeds total parking capacity of " + totalParkingCapacity);
+        }
+
+        Map<String, Integer> occupiedStartSlots = new HashMap<>();
+        for (int index = 0; index < requestedAircraftCount; index++) {
+            ScenarioAircraft template = scenarioAircraft.get(index % scenarioAircraft.size());
+            GameBase startBase = selectStartBase(template.getStartBaseCode(), scenarioBases, gameBaseByCode, occupiedStartSlots);
+            GameAircraft ga = gameAircraftRepository.save(new GameAircraft(game, "F" + (index + 1), template.getAircraftType()));
             aircraftStateRepository.save(new AircraftState(ga, startBase,
-                    sa.getAircraftType().getMaxFuel(),
-                    sa.getAircraftType().getMaxWeapons(),
-                    sa.getAircraftType().getMaxFlightHours()));
+                    template.getAircraftType().getMaxFuel(),
+                    template.getAircraftType().getMaxWeapons(),
+                    template.getAircraftType().getMaxFlightHours()));
             BaseState baseState = baseStateRepository.findByGameBase_Id(startBase.getId()).orElseThrow();
             baseState.setOccupiedParkingSlots(baseState.getOccupiedParkingSlots() + 1);
             baseStateRepository.save(baseState);
+            occupiedStartSlots.merge(startBase.getCode(), 1, Integer::sum);
         }
 
         List<ScenarioMission> scenarioMissions = scenarioMissionRepository.findByScenario_IdOrderBySortOrder(scenario.getId());
-        for (ScenarioMission sm : scenarioMissions) {
-            gameMissionRepository.save(new GameMission(game, sm.getCode(), sm.getMissionType(), sm.getSortOrder()));
+        Map<String, Integer> requestedMissionCounts = normalizeMissionTypeCounts(missionTypeCounts, scenarioMissions);
+        for (ScenarioMission template : scenarioMissions) {
+            int count = requestedMissionCounts.getOrDefault(template.getMissionType().getCode(), 0);
+            for (int index = 0; index < count; index++) {
+                String missionCode = template.getMissionType().getCode() + "-" + (index + 1);
+                gameMissionRepository.save(new GameMission(game, missionCode, template.getMissionType(), template.getSortOrder() * 100 + index));
+            }
         }
 
         gameEventRepository.save(new GameEvent(game, null, null, null, null,
@@ -113,5 +145,62 @@ public class GameService {
 
         return new GameSummaryDto(game.getId(), game.getName(), scenario.getName(), scenario.getVersion(),
                 game.getStatus().name(), game.getCurrentRound(), null, false, true, false);
+    }
+
+    private String normalizeScenarioName(String scenarioName) {
+        return scenarioName == null ? "" : scenarioName.trim();
+    }
+
+    private String normalizeScenarioVersion(String version) {
+        if (version == null) {
+            return "";
+        }
+        String trimmed = version.trim();
+        if (trimmed.isEmpty()) {
+            return "";
+        }
+        String upper = trimmed.toUpperCase(Locale.ROOT);
+        return upper.startsWith("V") ? upper : "V" + upper;
+    }
+
+    private GameBase selectStartBase(String preferredBaseCode,
+                                     List<ScenarioBase> scenarioBases,
+                                     Map<String, GameBase> gameBaseByCode,
+                                     Map<String, Integer> occupiedStartSlots) {
+        if (preferredBaseCode != null) {
+            ScenarioBase preferredBase = scenarioBases.stream()
+                    .filter(base -> preferredBaseCode.equals(base.getCode()))
+                    .findFirst()
+                    .orElse(null);
+            if (preferredBase != null && occupiedStartSlots.getOrDefault(preferredBaseCode, 0) < preferredBase.getParkingCapacity()) {
+                return gameBaseByCode.get(preferredBaseCode);
+            }
+        }
+
+        return scenarioBases.stream()
+                .filter(base -> occupiedStartSlots.getOrDefault(base.getCode(), 0) < base.getParkingCapacity())
+                .map(base -> gameBaseByCode.get(base.getCode()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No start base has free parking capacity"));
+    }
+
+    private Map<String, Integer> normalizeMissionTypeCounts(Map<String, Integer> missionTypeCounts, List<ScenarioMission> scenarioMissions) {
+        Map<String, Integer> normalized = new HashMap<>();
+        if (missionTypeCounts == null || missionTypeCounts.isEmpty()) {
+            for (ScenarioMission scenarioMission : scenarioMissions) {
+                normalized.put(scenarioMission.getMissionType().getCode(), 1);
+            }
+            return normalized;
+        }
+
+        for (ScenarioMission scenarioMission : scenarioMissions) {
+            String missionTypeCode = scenarioMission.getMissionType().getCode();
+            int count = missionTypeCounts.getOrDefault(missionTypeCode, 0);
+            if (count < 0) {
+                throw new IllegalArgumentException("Mission count for " + missionTypeCode + " must be zero or higher");
+            }
+            normalized.put(missionTypeCode, count);
+        }
+        return normalized;
     }
 }

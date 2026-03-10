@@ -1,6 +1,6 @@
-package se.smartairbase.mcpclient.service.model;
+package se.smartairbase.mcpclient.controller.dto;
 
-public record GameSummaryView(
+public record GameSummaryDTO(
         Long gameId,
         String name,
         String scenarioName,

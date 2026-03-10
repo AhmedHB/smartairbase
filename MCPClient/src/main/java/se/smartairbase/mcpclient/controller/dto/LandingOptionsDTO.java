@@ -1,12 +1,12 @@
-package se.smartairbase.mcpclient.service.model;
+package se.smartairbase.mcpclient.controller.dto;
 
 import java.util.List;
 
-public record LandingOptionsView(
+public record LandingOptionsDTO(
         Long gameId,
         Integer roundNumber,
         String aircraftCode,
         boolean holdingRequired,
-        List<LandingOptionView> options
+        List<LandingOptionDTO> options
 ) {
 }

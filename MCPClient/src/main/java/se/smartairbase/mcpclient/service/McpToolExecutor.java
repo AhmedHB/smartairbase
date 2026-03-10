@@ -31,16 +31,35 @@ public class McpToolExecutor {
     /**
      * Executes one MCP tool call and returns the raw JSON response.
      */
-    public JsonNode execute(SmartAirBaseTool tool, Object request) {
+    public <T> T execute(SmartAirBaseTool tool, Object request, Class<T> responseType) {
         ToolCallback callback = resolveToolCallback(tool);
         try {
             String payload = objectMapper.writeValueAsString(request);
             String response = callback.call(payload);
-            return objectMapper.readTree(response);
+            JsonNode unwrapped = unwrapToolResponse(response);
+            return objectMapper.treeToValue(unwrapped, responseType);
         }
         catch (Exception exception) {
             throw new IllegalStateException("Failed to execute MCP tool " + tool.suffix(), exception);
         }
+    }
+
+    private JsonNode unwrapToolResponse(String response) throws Exception {
+        JsonNode root = objectMapper.readTree(response);
+        if (root.isArray() && !root.isEmpty()) {
+            JsonNode first = root.get(0);
+            JsonNode text = first.get("text");
+            if (text != null && text.isTextual()) {
+                String textValue = text.textValue();
+                try {
+                    return objectMapper.readTree(textValue);
+                }
+                catch (Exception ignored) {
+                    return objectMapper.getNodeFactory().textNode(textValue);
+                }
+            }
+        }
+        return root;
     }
 
     /**

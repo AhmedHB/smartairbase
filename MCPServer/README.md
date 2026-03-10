@@ -1,29 +1,24 @@
 # MCPServer
 
-Backend for the Smart Air Base game, exposed as MCP tools over SSE with Spring AI MCP Server.
+`MCPServer` is the authoritative Smart Air Base game engine. It exposes game actions as MCP tools over SSE and persists game state in PostgreSQL.
 
-## Overview
-
-The server is the authoritative game engine. It owns:
+It owns:
 
 - game state
-- rule validation
+- scenario materialization
 - round progression
-- mission execution
-- persistence in PostgreSQL
-
-The MCP client controls the flow of the game by calling tools step by step. The server validates every transition.
+- mission resolution
+- damage and landing flow
+- maintenance and supply updates
+- win/loss evaluation
 
 ## Architecture
 
 ```text
-Client / MCP Agent
+MCP Client / Agent
         |
         v
-MCP Tool Invocation (SSE)
-        |
-        v
-Spring Boot + Spring AI MCP Server
+Spring AI MCP Server
         |
         v
 Service Layer
@@ -32,85 +27,69 @@ Service Layer
 PostgreSQL
 ```
 
-## Project Structure
-
-```text
-MCPServer/
-├── src/main/java/           Application source code
-├── src/main/resources/      Config, Liquibase, seed data
-├── docs/                    Rules and change logs
-├── docker-compose.yml       PostgreSQL container
-├── pom.xml                  Maven config
-└── README.md
-```
-
-## Current MCP Tools
+## MCP Tools
 
 ### Game
 
-- `create_game(scenarioName, version)`
-  - Creates a new game from seeded scenario data.
+- `create_game(scenarioName, version, aircraftCount, missionTypeCounts)`
 - `get_game_state(gameId)`
-  - Returns the current game summary, bases, aircraft, missions, round phase, and allowed actions.
 
 ### Mission
 
 - `assign_mission(gameId, aircraftCode, missionCode)`
-  - Assigns a mission to a ready aircraft during the planning phase.
 
 ### Round
 
 - `start_round(gameId)`
-  - Opens a new round if the game is active and no round is already open.
 - `resolve_missions(gameId)`
-  - Resolves all assigned missions and moves affected aircraft to `AWAITING_DICE_ROLL`.
 - `record_dice_roll(gameId, aircraftCode, diceValue)`
-  - Stores the player-provided dice roll for an aircraft.
 - `list_available_landing_bases(gameId, aircraftCode)`
-  - Lists valid landing bases for the aircraft after damage resolution.
 - `land_aircraft(gameId, aircraftCode, baseCode)`
-  - Lands the aircraft at the selected base and starts maintenance if possible.
 - `send_aircraft_to_holding(gameId, aircraftCode)`
-  - Sends the aircraft to holding if no base can receive it.
 - `complete_round(gameId)`
-  - Finalizes the round, advances maintenance, applies holding effects, performs supply deliveries, and checks win/loss.
 
-### Aircraft and Bases
+### Detail Reads
 
 - `get_aircraft_state(gameId, aircraftCode)`
-  - Returns the detailed state of one aircraft.
 - `get_base_state(gameId, baseCode)`
-  - Returns the detailed state of one base.
+
+## Dynamic Game Creation
+
+Games are built from the seeded `SmartAirBase V7` scenario template.
+
+At creation time the current implementation can override:
+
+- total aircraft count
+- mission count per mission type
+
+Runtime generation rules:
+
+- aircraft codes: `F1`, `F2`, `F3`, ...
+- mission codes: `M1-1`, `M1-2`, `M2-1`, ...
+
+The server still uses seeded base types, repair rules, and resource settings from the scenario.
 
 ## Round Model
 
-The game now uses a phase-based round flow.
-
-### Round Phases
+Round phases:
 
 - `PLANNING`
 - `DICE_ROLL`
 - `LANDING`
 - `ROUND_COMPLETE`
 
-### Typical Round Sequence
+Typical sequence:
 
-1. Call `start_round`
-2. Call `assign_mission` zero or more times
-3. Call `resolve_missions`
-4. For each aircraft waiting on dice: call `record_dice_roll`
-5. For each aircraft waiting on landing:
-   - call `list_available_landing_bases`
-   - then `land_aircraft` or `send_aircraft_to_holding`
-6. Call `complete_round`
+1. `start_round`
+2. `assign_mission`
+3. `resolve_missions`
+4. `record_dice_roll`
+5. `land_aircraft` or `send_aircraft_to_holding`
+6. `complete_round`
 
-The next round cannot start until the previous round is completed. A new round also cannot start if the game is already won or lost.
+## Important State
 
-## State Model
-
-### Aircraft Statuses
-
-Important statuses used by the current flow:
+Aircraft statuses:
 
 - `READY`
 - `ON_MISSION`
@@ -121,22 +100,16 @@ Important statuses used by the current flow:
 - `HOLDING`
 - `CRASHED`
 
-### Game State Output
+Implemented outcome rules:
 
-`get_game_state` includes:
+- `WON` when all missions are completed
+- `LOST` when no operational aircraft remain
 
-- current round number
-- game status
-- active round phase
-- whether a round is open
-- whether the client can start or complete a round
-- aircraft allowed actions
+## Persistence
 
-## Database and Liquibase
+Liquibase manages schema and seed data.
 
-Schema and seed data are managed with Liquibase.
-
-Relevant files:
+Important files:
 
 - `src/main/resources/db/changelog/001-create-schema.yml`
 - `src/main/resources/db/changelog/002-load-data.yml`
@@ -145,36 +118,42 @@ Relevant files:
 Seed data includes:
 
 - aircraft types
-- base types and services
+- base types and capabilities
 - mission types
 - repair rules
-- SmartAirBase scenario v7
+- `SmartAirBase V7`
 
 ## Running Locally
 
-### Start PostgreSQL
+Start PostgreSQL:
 
 ```bash
 docker-compose up -d
 ```
 
-### Run the server
+Run the server:
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-The server uses the datasource configured in `src/main/resources/application.yaml`.
+Default ports:
 
-## Verification
+- app: `9090`
+- SSE endpoint: `http://localhost:9090/sse`
 
-Basic verification command:
+Datasource config lives in:
+
+- `src/main/resources/application.yaml`
+
+## Build and Test
 
 ```bash
+./mvnw clean package
 ./mvnw test
 ```
 
-If you have changed Liquibase checksums on an already-used local database, recreate metadata during verification with:
+If Liquibase checksums got out of sync in a reused local database:
 
 ```bash
 ./mvnw test -Dspring.liquibase.clear-checksums=true -Dspring.liquibase.drop-first=true
@@ -182,6 +161,5 @@ If you have changed Liquibase checksums on an already-used local database, recre
 
 ## Notes
 
-- The server validates rules; the client orchestrates the user experience.
-- Dice rolls are now player-provided, not randomly generated by the backend.
-- The latest implementation notes are documented in `docs/CHANGELOG_2026-03-10_stepwise_round.md`.
+- Read services use Spring read-only transactions to avoid lazy-proxy failures while mapping DTOs.
+- The latest stepwise round implementation notes are in `docs/CHANGELOG_2026-03-10_stepwise_round.md`.

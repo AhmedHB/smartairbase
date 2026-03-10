@@ -1,6 +1,6 @@
-package se.smartairbase.mcpclient.service.model;
+package se.smartairbase.mcpclient.controller.dto;
 
-public record LandingOptionView(
+public record LandingOptionDTO(
         String baseCode,
         String baseName,
         boolean canLand,

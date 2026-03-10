@@ -1,6 +1,6 @@
-package se.smartairbase.mcpclient.service.model;
+package se.smartairbase.mcpclient.controller.dto;
 
-public record BaseStateView(
+public record BaseStateDTO(
         String code,
         String name,
         String baseType,

@@ -1,6 +1,7 @@
 package se.smartairbase.mcpserver.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import se.smartairbase.mcpserver.domain.game.*;
 import se.smartairbase.mcpserver.domain.game.enums.AircraftStatus;
 import se.smartairbase.mcpserver.domain.game.enums.GameStatus;
@@ -56,6 +57,7 @@ public class GameQueryService {
      * <p>The result includes summary data, base state, aircraft state, mission
      * state and round-level control flags.</p>
      */
+    @Transactional(readOnly = true)
     public GameStateDto getGameState(Long gameId) {
         Game game = gameRepository.findById(gameId).orElseThrow(() -> new IllegalArgumentException("Game not found: " + gameId));
         GameRound activeRound = gameRoundRepository.findFirstByGame_IdAndEndedAtIsNullOrderByRoundNumberDesc(gameId).orElse(null);

@@ -1,38 +1,488 @@
-.App {
-  text-align: center;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
+.shell {
   min-height: 100vh;
+  padding: 22px;
+  color: #1f2430;
+}
+
+.topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "brand brand"
+    "divider divider"
+    "status status";
+  gap: 18px;
+  align-items: start;
+}
+
+.banner,
+.brand-card,
+.metric-card,
+.mission-card,
+.plan-chip,
+.base-card,
+.event-panel,
+.info-panel {
+  border-radius: 12px;
+  border: 1px solid rgba(69, 86, 119, 0.22);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 20px 45px rgba(69, 86, 119, 0.08);
+}
+
+.banner {
+  background: #55657f;
+  color: #f7f8fb;
+  padding: 14px 18px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.headline-card {
+  border-radius: 12px;
+}
+
+.side-banner {
+  margin-bottom: 14px;
+}
+
+.banner-label {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  min-height: 100%;
 }
 
-.App-link {
-  color: #61dafb;
+.brand-card {
+  grid-area: brand;
+  min-height: 78px;
+  display: grid;
+  place-items: center;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.7rem, 3vw, 2.4rem);
+  font-weight: 700;
+  background: rgba(255, 252, 246, 0.95);
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+.brand-card-wide {
+  min-height: 92px;
+  width: 100%;
+}
+
+.headline-divider {
+  grid-area: divider;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(85, 101, 127, 0.18), rgba(85, 101, 127, 0.72), rgba(85, 101, 127, 0.18));
+  border-radius: 999px;
+}
+
+.status-stack {
+  grid-area: status;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.metric-card {
+  padding: 12px;
+  min-height: 70px;
+}
+
+.metric-card span {
+  display: block;
+  color: #5d6676;
+  font-size: 0.82rem;
+  margin-bottom: 8px;
+}
+
+.metric-card strong {
+  font-size: 1rem;
+}
+
+.mission-section {
+  margin-top: 16px;
+}
+
+.bases-section {
+  margin-top: 18px;
+}
+
+.section-heading {
+  margin-bottom: 12px;
+}
+
+.section-heading h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  letter-spacing: 0.02em;
+}
+
+.mission-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.mission-card {
+  width: fit-content;
+  max-width: 100%;
+  background: #55657f;
+  color: #f6f7fb;
+  padding: 12px 14px;
+}
+
+.mission-card h2 {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+}
+
+.mission-card p,
+.mission-card strong,
+.mission-card span {
+  display: block;
+}
+
+.mission-card p {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+}
+
+.mission-card strong {
+  font-size: 0.92rem;
+}
+
+.mission-blocker {
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.8rem;
+}
+
+.mission-completed {
+  opacity: 0.76;
+}
+
+.plan-strip {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 14px 0 22px;
+}
+
+.plan-chip {
+  padding: 14px 18px;
+  background: #7587a2;
+  color: #f5f7fb;
+  font-weight: 600;
+}
+
+.bases-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.52fr);
+  gap: 18px;
+}
+
+.bases-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.base-card {
+  border: 2px solid #f18d35;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.base-header {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.warehouse-panel {
+  border: 1px solid #f18d35;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.warehouse-panel h3,
+.slot-panel h3,
+.event-panel h3,
+.info-panel h3 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.warehouse-panel p {
+  margin: 6px 0;
+  color: #6c7482;
+}
+
+.slot-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(110px, 1fr);
+  gap: 10px;
+}
+
+.slot-panel {
+  border: 1px solid #f18d35;
+  padding: 10px;
+}
+
+.slots {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.slot {
+  min-height: 62px;
+  border: 2px solid #c9c9c9;
+  display: grid;
+  place-items: center;
+  color: #8e8e8e;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.slot-filled,
+.slot-repairing {
+  background: #55657f;
+  color: #f6f7fb;
+  border-color: #55657f;
+}
+
+.side-column {
+  display: grid;
+  gap: 16px;
+}
+
+.event-panel,
+.info-panel {
+  padding: 14px;
+}
+
+.create-form,
+.dice-form {
+  display: grid;
+  gap: 12px;
+}
+
+.radio-group {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(84, 97, 123, 0.22);
+  border-radius: 10px;
+  display: grid;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.radio-group legend {
+  padding: 0 4px;
+  color: #525d6f;
+  font-size: 0.92rem;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #1f2430;
+}
+
+.radio-option input {
+  margin: 0;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.92rem;
+  color: #525d6f;
+}
+
+input,
+select,
+button {
+  font: inherit;
+  border-radius: 10px;
+  border: 1px solid rgba(84, 97, 123, 0.22);
+  padding: 11px 12px;
+}
+
+input,
+select {
+  background: rgba(255, 255, 255, 0.94);
+}
+
+button {
+  background: #55657f;
+  color: #f7f8fb;
+  cursor: pointer;
+  transition: transform 140ms ease, opacity 140ms ease, background 140ms ease;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.next-step-button {
+  background: #d46b2c;
+  border-color: #b4551c;
+  box-shadow: 0 0 0 3px rgba(212, 107, 44, 0.18), 0 14px 28px rgba(180, 85, 28, 0.24);
+  animation: next-step-pulse 1.8s ease-in-out infinite;
+}
+
+.next-step-button:hover:not(:disabled) {
+  background: #b4551c;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ghost-button {
+  background: #a4adbb;
+  color: #ffffff;
+}
+
+.button-row {
+  display: flex;
+  gap: 10px;
+}
+
+.button-row > * {
+  flex: 1;
+}
+
+.status-pill {
+  margin: 0;
+  border-radius: 999px;
+  padding: 10px 12px;
+  font-weight: 600;
+}
+
+.status-success {
+  background: rgba(59, 136, 113, 0.14);
+  color: #22624f;
+}
+
+.status-error {
+  background: rgba(177, 63, 63, 0.12);
+  color: #8b3030;
+}
+
+.status-loading {
+  background: rgba(87, 109, 146, 0.14);
+  color: #41516d;
+}
+
+.status-idle {
+  background: rgba(99, 111, 132, 0.12);
+  color: #4b5668;
+}
+
+.event-list {
+  display: grid;
+  gap: 10px;
+  max-height: 290px;
+  overflow: auto;
+}
+
+.event-item {
+  border: 1px solid rgba(84, 97, 123, 0.14);
+  border-radius: 10px;
+  padding: 10px;
+  background: rgba(245, 247, 252, 0.9);
+}
+
+.event-item strong,
+.event-item span {
+  display: block;
+}
+
+.event-item span,
+.muted-copy,
+.info-panel p,
+.compact-list {
+  color: #6d7583;
+}
+
+.bottom-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.compact-list {
+  margin: 10px 0 0;
+  padding-left: 18px;
+}
+
+.compact-list li + li {
+  margin-top: 6px;
+}
+
+.bottom-actions {
+  margin-top: 4px;
+}
+
+@keyframes next-step-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 3px rgba(212, 107, 44, 0.18), 0 14px 28px rgba(180, 85, 28, 0.24);
   }
-  to {
-    transform: rotate(360deg);
+  50% {
+    box-shadow: 0 0 0 6px rgba(212, 107, 44, 0.12), 0 18px 34px rgba(180, 85, 28, 0.3);
+  }
+}
+
+@media (max-width: 1180px) {
+  .topbar,
+  .bases-layout,
+  .bottom-panels {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    grid-template-areas:
+      "brand"
+      "divider"
+      "status";
+  }
+
+  .bases-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .status-stack {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .shell {
+    padding: 14px;
+  }
+
+  .status-stack,
+  .slot-grid,
+  .button-row {
+    grid-template-columns: 1fr;
+  }
+
+  .button-row {
+    display: grid;
+  }
+
+  .brand-card {
+    min-height: 64px;
+    font-size: 1.9rem;
+  }
+
+  .mission-card h2,
+  .base-header {
+    font-size: 1.12rem;
   }
 }

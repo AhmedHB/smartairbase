@@ -1,70 +1,138 @@
-# Getting Started with Create React App
+# Smart Air Base Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This is the React frontend for Smart Air Base.
 
-## Available Scripts
+It talks only to `MCPClient`, never directly to `MCPServer`.
 
-In the project directory, you can run:
+## Role in the System
 
-### `npm start`
+```text
+React Frontend
+    |
+    v
+MCPClient HTTP API
+    |
+    v
+MCPServer
+```
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## What the UI Does
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+The frontend provides a guided operator workflow:
 
-### `npm test`
+- create a game
+- choose number of aircraft
+- choose number of missions per mission type
+- start the next round
+- submit dice rolls
+- inspect bases, aircraft, and mission progress
+- reset into a fresh game using the current configuration
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+The player does not manually assign missions or landing bases in the main flow. Those decisions are made by `MCPClient` autoplay.
 
-### `npm run build`
+## Main Files
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- `src/App.js`
+  Main screen, API integration, create-game form, reset behavior, and round flow.
+- `src/App.css`
+  Dashboard styling.
+- `src/index.css`
+  Global styles.
+- `src/App.test.js`
+  Basic rendering and mission-card tests.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Current UI Behavior
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Create Game Form
 
-### `npm run eject`
+The create-game form currently exposes:
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+- scenario name
+- aircraft count
+- mission count for each mission type
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+The scenario version is kept internally and is no longer shown in the GUI.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### Reset
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+The `Reset` button creates a completely new game using the current create-game settings.
 
-## Learn More
+### Mission Cards
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Mission cards are shown dynamically:
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+- before game creation from the configured mission counts
+- after game creation from the actual runtime mission list returned by the backend
 
-### Code Splitting
+Runtime mission codes can therefore look like:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+- `M1-1`
+- `M1-2`
+- `M2-1`
 
-### Analyzing the Bundle Size
+## API Endpoints Used
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+- `GET /api/reference/rules`
+- `POST /api/games`
+- `GET /api/games/{gameId}`
+- `POST /api/games/{gameId}/rounds/next`
+- `POST /api/games/{gameId}/dice-rolls/auto`
 
-### Making a Progressive Web App
+## Environment
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+Environment variable:
 
-### Advanced Configuration
+- `REACT_APP_API_BASE_URL`
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+Default:
 
-### Deployment
+```text
+http://localhost:8080/api
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+Example:
 
-### `npm run build` fails to minify
+```bash
+REACT_APP_API_BASE_URL=http://localhost:8080/api npm start
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## Running Locally
+
+Prerequisites:
+
+- Node.js
+- npm
+- `MCPClient` running locally
+- `MCPServer` reachable through `MCPClient`
+
+Run:
+
+```bash
+npm start
+```
+
+Open:
+
+```text
+http://localhost:3000
+```
+
+## Build and Test
+
+Build:
+
+```bash
+npm run build
+```
+
+Test:
+
+```bash
+npm test -- --watchAll=false
+```
+
+## Notes
+
+- The frontend expects clean DTO-shaped JSON from `MCPClient`.
+- State refresh is action-driven; there is no live push from the backend.
+- This is still a dashboard-style UI, not a final polished game client.
