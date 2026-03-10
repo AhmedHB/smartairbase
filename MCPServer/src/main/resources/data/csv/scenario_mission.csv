@@ -1,0 +1,4 @@
+scenario_mission_id,scenario_id,code,mission_type_id,sort_order
+1,1,M1,1,1
+2,1,M2,2,2
+3,1,M3,3,3

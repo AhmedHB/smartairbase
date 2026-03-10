@@ -1,0 +1,635 @@
+SmartAirBase – Formell Spelregel och Petri‑nät Specifikation
+
+Version 7 – Med parkeringsplatser, maintenance-platser, reservdelar, bränsle- och vapenregler
+Skapad: 2026-03-09
+Uppdaterad: 2026-03-09
+
+============================================================
+1. SPELETS MÅL
+============================================================
+
+Målet är att slutföra alla uppdrag med de flygplan som finns
+tillgängliga, på så få rundor som möjligt och med så många
+flygplan kvar som möjligt.
+
+Förlust inträffar om:
+- alla flygplan förstörs
+- uppdrag inte längre kan genomföras
+
+============================================================
+2. STARTLÄGE
+============================================================
+
+Vid spelets start finns:
+
+Flygplan: 3
+Baser: A, B, C
+Uppdrag: 3
+
+Alla flygplan börjar spelet på Bas A.*
+
+Flygplanets maxkapacitet:
+
+Bränsle: 100
+Vapen: 6
+Max flygtimmar före fullservice: 20
+
+Startstatus:
+
+F1 – Bas A – bränsle 100 – vapen 6 – flygtid 20
+F2 – Bas A – bränsle 100 – vapen 6 – flygtid 20
+F3 – Bas A – bränsle 100 – vapen 6 – flygtid 20
+
+============================================================
+3. UPPDRAG
+============================================================
+
+Mission M1 – Recon
+Flygtid: 4
+Bränsle: 20
+Vapen: 0
+
+Mission M2 – Strike
+Flygtid: 6
+Bränsle: 30
+Vapen: 2
+
+Mission M3 – Deep Strike
+Flygtid: 8
+Bränsle: 40
+Vapen: 4
+
+============================================================
+4. BASER
+============================================================
+
+Bas A – Main Airbase
+Parkeringsplatser: 4
+Maintenance slots: 2
+
+Startlager
+Bränsle: 300
+Vapen: 20
+Reservdelar: 10
+
+Maxlager
+Bränsle: 500
+Vapen: 40
+Reservdelar: 20
+
+Kan utföra:
+refuel
+rearm
+repair
+full service
+
+------------------------------------
+
+Bas B – Forward Base
+Parkeringsplatser: 2
+Maintenance slots: 1
+
+Startlager
+Bränsle: 200
+Vapen: 10
+Reservdelar: 4
+
+Maxlager
+Bränsle: 300
+Vapen: 20
+Reservdelar: 10
+
+Kan utföra:
+refuel
+rearm
+enklare reparation
+
+------------------------------------
+
+Bas C – Fuel Outpost
+Parkeringsplatser: 2
+Maintenance slots: 0
+
+Startlager
+Bränsle: 150
+Vapen: 0
+Reservdelar: 0
+
+Maxlager
+Bränsle: 200
+Vapen: 0
+Reservdelar: 0
+
+Kan utföra:
+refuel
+
+============================================================
+5. BASPLATSER
+============================================================
+
+Ett flygplan som landar på en bas måste använda en parkeringsplats.
+
+Om parkeringsplatser är fulla kan planet inte landa.
+
+Maintenance slots används endast när ett flygplan repareras.
+
+Om maintenance slots är fulla men parkering finns kan planet vänta
+på basen tills en maintenance slot blir ledig.
+
+Om ingen bas kan ta emot planet går det in i HOLDING.
+
+============================================================
+6. BRÄNSLEREGLER
+============================================================
+
+Flygplan har maximalt 100 bränsle.
+
+Bränsle förbrukas vid uppdrag enligt uppdragets krav.
+
+Exempel:
+
+M1 kräver 20 bränsle
+M2 kräver 30 bränsle
+M3 kräver 40 bränsle
+
+Efter uppdrag är bränslet förbrukat.
+
+------------------------------------
+
+REFUEL
+
+När ett flygplan landar på en bas kan det fylla på bränsle.
+
+Detta kräver:
+
+- basen kan utföra refuel
+- basen har bränsle i lager
+
+Planet fylls upp till maxkapacitet eller tills basens bränsle tar slut.
+
+Exempel
+
+F1 landar med 40 bränsle.
+
+Bas A har 300 bränsle.
+
+F1 fylls upp till 100.
+
+Bas A får då 240 kvar.
+
+------------------------------------
+
+BRÄNSLELEVERANS
+
+Bränsle levereras varannan runda.
+
+Leverans:
+
+Bas A +50
+Bas B +40
+Bas C +30
+
+Basens bränslelager kan aldrig överstiga maxlager.
+
+============================================================
+7. VAPENREGLER
+============================================================
+
+Flygplan har maximalt 6 vapen.
+
+Vapen förbrukas vid uppdrag enligt uppdragets krav.
+
+Exempel:
+
+M2 kräver 2 vapen
+M3 kräver 4 vapen
+
+Efter uppdrag är vapnen förbrukade.
+
+------------------------------------
+
+REARM
+
+När ett flygplan landar på en bas kan det fylla på vapen.
+
+Detta kräver:
+
+- basen kan utföra rearm
+- basen har vapen i lager
+
+Planet fylls upp till maxkapacitet eller tills basens vapen tar slut.
+
+Exempel
+
+F1 landar med 2 vapen.
+
+Bas A har 20 vapen.
+
+F1 fylls upp till 6.
+
+Bas A får då 16 kvar.
+
+------------------------------------
+
+VAPENLEVERANS
+
+Vapen levereras var fjärde runda.
+
+Leverans:
+
+Bas A +6
+Bas B +4
+Bas C +0
+
+Basens vapenlager kan aldrig överstiga maxlager.
+
+============================================================
+8. RESERVDELAR
+============================================================
+
+Reservdelar levereras var tredje runda.
+
+Leverans:
+
+Bas A +3
+Bas B +2
+Bas C +0
+
+Basens reservdelslager kan aldrig överstiga maxlager.
+
+Reparation kräver:
+
+mindre reparation = 1
+komponentskada = 2
+större reparation = 3
+full service = 4
+
+============================================================
+9. HOLDING
+============================================================
+
+Om alla baser är fulla cirkulerar planet i luften.
+
+Bränsleförbrukning per runda i HOLDING:
+
+5
+
+Om bränslet är mindre än 5 när HOLDING ska fortsätta och ingen bas
+kan ta emot planet -> CRASH.
+
+Om bränslet tar slut -> CRASH.
+
+============================================================
+10. TÄRNING
+============================================================
+
+1 = inget fel
+2 = mindre reparation
+3 = mindre reparation
+4 = komponent skadad
+5 = större reparation
+6 = full service krävs
+
+============================================================
+11. REPARATIONSTIDSREGEL
+============================================================
+
+Reparationstid
+1 = inget fel -> 0 rundor
+2 = mindre reparation   -> 1 runda
+3 = mindre reparation   -> 1 runda
+4 = komponent skadad    -> 2 rundor
+5 = större reparation   -> 3 rundor
+6 = full service krävs  -> 4 rundor
+
+När flygtimmar når 0 måste flygplanet genomgå full service innan det
+får flyga ett nytt uppdrag.
+
+============================================================
+12. SPELRUNDA
+============================================================
+
+Varje runda:
+
+1 Planering
+2 Resurskontroll
+3 Uppdrag
+4 Tärning
+5 Landning och underhåll
+6 Resursuppdatering
+
+Resursuppdatering:
+- var 2:a runda: bränsleleverans
+- var 3:e runda: reservdelsleverans
+- var 4:e runda: vapenleverans
+
+============================================================
+13. EXEMPELSPEL
+============================================================
+
+START
+
+Bas A
+
+Parkering 4 (3 upptagna)
+Maintenance 2 (0 upptagna)
+
+F1 F2 F3 på basen
+
+Missioner:
+
+M1 M2 M3
+
+Startstatus:
+
+F1 – Bas A – bränsle 100 – vapen 6 – flygtid 20
+F2 – Bas A – bränsle 100 – vapen 6 – flygtid 20
+F3 – Bas A – bränsle 100 – vapen 6 – flygtid 20
+
+Baslager vid start:
+
+Bas A – bränsle 300 – vapen 20 – reservdelar 10
+Bas B – bränsle 200 – vapen 10 – reservdelar 4
+Bas C – bränsle 150 – vapen 0 – reservdelar 0
+
+Mission M1 – Recon
+Flygtid: 4
+Bränsle: 20
+Vapen: 0
+
+Mission M2 – Strike
+Flygtid: 6
+Bränsle: 30
+Vapen: 2
+
+Mission M3 – Deep Strike
+Flygtid: 8
+Bränsle: 40
+Vapen: 4
+
+------------------------------------
+RUNDA 1
+------------------------------------
+
+Planering
+
+F1 -> M1
+F2 -> M2
+F3 väntar
+
+Efter uppdrag
+
+F1
+bränsle 80
+vapen 6
+flygtid 16
+
+F2
+bränsle 70
+vapen 4
+flygtid 14
+
+F3
+bränsle 100
+vapen 6
+flygtid 20
+
+Bas A efter uppdragen:
+bränsle 300
+vapen 20
+reservdelar 10
+
+Tärning
+
+F1 = 1 (ingen skada)
+F2 = 4 (komponentskada)
+
+Landning och underhåll
+
+F1 parkerar på Bas A.
+F2 går till maintenance slot på Bas A.
+
+Bas A:
+parkering 4 (2 upptagna)
+maintenance 2 (1 upptagen)
+
+Reparation startar för F2:
+komponentskada = 2 reservdelar
+reparationstid = 2 rundor
+
+Bas A reservdelar:
+10 -> 8
+
+------------------------------------
+RUNDA 2
+------------------------------------
+
+Mission kvar: M3
+
+Planering
+
+F1 -> M3
+F2 fortsätter reparation
+F3 väntar
+
+Efter uppdrag
+
+F1
+bränsle 40
+vapen 2
+flygtid 8
+
+F2
+reparation 1 av 2 pågår
+
+F3
+bränsle 100
+vapen 6
+flygtid 20
+
+Tärning
+
+F1 = 2 (mindre reparation)
+
+Landning och underhåll
+
+F1 går till maintenance slot på Bas A.
+
+Bas A:
+parkering 4 (1 upptagna)
+maintenance 2 (2 upptagna)
+
+Reparation startar för F1:
+mindre reparation = 1 reservdel
+reparationstid = 1 runda
+
+Bas A reservdelar:
+8 -> 7
+
+Resursuppdatering
+
+Bränsleleverans (var 2:a runda)
+
+Bas A:
+300 -> 350
+
+Bas B:
+200 -> 240
+
+Bas C:
+150 -> 180
+
+------------------------------------
+RUNDA 3
+------------------------------------
+
+Planering
+
+Inga missioner kvar att starta.
+F1 fortsätter reparation.
+F2 fortsätter reparation.
+F3 står parkerad.
+
+Landning och underhåll
+
+F1 reparation klar.
+F2 reparation klar.
+
+F1 gör REFUEL
+
+F1:
+bränsle 40 -> 100
+
+Bas A:
+bränsle 350 -> 290
+
+F1 gör REARM
+
+F1:
+vapen 2 -> 6
+
+Bas A:
+vapen 20 -> 16
+
+Bas A efter underhåll:
+parkering 4 (3 upptagna)
+maintenance 2 (0 upptagna)
+
+Resursuppdatering
+
+Reservdelsleverans (var 3:e runda)
+
+Bas A:
+7 -> 10
+
+Bas B:
+4 -> 6
+
+Bas C:
+0 -> 0
+
+------------------------------------
+RUNDA 4
+------------------------------------
+
+Planering
+
+Alla missioner är slutförda.
+Rundan visar endast resursuppdatering.
+
+Resursuppdatering
+
+Bränsleleverans (var 2:a runda)
+
+Bas A:
+290 -> 340
+
+Bas B:
+240 -> 280
+
+Bas C:
+180 -> 200
+(maxlager uppnått)
+
+Vapenleverans (var 4:e runda)
+
+Bas A:
+16 -> 22
+
+Bas B:
+10 -> 14
+
+Bas C:
+0 -> 0
+
+Status efter runda 4
+
+F1 – Bas A – bränsle 100 – vapen 6 – flygtid 8
+F2 – Bas A – bränsle 70 – vapen 4 – flygtid 14
+F3 – Bas A – bränsle 100 – vapen 6 – flygtid 20
+
+------------------------------------
+RUNDA 5
+------------------------------------
+
+Administrativ kontroll
+
+Inga nya missioner finns.
+Inga flygplan behöver holding.
+Inga maintenance slots är upptagna.
+
+Basstatus
+
+Bas A – bränsle 340 – vapen 22 – reservdelar 10
+Bas B – bränsle 280 – vapen 14 – reservdelar 6
+Bas C – bränsle 200 – vapen 0 – reservdelar 0
+
+------------------------------------
+RUNDA 6
+------------------------------------
+
+Resursuppdatering
+
+Bränsleleverans (var 2:a runda)
+
+Bas A:
+340 -> 390
+
+Bas B:
+280 -> 300
+(maxlager uppnått)
+
+Bas C:
+200 -> 200
+(maxlager redan fullt)
+
+Reservdelsleverans (var 3:e runda)
+
+Bas A:
+10 -> 13
+
+Bas B:
+6 -> 8
+
+Bas C:
+0 -> 0
+
+============================================================
+SLUTRESULTAT
+============================================================
+
+Flygplan kvar: 3
+
+Mission completed: 3
+
+Terminal state: WIN
+
+Slutstatus:
+
+F1 – READY – Bas A – bränsle 100 – vapen 6 – flygtid 8
+F2 – READY – Bas A – bränsle 70 – vapen 4 – flygtid 14
+F3 – READY – Bas A – bränsle 100 – vapen 6 – flygtid 20
+
+Bas A – bränsle 390 – vapen 22 – reservdelar 13
+Bas B – bränsle 300 – vapen 14 – reservdelar 8
+Bas C – bränsle 200 – vapen 0 – reservdelar 0

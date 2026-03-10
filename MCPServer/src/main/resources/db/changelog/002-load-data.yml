@@ -1,0 +1,110 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-01-load-scenario
+      author: openai
+      changes:
+        - loadData:
+            tableName: scenario
+            file: data/csv/scenario.csv
+            relativeToChangelogFile: false
+            separator: ","
+            quotchar: '"'
+
+  - changeSet:
+      id: 002-02-load-aircraft-type
+      author: openai
+      changes:
+        - loadData:
+            tableName: aircraft_type
+            file: data/csv/aircraft_type.csv
+            relativeToChangelogFile: false
+            separator: ","
+            quotchar: '"'
+
+  - changeSet:
+      id: 002-03-load-base-type
+      author: openai
+      changes:
+        - loadData:
+            tableName: base_type
+            file: data/csv/base_type.csv
+            relativeToChangelogFile: false
+            separator: ","
+            quotchar: '"'
+
+  - changeSet:
+      id: 002-04-load-base-type-service
+      author: openai
+      changes:
+        - loadData:
+            tableName: base_type_service
+            file: data/csv/base_type_service.csv
+            relativeToChangelogFile: false
+            separator: ","
+            quotchar: '"'
+
+  - changeSet:
+      id: 002-05-load-mission-type
+      author: openai
+      changes:
+        - loadData:
+            tableName: mission_type
+            file: data/csv/mission_type.csv
+            relativeToChangelogFile: false
+            separator: ","
+            quotchar: '"'
+
+  - changeSet:
+      id: 002-06-load-repair-rule
+      author: openai
+      changes:
+        - loadData:
+            tableName: repair_rule
+            file: data/csv/repair_rule.csv
+            relativeToChangelogFile: false
+            separator: ","
+            quotchar: '"'
+
+  - changeSet:
+      id: 002-07-load-scenario-base
+      author: openai
+      changes:
+        - loadData:
+            tableName: scenario_base
+            file: data/csv/scenario_base.csv
+            relativeToChangelogFile: false
+            separator: ","
+            quotchar: '"'
+
+  - changeSet:
+      id: 002-08-load-scenario-supply-rule
+      author: openai
+      changes:
+        - loadData:
+            tableName: scenario_supply_rule
+            file: data/csv/scenario_supply_rule.csv
+            relativeToChangelogFile: false
+            separator: ","
+            quotchar: '"'
+
+  - changeSet:
+      id: 002-09-load-scenario-aircraft
+      author: openai
+      changes:
+        - loadData:
+            tableName: scenario_aircraft
+            file: data/csv/scenario_aircraft.csv
+            relativeToChangelogFile: false
+            separator: ","
+            quotchar: '"'
+
+  - changeSet:
+      id: 002-10-load-scenario-mission
+      author: openai
+      changes:
+        - loadData:
+            tableName: scenario_mission
+            file: data/csv/scenario_mission.csv
+            relativeToChangelogFile: false
+            separator: ","
+            quotchar: '"'

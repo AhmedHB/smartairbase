@@ -1,0 +1,10 @@
+scenario_supply_rule_id,scenario_base_id,resource,frequency_rounds,delivery_amount
+1,1,FUEL,2,50
+2,2,FUEL,2,40
+3,3,FUEL,2,30
+4,1,SPARE_PARTS,3,3
+5,2,SPARE_PARTS,3,2
+6,3,SPARE_PARTS,3,0
+7,1,WEAPONS,4,6
+8,2,WEAPONS,4,4
+9,3,WEAPONS,4,0

@@ -1,0 +1,223 @@
+---------------------------
+Enkel helhetsbild
+---------------------------
+START
+  |
+  v
+Planering
+  |
+  v
+Resurskontroll
+  |
+  v
+Mission
+  |
+  v
+Tärning/skada
+  |
+  v
+Landning eller Holding
+  |
+  v
+Reparation / väntan / refuel / rearm
+  |
+  v
+Leveranser
+  |
+  v
+Win/Lose-kontroll
+  |
+  +---- klar --> SLUT
+  |
+  +---- inte klar --> nästa runda
+
+
+
+---------------------------
+Processöversikt
+---------------------------
+START SPEL
+   |
+   v
+Initiera scenario
+- baser
+- flygplan
+- missioner
+- startlager
+- parkeringsplatser
+- maintenance-slots
+   |
+   v
+Kontrollera om vinst/förlust redan gäller
+   |
+   v
+========================
+NY RUNDA
+========================
+   |
+   v
+1. PLANERING
+- välj vilka flygplan som ska flyga
+- välj vilka missioner som tilldelas
+- kontrollera att planet är tillgängligt
+  * inte kraschat
+  * inte i maintenance
+  * inte i full service-krav
+  * har tillräckligt bränsle
+  * har tillräckligt vapen
+   |
+   v
+2. RESURSKONTROLL
+- kontrollera bränslekrav för mission
+- kontrollera vapenkrav för mission
+- kontrollera återstående flygtimmar
+- kontrollera att mission fortfarande är ledig
+   |
+   +---- nej ------------------> planet kan inte flyga
+   |                              stannar på bas / väntar
+   |
+   +---- ja
+   |
+   v
+3. UPPDRAG GENOMFÖRS
+- planet lyfter
+- mission markeras som utförd
+- resurser förbrukas:
+  * bränsle minskar
+  * vapen minskar
+  * flygtimmar minskar
+   |
+   v
+4. TÄRNING EFTER UPPDRAG
+- slå 1–6 för varje flygplan som flugit
+- avgör skadenivå:
+  1 = inget fel
+  2-3 = mindre reparation
+  4 = komponentskada
+  5 = större reparation
+  6 = full service
+   |
+   v
+5. LANDNING
+- försök landa på en bas
+- kontrollera parkeringsplats
+   |
+   +---- ledig plats finns -----> planet landar
+   |                               |
+   |                               v
+   |                         kontrollera om reparation krävs
+   |
+   +---- ingen plats ------------> HOLDING
+                                   |
+                                   v
+                             bränsle -5 per runda
+                                   |
+                                   +---- bränsle > 0 --> försök landa nästa runda
+                                   |
+                                   +---- bränsle = 0 --> CRASH
+
+Efter landning
+Om planet har landat:
+   |
+   v
+Behöver planet underhåll?
+   |
+   +---- nej -----------------> kan stå parkerat / redo för ny runda
+   |
+   +---- ja
+   |
+   v
+Finns rätt baskapacitet och maintenance-slot?
+   |
+   +---- ja ------------------> starta reparation / full service
+   |                             - maintenance-slot upptas
+   |                             - reservdelar förbrukas
+   |                             - reparationstid startar
+   |
+   +---- nej -----------------> planet väntar parkerat
+                                 tills slot blir ledig
+
+---------------------------
+Service och påfyllning
+---------------------------
+Efter landning eller när planet står på bas:
+   |
+   v
+REFUEL?
+- basen måste kunna refuel
+- basen måste ha bränsle i lager
+- fyll upp till max 100 eller tills lagret tar slut
+   |
+   v
+REARM?
+- basen måste kunna rearm
+- basen måste ha vapen i lager
+- fyll upp till max 6 eller tills lagret tar slut
+
+Reparation per runda
+För varje flygplan i maintenance:
+   |
+   v
+Minska repair_rounds_remaining med 1
+   |
+   +---- fortfarande > 0 --> fortsätter i maintenance
+   |
+   +---- = 0 -------------> reparation klar
+                             - maintenance-slot frigörs
+                             - planet blir parkerat/redo
+
+---------------------------
+Periodiska leveranser
+---------------------------
+RESURSUPPDATERING
+   |
+   v
+Är rundan delbar med 2?
+- ja -> bränsleleverans
+  Bas A +50
+  Bas B +40
+  Bas C +30
+   |
+   v
+Är rundan delbar med 3?
+- ja -> reservdelsleverans
+  Bas A +3
+  Bas B +2
+  Bas C +0
+   |
+   v
+Är rundan delbar med 4?
+- ja -> vapenleverans
+  Bas A +6
+  Bas B +4
+  Bas C +0
+   |
+   v
+Lager får aldrig överstiga maxlager
+
+---------------------------
+Slutkontroll per runda
+---------------------------
+Kontrollera WIN / LOSE
+   |
+   +---- WIN:
+   |     alla missioner slutförda
+   |
+   +---- LOSE:
+   |     alla flygplan förstörda
+   |     eller inga missioner kan längre genomföras
+   |
+   +---- annars:
+         nästa runda
+
+---------------------------
+Viktiga beslutspunkter i Version 7
+---------------------------
+De viktigaste grenarna i processen är:
+	•	Kan planet flyga uppdraget?
+	•	Kan planet landa på någon bas?
+	•	Finns maintenance-slot?
+	•	Finns reservdelar nog för reparation?
+	•	Finns bränsle och vapen nog i baslager?
+	•	Blir planet kvar i holding för länge och kraschar?
+	•	Har alla uppdrag slutförts?

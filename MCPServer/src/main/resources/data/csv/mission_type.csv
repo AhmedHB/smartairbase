@@ -1,0 +1,4 @@
+mission_type_id,code,name,flight_time_cost,fuel_cost,weapon_cost
+1,M1,Recon,4,20,0
+2,M2,Strike,6,30,2
+3,M3,Deep Strike,8,40,4

@@ -1,0 +1,4 @@
+scenario_base_id,scenario_id,code,name,base_type_id,parking_capacity,maintenance_capacity,fuel_start,fuel_max,weapons_start,weapons_max,spare_parts_start,spare_parts_max
+1,1,BASE_A,Bas A,1,4,2,300,500,20,40,10,20
+2,1,BASE_B,Bas B,2,2,1,200,300,10,20,4,10
+3,1,BASE_C,Bas C,3,2,0,150,200,0,0,0,0

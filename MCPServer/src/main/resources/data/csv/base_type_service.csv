@@ -1,0 +1,9 @@
+base_type_id,service_type
+1,REFUEL
+1,REARM
+1,REPAIR
+1,FULL_SERVICE
+2,REFUEL
+2,REARM
+2,REPAIR
+3,REFUEL

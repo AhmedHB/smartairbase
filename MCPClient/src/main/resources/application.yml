@@ -1,0 +1,84 @@
+spring:
+  application:
+    name: MCPClient
+
+  #main:
+    #web-application-type: none
+
+  ai:
+    openai:
+      base-url: https://api.openai.com
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-4o-mini
+          temperature: 0
+          max-tokens: 5000
+          #top-k: 10
+
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        options:
+          #model: llama3.1:8b
+          model: qwen2.5:7b
+          #model: qwen2.5:14b
+          temperature: 0
+          max-tokens: 5000
+          #top-k: 3
+
+    #Remote
+ #   ollama:
+ #     base-url: http://192.168.50.8:11434
+ #     chat:
+ #       options:
+ #         model: qwen2.5:32b
+ #         temperature: 0
+ #         max-tokens: 5000
+
+    mcp:
+      client:
+        toolcallback:
+          enabled: true
+        sse:
+          connections:
+            intelliplan:
+              url: http://localhost:9090/sse
+
+server:
+  port: 8080
+
+management:
+  server:
+    port: 8081
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  metrics:
+    enable:
+      all: true
+  tracing:
+    enabled: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+logging:
+  level:
+    se.smartairbase.mcpclient.logging: DEBUG
+
+    org.springframework.ai: DEBUG
+    org.springframework.ai.chat.observation: DEBUG
+    org.springframework.ai.chat.client.observation: DEBUG
+
+    org.springframework.web.client: INFO
+    org.springframework.web.reactive.function.client: INFO
+    reactor.netty.http.client: INFO
+
+    io.micrometer.observation: DEBUG
+    io.micrometer.tracing: DEBUG
+
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"

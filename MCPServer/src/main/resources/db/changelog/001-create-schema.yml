@@ -1,0 +1,1338 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-001-create-scenario
+      author: openai
+      changes:
+        - createTable:
+            tableName: scenario
+            columns:
+              - column:
+                  name: scenario_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_scenario
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: version
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: scenario
+            columnNames: name, version
+            constraintName: uk_scenario_name_version
+
+  - changeSet:
+      id: 001-002-create-aircraft-type
+      author: openai
+      changes:
+        - createTable:
+            tableName: aircraft_type
+            columns:
+              - column:
+                  name: aircraft_type_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_aircraft_type
+                    nullable: false
+              - column:
+                  name: code
+                  type: VARCHAR(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: max_fuel
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: max_weapons
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: max_flight_hours
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: aircraft_type
+            columnNames: code
+            constraintName: uk_aircraft_type_code
+
+        - sql:
+            sql: |
+              ALTER TABLE aircraft_type
+              ADD CONSTRAINT chk_aircraft_type_max_fuel CHECK (max_fuel > 0);
+
+              ALTER TABLE aircraft_type
+              ADD CONSTRAINT chk_aircraft_type_max_weapons CHECK (max_weapons >= 0);
+
+              ALTER TABLE aircraft_type
+              ADD CONSTRAINT chk_aircraft_type_max_flight_hours CHECK (max_flight_hours > 0);
+
+  - changeSet:
+      id: 001-003-create-base-type
+      author: openai
+      changes:
+        - createTable:
+            tableName: base_type
+            columns:
+              - column:
+                  name: base_type_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_base_type
+                    nullable: false
+              - column:
+                  name: code
+                  type: VARCHAR(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: base_type
+            columnNames: code
+            constraintName: uk_base_type_code
+
+  - changeSet:
+      id: 001-004-create-base-type-service
+      author: openai
+      changes:
+        - createTable:
+            tableName: base_type_service
+            columns:
+              - column:
+                  name: base_type_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: service_type
+                  type: VARCHAR(30)
+                  constraints:
+                    nullable: false
+
+        - addPrimaryKey:
+            tableName: base_type_service
+            columnNames: base_type_id, service_type
+            constraintName: pk_base_type_service
+
+        - addForeignKeyConstraint:
+            baseTableName: base_type_service
+            baseColumnNames: base_type_id
+            referencedTableName: base_type
+            referencedColumnNames: base_type_id
+            constraintName: fk_base_type_service_base_type
+
+  - changeSet:
+      id: 001-005-create-mission-type
+      author: openai
+      changes:
+        - createTable:
+            tableName: mission_type
+            columns:
+              - column:
+                  name: mission_type_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_mission_type
+                    nullable: false
+              - column:
+                  name: code
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: flight_time_cost
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fuel_cost
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: weapon_cost
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: mission_type
+            columnNames: code
+            constraintName: uk_mission_type_code
+
+        - sql:
+            sql: |
+              ALTER TABLE mission_type
+              ADD CONSTRAINT chk_mission_type_flight_time_cost CHECK (flight_time_cost >= 0);
+
+              ALTER TABLE mission_type
+              ADD CONSTRAINT chk_mission_type_fuel_cost CHECK (fuel_cost >= 0);
+
+              ALTER TABLE mission_type
+              ADD CONSTRAINT chk_mission_type_weapon_cost CHECK (weapon_cost >= 0);
+
+  - changeSet:
+      id: 001-006-create-repair-rule
+      author: openai
+      changes:
+        - createTable:
+            tableName: repair_rule
+            columns:
+              - column:
+                  name: repair_rule_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_repair_rule
+                    nullable: false
+              - column:
+                  name: dice_value
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: damage
+                  type: VARCHAR(40)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: spare_parts_cost
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: repair_rounds
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: requires_full_service
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: repair_rule
+            columnNames: dice_value
+            constraintName: uk_repair_rule_dice_value
+
+        - sql:
+            sql: |
+              ALTER TABLE repair_rule
+              ADD CONSTRAINT chk_repair_rule_dice_value CHECK (dice_value BETWEEN 1 AND 6);
+
+              ALTER TABLE repair_rule
+              ADD CONSTRAINT chk_repair_rule_spare_parts_cost CHECK (spare_parts_cost >= 0);
+
+              ALTER TABLE repair_rule
+              ADD CONSTRAINT chk_repair_rule_repair_rounds CHECK (repair_rounds >= 0);
+
+  - changeSet:
+      id: 001-007-create-scenario-base
+      author: openai
+      changes:
+        - createTable:
+            tableName: scenario_base
+            columns:
+              - column:
+                  name: scenario_base_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_scenario_base
+                    nullable: false
+              - column:
+                  name: scenario_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: code
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: base_type_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: parking_capacity
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: maintenance_capacity
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fuel_start
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fuel_max
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: weapons_start
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: weapons_max
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: spare_parts_start
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: spare_parts_max
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: scenario_base
+            columnNames: scenario_id, code
+            constraintName: uk_scenario_base_scenario_code
+
+        - addForeignKeyConstraint:
+            baseTableName: scenario_base
+            baseColumnNames: scenario_id
+            referencedTableName: scenario
+            referencedColumnNames: scenario_id
+            constraintName: fk_scenario_base_scenario
+
+        - addForeignKeyConstraint:
+            baseTableName: scenario_base
+            baseColumnNames: base_type_id
+            referencedTableName: base_type
+            referencedColumnNames: base_type_id
+            constraintName: fk_scenario_base_base_type
+
+        - sql:
+            sql: |
+              ALTER TABLE scenario_base
+              ADD CONSTRAINT chk_scenario_base_parking_capacity CHECK (parking_capacity >= 0);
+
+              ALTER TABLE scenario_base
+              ADD CONSTRAINT chk_scenario_base_maintenance_capacity CHECK (maintenance_capacity >= 0);
+
+              ALTER TABLE scenario_base
+              ADD CONSTRAINT chk_scenario_base_fuel_start CHECK (fuel_start >= 0);
+
+              ALTER TABLE scenario_base
+              ADD CONSTRAINT chk_scenario_base_fuel_max CHECK (fuel_max >= 0);
+
+              ALTER TABLE scenario_base
+              ADD CONSTRAINT chk_scenario_base_weapons_start CHECK (weapons_start >= 0);
+
+              ALTER TABLE scenario_base
+              ADD CONSTRAINT chk_scenario_base_weapons_max CHECK (weapons_max >= 0);
+
+              ALTER TABLE scenario_base
+              ADD CONSTRAINT chk_scenario_base_spare_parts_start CHECK (spare_parts_start >= 0);
+
+              ALTER TABLE scenario_base
+              ADD CONSTRAINT chk_scenario_base_spare_parts_max CHECK (spare_parts_max >= 0);
+
+  - changeSet:
+      id: 001-008-create-scenario-supply-rule
+      author: openai
+      changes:
+        - createTable:
+            tableName: scenario_supply_rule
+            columns:
+              - column:
+                  name: scenario_supply_rule_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_scenario_supply_rule
+                    nullable: false
+              - column:
+                  name: scenario_base_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: resource
+                  type: VARCHAR(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: frequency_rounds
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: delivery_amount
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: scenario_supply_rule
+            columnNames: scenario_base_id, resource
+            constraintName: uk_supply_rule_base_resource
+
+        - addForeignKeyConstraint:
+            baseTableName: scenario_supply_rule
+            baseColumnNames: scenario_base_id
+            referencedTableName: scenario_base
+            referencedColumnNames: scenario_base_id
+            constraintName: fk_supply_rule_scenario_base
+
+        - sql:
+            sql: |
+              ALTER TABLE scenario_supply_rule
+              ADD CONSTRAINT chk_scenario_supply_rule_frequency CHECK (frequency_rounds > 0);
+
+              ALTER TABLE scenario_supply_rule
+              ADD CONSTRAINT chk_scenario_supply_rule_delivery_amount CHECK (delivery_amount >= 0);
+
+  - changeSet:
+      id: 001-009-create-scenario-aircraft
+      author: openai
+      changes:
+        - createTable:
+            tableName: scenario_aircraft
+            columns:
+              - column:
+                  name: scenario_aircraft_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_scenario_aircraft
+                    nullable: false
+              - column:
+                  name: scenario_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: code
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: aircraft_type_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_base_code
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: scenario_aircraft
+            columnNames: scenario_id, code
+            constraintName: uk_scenario_aircraft_scenario_code
+
+        - addForeignKeyConstraint:
+            baseTableName: scenario_aircraft
+            baseColumnNames: scenario_id
+            referencedTableName: scenario
+            referencedColumnNames: scenario_id
+            constraintName: fk_scenario_aircraft_scenario
+
+        - addForeignKeyConstraint:
+            baseTableName: scenario_aircraft
+            baseColumnNames: aircraft_type_id
+            referencedTableName: aircraft_type
+            referencedColumnNames: aircraft_type_id
+            constraintName: fk_scenario_aircraft_aircraft_type
+
+  - changeSet:
+      id: 001-010-create-scenario-mission
+      author: openai
+      changes:
+        - createTable:
+            tableName: scenario_mission
+            columns:
+              - column:
+                  name: scenario_mission_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_scenario_mission
+                    nullable: false
+              - column:
+                  name: scenario_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: code
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: mission_type_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sort_order
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: scenario_mission
+            columnNames: scenario_id, code
+            constraintName: uk_scenario_mission_scenario_code
+
+        - addForeignKeyConstraint:
+            baseTableName: scenario_mission
+            baseColumnNames: scenario_id
+            referencedTableName: scenario
+            referencedColumnNames: scenario_id
+            constraintName: fk_scenario_mission_scenario
+
+        - addForeignKeyConstraint:
+            baseTableName: scenario_mission
+            baseColumnNames: mission_type_id
+            referencedTableName: mission_type
+            referencedColumnNames: mission_type_id
+            constraintName: fk_scenario_mission_mission_type
+
+        - sql:
+            sql: |
+              ALTER TABLE scenario_mission
+              ADD CONSTRAINT chk_scenario_mission_sort_order CHECK (sort_order >= 0);
+
+  - changeSet:
+      id: 001-011-create-game
+      author: openai
+      changes:
+        - createTable:
+            tableName: game
+            columns:
+              - column:
+                  name: game_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_game
+                    nullable: false
+              - column:
+                  name: scenario_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(100)
+              - column:
+                  name: status
+                  type: VARCHAR(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: current_round
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: started_at
+                  type: TIMESTAMP
+              - column:
+                  name: ended_at
+                  type: TIMESTAMP
+
+        - addForeignKeyConstraint:
+            baseTableName: game
+            baseColumnNames: scenario_id
+            referencedTableName: scenario
+            referencedColumnNames: scenario_id
+            constraintName: fk_game_scenario
+
+        - sql:
+            sql: |
+              ALTER TABLE game
+              ADD CONSTRAINT chk_game_current_round CHECK (current_round >= 0);
+
+  - changeSet:
+      id: 001-012-create-game-base
+      author: openai
+      changes:
+        - createTable:
+            tableName: game_base
+            columns:
+              - column:
+                  name: game_base_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_game_base
+                    nullable: false
+              - column:
+                  name: game_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: code
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: base_type_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: parking_capacity
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: maintenance_capacity
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fuel_max
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: weapons_max
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: spare_parts_max
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: game_base
+            columnNames: game_id, code
+            constraintName: uk_game_base_game_code
+
+        - addForeignKeyConstraint:
+            baseTableName: game_base
+            baseColumnNames: game_id
+            referencedTableName: game
+            referencedColumnNames: game_id
+            constraintName: fk_game_base_game
+
+        - addForeignKeyConstraint:
+            baseTableName: game_base
+            baseColumnNames: base_type_id
+            referencedTableName: base_type
+            referencedColumnNames: base_type_id
+            constraintName: fk_game_base_base_type
+
+        - sql:
+            sql: |
+              ALTER TABLE game_base
+              ADD CONSTRAINT chk_game_base_parking_capacity CHECK (parking_capacity >= 0);
+
+              ALTER TABLE game_base
+              ADD CONSTRAINT chk_game_base_maintenance_capacity CHECK (maintenance_capacity >= 0);
+
+              ALTER TABLE game_base
+              ADD CONSTRAINT chk_game_base_fuel_max CHECK (fuel_max >= 0);
+
+              ALTER TABLE game_base
+              ADD CONSTRAINT chk_game_base_weapons_max CHECK (weapons_max >= 0);
+
+              ALTER TABLE game_base
+              ADD CONSTRAINT chk_game_base_spare_parts_max CHECK (spare_parts_max >= 0);
+
+  - changeSet:
+      id: 001-013-create-game-aircraft
+      author: openai
+      changes:
+        - createTable:
+            tableName: game_aircraft
+            columns:
+              - column:
+                  name: game_aircraft_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_game_aircraft
+                    nullable: false
+              - column:
+                  name: game_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: code
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: aircraft_type_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(30)
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: game_aircraft
+            columnNames: game_id, code
+            constraintName: uk_game_aircraft_game_code
+
+        - addForeignKeyConstraint:
+            baseTableName: game_aircraft
+            baseColumnNames: game_id
+            referencedTableName: game
+            referencedColumnNames: game_id
+            constraintName: fk_game_aircraft_game
+
+        - addForeignKeyConstraint:
+            baseTableName: game_aircraft
+            baseColumnNames: aircraft_type_id
+            referencedTableName: aircraft_type
+            referencedColumnNames: aircraft_type_id
+            constraintName: fk_game_aircraft_aircraft_type
+
+  - changeSet:
+      id: 001-014-create-game-mission
+      author: openai
+      changes:
+        - createTable:
+            tableName: game_mission
+            columns:
+              - column:
+                  name: game_mission_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_game_mission
+                    nullable: false
+              - column:
+                  name: game_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: code
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: mission_type_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sort_order
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: game_mission
+            columnNames: game_id, code
+            constraintName: uk_game_mission_game_code
+
+        - addForeignKeyConstraint:
+            baseTableName: game_mission
+            baseColumnNames: game_id
+            referencedTableName: game
+            referencedColumnNames: game_id
+            constraintName: fk_game_mission_game
+
+        - addForeignKeyConstraint:
+            baseTableName: game_mission
+            baseColumnNames: mission_type_id
+            referencedTableName: mission_type
+            referencedColumnNames: mission_type_id
+            constraintName: fk_game_mission_mission_type
+
+        - sql:
+            sql: |
+              ALTER TABLE game_mission
+              ADD CONSTRAINT chk_game_mission_sort_order CHECK (sort_order >= 0);
+
+  - changeSet:
+      id: 001-015-create-base-state
+      author: openai
+      changes:
+        - createTable:
+            tableName: base_state
+            columns:
+              - column:
+                  name: game_base_id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_base_state
+                    nullable: false
+              - column:
+                  name: fuel_stock
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: weapons_stock
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: spare_parts_stock
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: occupied_parking_slots
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: occupied_maint_slots
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: base_state
+            baseColumnNames: game_base_id
+            referencedTableName: game_base
+            referencedColumnNames: game_base_id
+            constraintName: fk_base_state_game_base
+
+        - sql:
+            sql: |
+              ALTER TABLE base_state
+              ADD CONSTRAINT chk_base_state_fuel_stock CHECK (fuel_stock >= 0);
+
+              ALTER TABLE base_state
+              ADD CONSTRAINT chk_base_state_weapons_stock CHECK (weapons_stock >= 0);
+
+              ALTER TABLE base_state
+              ADD CONSTRAINT chk_base_state_spare_parts_stock CHECK (spare_parts_stock >= 0);
+
+              ALTER TABLE base_state
+              ADD CONSTRAINT chk_base_state_occupied_parking_slots CHECK (occupied_parking_slots >= 0);
+
+              ALTER TABLE base_state
+              ADD CONSTRAINT chk_base_state_occupied_maint_slots CHECK (occupied_maint_slots >= 0);
+
+  - changeSet:
+      id: 001-016-create-aircraft-state
+      author: openai
+      changes:
+        - createTable:
+            tableName: aircraft_state
+            columns:
+              - column:
+                  name: game_aircraft_id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_aircraft_state
+                    nullable: false
+              - column:
+                  name: current_base_id
+                  type: BIGINT
+              - column:
+                  name: assigned_mission_id
+                  type: BIGINT
+              - column:
+                  name: fuel
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: weapons
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: remaining_flight_hours
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: damage
+                  type: VARCHAR(40)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: repair_rounds_remaining
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_in_holding
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: holding_rounds
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: aircraft_state
+            baseColumnNames: game_aircraft_id
+            referencedTableName: game_aircraft
+            referencedColumnNames: game_aircraft_id
+            constraintName: fk_aircraft_state_game_aircraft
+
+        - addForeignKeyConstraint:
+            baseTableName: aircraft_state
+            baseColumnNames: current_base_id
+            referencedTableName: game_base
+            referencedColumnNames: game_base_id
+            constraintName: fk_aircraft_state_current_base
+
+        - addForeignKeyConstraint:
+            baseTableName: aircraft_state
+            baseColumnNames: assigned_mission_id
+            referencedTableName: game_mission
+            referencedColumnNames: game_mission_id
+            constraintName: fk_aircraft_state_assigned_mission
+
+        - sql:
+            sql: |
+              ALTER TABLE aircraft_state
+              ADD CONSTRAINT chk_aircraft_state_fuel CHECK (fuel >= 0);
+
+              ALTER TABLE aircraft_state
+              ADD CONSTRAINT chk_aircraft_state_weapons CHECK (weapons >= 0);
+
+              ALTER TABLE aircraft_state
+              ADD CONSTRAINT chk_aircraft_state_remaining_flight_hours CHECK (remaining_flight_hours >= 0);
+
+              ALTER TABLE aircraft_state
+              ADD CONSTRAINT chk_aircraft_state_repair_rounds_remaining CHECK (repair_rounds_remaining >= 0);
+
+              ALTER TABLE aircraft_state
+              ADD CONSTRAINT chk_aircraft_state_holding_rounds CHECK (holding_rounds >= 0);
+
+  - changeSet:
+      id: 001-017-create-game-round
+      author: openai
+      changes:
+        - createTable:
+            tableName: game_round
+            columns:
+              - column:
+                  name: game_round_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_game_round
+                    nullable: false
+              - column:
+                  name: game_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: round_number
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: started_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ended_at
+                  type: TIMESTAMP
+
+        - addUniqueConstraint:
+            tableName: game_round
+            columnNames: game_id, round_number
+            constraintName: uk_game_round_game_round_number
+
+        - addForeignKeyConstraint:
+            baseTableName: game_round
+            baseColumnNames: game_id
+            referencedTableName: game
+            referencedColumnNames: game_id
+            constraintName: fk_game_round_game
+
+        - sql:
+            sql: |
+              ALTER TABLE game_round
+              ADD CONSTRAINT chk_game_round_round_number CHECK (round_number > 0);
+
+  - changeSet:
+      id: 001-018-create-dice-roll
+      author: openai
+      changes:
+        - createTable:
+            tableName: dice_roll
+            columns:
+              - column:
+                  name: dice_roll_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_dice_roll
+                    nullable: false
+              - column:
+                  name: game_round_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: game_aircraft_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dice_value
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: repair_rule_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: rolled_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: dice_roll
+            columnNames: game_round_id, game_aircraft_id
+            constraintName: uk_dice_roll_round_aircraft
+
+        - addForeignKeyConstraint:
+            baseTableName: dice_roll
+            baseColumnNames: game_round_id
+            referencedTableName: game_round
+            referencedColumnNames: game_round_id
+            constraintName: fk_dice_roll_game_round
+
+        - addForeignKeyConstraint:
+            baseTableName: dice_roll
+            baseColumnNames: game_aircraft_id
+            referencedTableName: game_aircraft
+            referencedColumnNames: game_aircraft_id
+            constraintName: fk_dice_roll_game_aircraft
+
+        - addForeignKeyConstraint:
+            baseTableName: dice_roll
+            baseColumnNames: repair_rule_id
+            referencedTableName: repair_rule
+            referencedColumnNames: repair_rule_id
+            constraintName: fk_dice_roll_repair_rule
+
+        - sql:
+            sql: |
+              ALTER TABLE dice_roll
+              ADD CONSTRAINT chk_dice_roll_dice_value CHECK (dice_value BETWEEN 1 AND 6);
+
+  - changeSet:
+      id: 001-019-create-game-event
+      author: openai
+      changes:
+        - createTable:
+            tableName: game_event
+            columns:
+              - column:
+                  name: game_event_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_game_event
+                    nullable: false
+              - column:
+                  name: game_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: game_round_id
+                  type: BIGINT
+              - column:
+                  name: game_aircraft_id
+                  type: BIGINT
+              - column:
+                  name: game_base_id
+                  type: BIGINT
+              - column:
+                  name: game_mission_id
+                  type: BIGINT
+              - column:
+                  name: event_type
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: details
+                  type: TEXT
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: game_event
+            baseColumnNames: game_id
+            referencedTableName: game
+            referencedColumnNames: game_id
+            constraintName: fk_game_event_game
+
+        - addForeignKeyConstraint:
+            baseTableName: game_event
+            baseColumnNames: game_round_id
+            referencedTableName: game_round
+            referencedColumnNames: game_round_id
+            constraintName: fk_game_event_game_round
+
+        - addForeignKeyConstraint:
+            baseTableName: game_event
+            baseColumnNames: game_aircraft_id
+            referencedTableName: game_aircraft
+            referencedColumnNames: game_aircraft_id
+            constraintName: fk_game_event_game_aircraft
+
+        - addForeignKeyConstraint:
+            baseTableName: game_event
+            baseColumnNames: game_base_id
+            referencedTableName: game_base
+            referencedColumnNames: game_base_id
+            constraintName: fk_game_event_game_base
+
+        - addForeignKeyConstraint:
+            baseTableName: game_event
+            baseColumnNames: game_mission_id
+            referencedTableName: game_mission
+            referencedColumnNames: game_mission_id
+            constraintName: fk_game_event_game_mission
+
+  - changeSet:
+      id: 001-020-create-resource-transaction
+      author: openai
+      changes:
+        - createTable:
+            tableName: resource_transaction
+            columns:
+              - column:
+                  name: resource_transaction_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_resource_transaction
+                    nullable: false
+              - column:
+                  name: game_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: game_round_id
+                  type: BIGINT
+              - column:
+                  name: game_base_id
+                  type: BIGINT
+              - column:
+                  name: game_aircraft_id
+                  type: BIGINT
+              - column:
+                  name: resource
+                  type: VARCHAR(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: amount
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reason
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: resource_transaction
+            baseColumnNames: game_id
+            referencedTableName: game
+            referencedColumnNames: game_id
+            constraintName: fk_resource_transaction_game
+
+        - addForeignKeyConstraint:
+            baseTableName: resource_transaction
+            baseColumnNames: game_round_id
+            referencedTableName: game_round
+            referencedColumnNames: game_round_id
+            constraintName: fk_resource_transaction_game_round
+
+        - addForeignKeyConstraint:
+            baseTableName: resource_transaction
+            baseColumnNames: game_base_id
+            referencedTableName: game_base
+            referencedColumnNames: game_base_id
+            constraintName: fk_resource_transaction_game_base
+
+        - addForeignKeyConstraint:
+            baseTableName: resource_transaction
+            baseColumnNames: game_aircraft_id
+            referencedTableName: game_aircraft
+            referencedColumnNames: game_aircraft_id
+            constraintName: fk_resource_transaction_game_aircraft
+
+        - sql:
+            sql: |
+              ALTER TABLE resource_transaction
+              ADD CONSTRAINT chk_resource_transaction_has_owner
+              CHECK (game_base_id IS NOT NULL OR game_aircraft_id IS NOT NULL);
+
+  - changeSet:
+      id: 001-021-create-indexes
+      author: openai
+      changes:
+        - createIndex:
+            tableName: game_base
+            indexName: idx_game_base_game_id
+            columns:
+              - column:
+                  name: game_id
+
+        - createIndex:
+            tableName: game_aircraft
+            indexName: idx_game_aircraft_game_id
+            columns:
+              - column:
+                  name: game_id
+
+        - createIndex:
+            tableName: game_mission
+            indexName: idx_game_mission_game_id
+            columns:
+              - column:
+                  name: game_id
+
+        - createIndex:
+            tableName: game_round
+            indexName: idx_game_round_game_id
+            columns:
+              - column:
+                  name: game_id
+
+        - createIndex:
+            tableName: game_event
+            indexName: idx_game_event_game_id
+            columns:
+              - column:
+                  name: game_id
+
+        - createIndex:
+            tableName: game_event
+            indexName: idx_game_event_game_round_id
+            columns:
+              - column:
+                  name: game_round_id
+
+        - createIndex:
+            tableName: resource_transaction
+            indexName: idx_resource_transaction_game_id
+            columns:
+              - column:
+                  name: game_id
+
+        - createIndex:
+            tableName: resource_transaction
+            indexName: idx_resource_transaction_game_round_id
+            columns:
+              - column:
+                  name: game_round_id

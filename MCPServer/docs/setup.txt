@@ -1,0 +1,26 @@
+# skapa databas
+docker compose down -v
+docker-compose up -d
+
+# clear db
+-- stäng andra sessioner (så drop schema funkar)
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname = current_database()
+  AND pid <> pg_backend_pid();
+
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+
+# Check if tables created
+select table_name
+from information_schema.tables
+where table_schema='public'
+order by table_name;
+
+# Starta application
+mvn spring-boot:run
+
+
+# MCP offical inspector
+npx @modelcontextprotocol/inspector

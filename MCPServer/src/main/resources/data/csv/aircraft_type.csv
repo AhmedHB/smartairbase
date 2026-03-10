@@ -1,0 +1,2 @@
+aircraft_type_id,code,name,max_fuel,max_weapons,max_flight_hours
+1,FIGHTER_STD,Standard Fighter,100,6,20
