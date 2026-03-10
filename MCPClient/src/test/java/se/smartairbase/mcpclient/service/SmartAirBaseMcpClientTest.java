@@ -29,7 +29,7 @@ class SmartAirBaseMcpClientTest {
         when(executor.execute(eq(SmartAirBaseTool.CREATE_GAME), eq(new CreateGameRequest("smartairbase", "7"))))
                 .thenReturn(response);
 
-        SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor);
+        SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor, objectMapper);
 
         JsonNode result = client.createGame(new CreateGameRequest("smartairbase", "7"));
 
@@ -47,7 +47,7 @@ class SmartAirBaseMcpClientTest {
                 "missionCode", "M3"
         )))).thenReturn(response);
 
-        SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor);
+        SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor, objectMapper);
 
         client.assignMission("42", new AssignMissionRequest("F1", "M3"));
 
@@ -64,7 +64,7 @@ class SmartAirBaseMcpClientTest {
         when(executor.execute(eq(SmartAirBaseTool.RECORD_DICE_ROLL), org.mockito.ArgumentMatchers.any()))
                 .thenReturn(objectMapper.createObjectNode());
 
-        SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor);
+        SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor, objectMapper);
 
         client.recordDiceRoll("7", new DiceRollRequest("F2", 6));
 
@@ -84,7 +84,7 @@ class SmartAirBaseMcpClientTest {
         when(executor.execute(eq(SmartAirBaseTool.LAND_AIRCRAFT), org.mockito.ArgumentMatchers.any()))
                 .thenReturn(objectMapper.createObjectNode());
 
-        SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor);
+        SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor, objectMapper);
 
         client.landAircraft("9", new LandAircraftRequest("F3", "B"));
 

@@ -8,10 +8,13 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
+import se.smartairbase.mcpclient.controller.dto.AutoPlayResponse;
 import se.smartairbase.mcpclient.domain.GameRulesReference;
+import se.smartairbase.mcpclient.service.AutoPlayService;
 import se.smartairbase.mcpclient.service.GameRulesReferenceService;
 import se.smartairbase.mcpclient.service.SmartAirBaseMcpClient;
 import se.smartairbase.mcpclient.controller.dto.CreateGameRequest;
+import se.smartairbase.mcpclient.service.TestStateFactory;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -27,18 +30,20 @@ class GameControllerTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private SmartAirBaseMcpClient mcpClient;
+    private AutoPlayService autoPlayService;
     private GameRulesReferenceService gameRulesReferenceService;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         mcpClient = mock(SmartAirBaseMcpClient.class);
+        autoPlayService = mock(AutoPlayService.class);
         gameRulesReferenceService = mock(GameRulesReferenceService.class);
 
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
 
-        mockMvc = MockMvcBuilders.standaloneSetup(new GameController(mcpClient, gameRulesReferenceService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new GameController(mcpClient, autoPlayService, gameRulesReferenceService))
                 .setValidator(validator)
                 .build();
     }
@@ -106,5 +111,31 @@ class GameControllerTest {
                 .andExpect(status().isOk());
 
         verify(mcpClient).startRound("13");
+    }
+
+    @Test
+    void nextRoundDelegatesToAutoplayService() throws Exception {
+        AutoPlayResponse response = new AutoPlayResponse(
+                TestStateFactory.state(
+                        TestStateFactory.summary(1, "DICE_ROLL", true, false, false, "ACTIVE"),
+                        java.util.List.of(TestStateFactory.aircraft("F1", "AWAITING_DICE_ROLL", null, 80, 6, 16, "NONE")),
+                        java.util.List.of(TestStateFactory.mission("M1", "COMPLETED"))
+                ),
+                "ROLL_DICE",
+                false,
+                false,
+                java.util.List.of("F1"),
+                java.util.List.of("F1 -> M1"),
+                java.util.List.of(),
+                java.util.List.of("Round started")
+        );
+        when(autoPlayService.startNextRound("13")).thenReturn(response);
+
+        mockMvc.perform(post("/api/games/13/rounds/next"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nextAction").value("ROLL_DICE"))
+                .andExpect(jsonPath("$.pendingDiceAircraft[0]").value("F1"));
+
+        verify(autoPlayService).startNextRound("13");
     }
 }
