@@ -52,6 +52,23 @@ The create-game form currently exposes:
 - mission count for each mission type
 
 The scenario version is kept internally and is no longer shown in the GUI.
+The scenario name is selected from a dropdown and is not free-text editable.
+Default scenario name: `SCN_STANDARD`.
+The aircraft field is capped at `8` and the UI explains that this is the maximum for the current scenario.
+
+### Scenario Rules Panel
+
+Under the scenario selector the UI includes a toggle button that shows a compact rules panel for the selected scenario.
+
+For `SCN_STANDARD` the panel currently summarizes:
+
+- aircraft start values
+- mission costs
+- total parking and maintenance capacity
+- holding fuel cost
+- delivery schedules for fuel, weapons, and spare parts
+- dice outcome meanings
+- the fact that some rounds may be pure wait rounds
 
 ### Reset
 
@@ -69,6 +86,14 @@ Runtime mission codes can therefore look like:
 - `M1-1`
 - `M1-2`
 - `M2-1`
+
+### Holding and Bases
+
+The main board also includes:
+
+- a dedicated `Holding` panel for aircraft that could not land
+- support text under `Missions`, `Holding`, and `Bases`
+- base cards with maximum inventory values and delivery timing summaries for the current scenario
 
 ## API Endpoints Used
 

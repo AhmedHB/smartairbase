@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api';
 
 const INITIAL_CREATE_FORM = {
-  scenarioName: 'smartairbase',
+  scenarioName: 'SCN_STANDARD',
   version: '7',
   aircraftCount: 3,
   missionTypeCounts: {
@@ -18,6 +18,7 @@ function App() {
   const [createForm, setCreateForm] = useState(INITIAL_CREATE_FORM);
   const [gameId, setGameId] = useState('');
   const [rules, setRules] = useState(null);
+  const [showScenarioRules, setShowScenarioRules] = useState(false);
   const [gameState, setGameState] = useState(null);
   const [lastAutoResponse, setLastAutoResponse] = useState(null);
   const [selectedAircraft, setSelectedAircraft] = useState('');
@@ -31,6 +32,13 @@ function App() {
       return [];
     }
     return gameState.aircraft.filter((aircraft) => aircraft.status === 'AWAITING_DICE_ROLL');
+  }, [gameState]);
+
+  const holdingAircraft = useMemo(() => {
+    if (!gameState?.aircraft) {
+      return [];
+    }
+    return gameState.aircraft.filter((aircraft) => aircraft.status === 'HOLDING');
   }, [gameState]);
 
   const nextStep = useMemo(() => {
@@ -51,6 +59,7 @@ function App() {
 
   const canStartNextTurn = nextStep === 'NEXT_TURN';
   const canRollDice = nextStep === 'ROLL_DICE';
+  const selectedScenarioRules = scenarioRulesFor(createForm.scenarioName);
 
   useEffect(() => {
     if (!pendingDiceAircraft.length) {
@@ -85,6 +94,10 @@ function App() {
       return { ...base, parked, maintenance };
     });
   }, [gameState, rules]);
+
+  const baseReferenceByCode = useMemo(() => {
+    return Object.fromEntries((rules?.bases || []).map((base) => [normalizeBaseCode(base.code), base]));
+  }, [rules]);
 
   const missionCards = useMemo(() => {
     if (!rules?.missions) {
@@ -289,6 +302,10 @@ async function request(path, options = {}) {
         <div className="headline-divider" />
         <div className="status-stack">
           <MetricCard label="Game status" value={humanizeStatus(gameState?.game?.status || 'Not started')} />
+          <MetricCard
+            label="Scenario setup"
+            value={`${gameState?.aircraft?.length || createForm.aircraftCount || rules?.initialSetup?.aircraftCount || 0} planes / ${gameState?.missions?.length || totalConfiguredMissionCount(createForm.missionTypeCounts)} missions`}
+          />
           <MetricCard label="Round" value={gameState?.game?.currentRound ?? 0} />
           <MetricCard label="Mission status" value={`${completedMissionCount(gameState)}/${gameState?.missions?.length || 0} Complete`} />
           <MetricCard label="Holding status" value={`${holdingCount(gameState)} planes`} />
@@ -299,6 +316,7 @@ async function request(path, options = {}) {
       <section className="mission-section">
         <header className="section-heading">
           <h2>Missions</h2>
+          <p className="muted-copy">Available and completed mission instances for the current game.</p>
         </header>
         <div className="mission-strip">
           {missionCards.map((mission) => (
@@ -312,15 +330,47 @@ async function request(path, options = {}) {
         </div>
       </section>
 
+      <section className="holding-section">
+        <header className="section-heading">
+          <h2>Holding</h2>
+          <p className="muted-copy">Aircraft that could not land and are currently circling in the air.</p>
+        </header>
+        <article className="holding-panel">
+          {holdingAircraft.length ? (
+            <div className="holding-grid">
+              {holdingAircraft.map((aircraft) => (
+                <div key={aircraft.code} className="holding-card">
+                  <strong>{aircraft.code}</strong>
+                  <span>Fuel {aircraft.fuel}</span>
+                  <span>{humanizeStatus(aircraft.damage)}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted-copy">No aircraft are currently in holding.</p>
+          )}
+        </article>
+      </section>
+
       <section className="bases-section">
         <header className="section-heading">
           <h2>Bases</h2>
+          <p className="muted-copy">Current base inventory, parking slots, and maintenance capacity.</p>
         </header>
         <div className="bases-layout">
           <div className="bases-grid">
             {basesWithAircraft.map((base) => (
               <article key={base.code} className="base-card">
                 <header className="base-header">{base.name}</header>
+                <p className="muted-copy">
+                  Max fuel {baseReferenceByCode[normalizeBaseCode(base.code)]?.maxInventory?.fuel ?? 0} | Max weapons {baseReferenceByCode[normalizeBaseCode(base.code)]?.maxInventory?.weapons ?? 0} | Max spare parts {baseReferenceByCode[normalizeBaseCode(base.code)]?.maxInventory?.spareParts ?? 0}
+                </p>
+                <div className="warehouse-panel">
+                  <h3>Deliveries</h3>
+                  {deliverySummaryForBase(base.code, gameState?.game?.currentRound ?? 0, rules?.resourceRules).map((entry) => (
+                    <p key={`${base.code}-${entry.resource}`}>{entry.resourceLabel} {entry.amount > 0 ? `+${entry.amount}` : entry.amount} {entry.roundsText}</p>
+                  ))}
+                </div>
                 <div className="warehouse-panel">
                   <h3>Warehouse</h3>
                   <p>Fuel {base.fuelStock}</p>
@@ -363,22 +413,43 @@ async function request(path, options = {}) {
             <section className="event-panel">
               <h3>Control center</h3>
               <form className="create-form" onSubmit={handleCreateGame}>
-                <label>
-                  Scenario
-                  <input
-                    value={createForm.scenarioName}
-                    onChange={(event) => setCreateForm((current) => ({ ...current, scenarioName: event.target.value }))}
-                  />
-                </label>
-                <label>
-                  Aircraft
-                  <input
-                    type="number"
-                    min="1"
-                    value={createForm.aircraftCount}
-                    onChange={(event) => setCreateForm((current) => ({ ...current, aircraftCount: Number(event.target.value) }))}
-                  />
-                </label>
+              <label>
+                Scenario
+                <select
+                  value={createForm.scenarioName}
+                  onChange={(event) => setCreateForm((current) => ({ ...current, scenarioName: event.target.value }))}
+                >
+                  <option value="SCN_STANDARD">SCN_STANDARD</option>
+                </select>
+              </label>
+              <button type="button" className="ghost-button" onClick={() => setShowScenarioRules((current) => !current)}>
+                {showScenarioRules ? 'Hide scenario rules' : 'Show scenario rules'}
+              </button>
+              {showScenarioRules ? (
+                <article className="scenario-rules-panel">
+                  <h4>{selectedScenarioRules.title}</h4>
+                  <p className="muted-copy">{selectedScenarioRules.summary}</p>
+                  <ul className="compact-list scenario-rules-list">
+                    {selectedScenarioRules.points.map((point) => (
+                      <li key={point}>{point}</li>
+                    ))}
+                  </ul>
+                </article>
+              ) : null}
+              <label>
+                Aircraft
+                <input
+                  type="number"
+                  min="1"
+                  max="8"
+                  value={createForm.aircraftCount}
+                  onChange={(event) => setCreateForm((current) => ({
+                    ...current,
+                    aircraftCount: Math.min(8, Math.max(1, Number(event.target.value) || 1)),
+                  }))}
+                />
+              </label>
+              <p className="muted-copy">Max 8 aircraft in the current scenario.</p>
                 {rules?.missions?.map((mission) => (
                   <label key={mission.code}>
                     {mission.code} missions
@@ -410,11 +481,6 @@ async function request(path, options = {}) {
           </section>
 
           <section className="event-panel">
-            <div className="headline-card banner side-banner">
-              <span className="banner-label">
-                Nr of planes: {gameState?.aircraft?.length || createForm.aircraftCount || rules?.initialSetup?.aircraftCount || 0} | Nr of missions: {gameState?.missions?.length || totalConfiguredMissionCount(createForm.missionTypeCounts)}
-              </span>
-            </div>
             <h3>Event history</h3>
             {eventLog.length ? (
               <div className="event-list">
@@ -560,6 +626,77 @@ function isValidGameId(value) {
 
 function totalConfiguredMissionCount(missionTypeCounts) {
   return Object.values(missionTypeCounts || {}).reduce((total, count) => total + Number(count || 0), 0);
+}
+
+function scenarioRulesFor(scenarioName) {
+  if (scenarioName === 'SCN_STANDARD') {
+    return {
+      title: 'SCN_STANDARD',
+      summary: 'Baseline scenario focused on completing missions with limited aircraft, parking, maintenance capacity, and base resources.',
+      points: [
+        'Aircraft start with Fuel 100, Weapons 6, and Flight Hours 20.',
+        'Mission costs: M1 Recon 20 fuel / 0 weapons / 4 hours, M2 Strike 30 fuel / 2 weapons / 6 hours, M3 Deep Strike 40 fuel / 4 weapons / 8 hours.',
+        'Total base capacity in this scenario is 8 parking slots and 3 maintenance slots.',
+        'Holding consumes 5 fuel per round until the aircraft can land or is lost.',
+        'Fuel deliveries arrive every 2 rounds: A +50, B +40, C +30.',
+        'Spare parts arrive every 3 rounds: A +3, B +2, C +0.',
+        'Weapons arrive every 4 rounds: A +6, B +4, C +0.',
+        'Dice outcomes: 1 no fault, 2-3 minor repair, 4 component damage, 5 major repair, 6 full service required.',
+        'Some rounds may have no available actions and can be passed directly to the next round.',
+      ],
+    };
+  }
+
+  return {
+    title: scenarioName || 'Scenario',
+    summary: 'No scenario description is available for this setup yet.',
+    points: [],
+  };
+}
+
+function normalizeBaseCode(code) {
+  if (!code) {
+    return '';
+  }
+  return String(code).replace(/^BASE_/, '');
+}
+
+function deliverySummaryForBase(baseCode, currentRound, resourceRules) {
+  if (!resourceRules) {
+    return [];
+  }
+
+  const normalizedBaseCode = normalizeBaseCode(baseCode);
+  return [
+    buildDeliveryEntry('Fuel', normalizedBaseCode, currentRound, resourceRules.fuelDeliveries),
+    buildDeliveryEntry('Weapons', normalizedBaseCode, currentRound, resourceRules.weaponDeliveries),
+    buildDeliveryEntry('Spare parts', normalizedBaseCode, currentRound, resourceRules.sparePartDeliveries),
+  ].filter(Boolean);
+}
+
+function buildDeliveryEntry(resourceLabel, baseCode, currentRound, schedule) {
+  if (!schedule?.deliveries) {
+    return null;
+  }
+  const amount = Number(schedule.deliveries[baseCode] ?? 0);
+  if (amount <= 0) {
+    return null;
+  }
+
+  const frequency = Number(schedule.frequencyRounds || 0);
+  if (frequency <= 0) {
+    return null;
+  }
+
+  const nextRound = currentRound + 1;
+  const roundsUntilDelivery = (frequency - (nextRound % frequency)) % frequency;
+
+  return {
+    resource: resourceLabel.toLowerCase(),
+    resourceLabel,
+    amount,
+    roundsText: roundsUntilDelivery === 0 ? 'next round' : `in ${roundsUntilDelivery + 1} rounds`,
+  };
 }
 
 function randomDiceValue() {

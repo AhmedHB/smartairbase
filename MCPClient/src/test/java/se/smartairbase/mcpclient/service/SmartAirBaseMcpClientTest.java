@@ -28,15 +28,16 @@ class SmartAirBaseMcpClientTest {
     void createGameUsesCreateGameToolAndRequestBody() {
         McpToolExecutor executor = mock(McpToolExecutor.class);
         GameSummaryDTO response = new GameSummaryDTO(1L, "smartairbase-v7", "smartairbase", "7", "ACTIVE", 0, null, false, true, false);
-        when(executor.execute(eq(SmartAirBaseTool.CREATE_GAME), eq(new CreateGameRequestDTO("smartairbase", "7")), eq(GameSummaryDTO.class)))
+        CreateGameRequestDTO request = new CreateGameRequestDTO("smartairbase", "7", 3, Map.of("M1", 1, "M2", 1, "M3", 1));
+        when(executor.execute(eq(SmartAirBaseTool.CREATE_GAME), eq(request), eq(GameSummaryDTO.class)))
                 .thenReturn(response);
 
         SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor, objectMapper);
 
-        GameSummaryDTO result = client.createGame(new CreateGameRequestDTO("smartairbase", "7"));
+        GameSummaryDTO result = client.createGame(request);
 
         assertThat(result.gameId()).isEqualTo(1L);
-        verify(executor).execute(eq(SmartAirBaseTool.CREATE_GAME), eq(new CreateGameRequestDTO("smartairbase", "7")), eq(GameSummaryDTO.class));
+        verify(executor).execute(eq(SmartAirBaseTool.CREATE_GAME), eq(request), eq(GameSummaryDTO.class));
     }
 
     @Test

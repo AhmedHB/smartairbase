@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional;
 import se.smartairbase.mcpserver.domain.game.*;
 import se.smartairbase.mcpserver.domain.game.enums.AircraftStatus;
 import se.smartairbase.mcpserver.domain.game.enums.GameStatus;
+import se.smartairbase.mcpserver.domain.game.enums.RoundPhase;
 import se.smartairbase.mcpserver.mcp.dto.*;
 import se.smartairbase.mcpserver.repository.*;
 
@@ -61,7 +62,9 @@ public class GameQueryService {
     public GameStateDto getGameState(Long gameId) {
         Game game = gameRepository.findById(gameId).orElseThrow(() -> new IllegalArgumentException("Game not found: " + gameId));
         GameRound activeRound = gameRoundRepository.findFirstByGame_IdAndEndedAtIsNullOrderByRoundNumberDesc(gameId).orElse(null);
-        boolean canCompleteRound = activeRound != null && !hasPendingRoundDecisions(gameId);
+        boolean canCompleteRound = activeRound != null
+                && activeRound.getPhase() == RoundPhase.LANDING
+                && !hasPendingRoundDecisions(gameId);
 
         List<BaseStateDto> bases = gameBaseRepository.findByGame_Id(gameId).stream()
                 .map(base -> {

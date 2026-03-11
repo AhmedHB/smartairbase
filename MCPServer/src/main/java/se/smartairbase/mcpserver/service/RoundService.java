@@ -222,7 +222,12 @@ public class RoundService {
                     aircraft.getCode() + " completed " + mission.getCode());
         }
 
-        round.setPhase(RoundPhase.DICE_ROLL);
+        if (allAircraftResolvedForDice(gameId)) {
+            round.setPhase(RoundPhase.LANDING);
+        }
+        else {
+            round.setPhase(RoundPhase.DICE_ROLL);
+        }
         updateGameOutcome(game);
         return buildRoundResult(game, round, List.of("Mission resolution completed"), pendingAircraft(gameId),
                 aircraftUpdates, completedMissions, List.of());

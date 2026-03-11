@@ -52,7 +52,7 @@ class GameControllerTest {
     @Test
     void createGameDelegatesToClient() throws Exception {
         GameSummaryDTO response = new GameSummaryDTO(11L, "smartairbase-v7", "smartairbase", "7", "ACTIVE", 0, null, false, true, false);
-        CreateGameRequestDTO request = new CreateGameRequestDTO("smartairbase", "7");
+        CreateGameRequestDTO request = new CreateGameRequestDTO("smartairbase", "7", null, null);
         when(mcpClient.createGame(eq(request))).thenReturn(response);
 
         mockMvc.perform(post("/api/games")
