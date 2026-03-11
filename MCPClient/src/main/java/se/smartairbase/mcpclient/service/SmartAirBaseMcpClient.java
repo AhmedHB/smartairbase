@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import se.smartairbase.mcpclient.controller.dto.ActionResultDTO;
 import se.smartairbase.mcpclient.controller.dto.AircraftStateDTO;
+import se.smartairbase.mcpclient.controller.dto.AnalysisFeedItemDTO;
+import se.smartairbase.mcpclient.controller.dto.AnalysisFeedResponseDTO;
 import se.smartairbase.mcpclient.domain.SmartAirBaseTool;
 import se.smartairbase.mcpclient.controller.dto.AssignMissionRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.CreateGameRequestDTO;
@@ -16,6 +18,7 @@ import se.smartairbase.mcpclient.controller.dto.LandingOptionsDTO;
 import se.smartairbase.mcpclient.controller.dto.RoundExecutionResultDTO;
 
 import java.util.Map;
+import java.util.List;
 
 /**
  * Typed facade over the Smart Air Base MCP tool set.
@@ -50,6 +53,18 @@ public class SmartAirBaseMcpClient {
 
     public GameStateDTO getGameStateView(String gameId) {
         return getGameState(gameId);
+    }
+
+    public AnalysisFeedResponseDTO listAnalysisFeed(String gameId) {
+        return toolExecutor.execute(SmartAirBaseTool.LIST_ANALYSIS_FEED, Map.of("gameId", gameId), AnalysisFeedResponseDTO.class);
+    }
+
+    public AnalysisFeedResponseDTO appendAnalysisFeedItems(String gameId, List<AnalysisFeedItemDTO> items) {
+        return toolExecutor.execute(
+                SmartAirBaseTool.APPEND_ANALYSIS_FEED_ITEMS,
+                Map.of("gameId", gameId, "items", items),
+                AnalysisFeedResponseDTO.class
+        );
     }
 
     /**

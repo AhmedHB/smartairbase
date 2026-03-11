@@ -520,6 +520,83 @@ button:disabled {
   margin-top: 4px;
 }
 
+.analysis-feed-panel {
+  display: grid;
+  grid-template-rows: auto minmax(290px, 1fr);
+  gap: 10px;
+}
+
+.analysis-feed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.analysis-feed-header h3 {
+  margin: 0;
+}
+
+.analysis-pending {
+  font-size: 0.8rem;
+  color: #55657f;
+}
+
+.analysis-feed-list {
+  max-height: 290px;
+  overflow: auto;
+}
+
+.analysis-feed-empty {
+  min-height: 290px;
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  border: 1px dashed rgba(84, 97, 123, 0.18);
+  border-radius: 10px;
+  background: rgba(245, 247, 252, 0.45);
+  padding: 12px;
+}
+
+.analysis-feed-empty p {
+  margin: 0;
+}
+
+.analysis-feed-item p {
+  margin: 6px 0 0;
+}
+
+.analysis-feed-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.analysis-feed-meta-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.analysis-source-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.analysis-source-llm {
+  background: rgba(65, 116, 87, 0.14);
+  color: #2f6a4b;
+}
+
+.analysis-source-rule-based {
+  background: rgba(85, 101, 127, 0.14);
+  color: #4a5972;
+}
+
 @keyframes next-step-pulse {
   0%, 100% {
     box-shadow: 0 0 0 3px rgba(212, 107, 44, 0.18), 0 14px 28px rgba(180, 85, 28, 0.24);

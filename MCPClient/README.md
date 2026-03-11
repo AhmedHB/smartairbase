@@ -8,6 +8,7 @@ It is responsible for:
 - exposing a typed HTTP API under `/api`
 - unwrapping MCP tool content responses into DTOs
 - running autoplay logic for mission assignment and landings
+- generating the round-based analysis feed shown in the frontend
 - serving a lightweight built-in UI at `/`
 
 ## Role in the System
@@ -50,6 +51,8 @@ Main endpoints:
 - `GET /api/reference/rules`
 - `POST /api/games`
 - `GET /api/games/{gameId}`
+- `GET /api/games/{gameId}/analysis-feed`
+- `POST /api/games/{gameId}/analysis/generate`
 - `POST /api/games/{gameId}/rounds/next`
 - `POST /api/games/{gameId}/rounds/plan`
 - `POST /api/games/{gameId}/dice-rolls/auto`
@@ -159,6 +162,19 @@ Main config files:
 - `src/main/resources/application-local.yml`
 - `src/main/resources/application-cloud.yml`
 
+Analysis narration mode:
+
+```yaml
+smartairbase:
+  analysis:
+    # valid values: hybrid, rule-based, llm
+    narration-mode: hybrid
+```
+
+- `hybrid`: try LLM narration first and fall back to rule-based text
+- `rule-based`: always use the deterministic rule-based analysis text
+- `llm`: require LLM narration for analysis entries
+
 ## Running Locally
 
 Prerequisites:
@@ -192,3 +208,11 @@ http://localhost:8080
 - `GameRulesReferenceService` provides the English scenario summary and key numbers shown in the frontend rules panel, including deliveries, holding fuel cost, capacity, and dice outcomes.
 - The client currently drives a UI that shows aircraft `current/max` values and positive `Added:` diffs based on successive game-state snapshots.
 - Base lookups in autoplay normalize both `A` and `BASE_A` style codes so landing logic stays aligned with runtime state and rules reference data.
+- The analysis feed uses named personas per role:
+  - `Captain Erik Holm (Pilot)`
+  - `Sara Lind (Ground Crew Chief)`
+  - `Johan Berg (Lead Maintenance Technician)`
+  - `Colonel Anna Sjöberg (Command / Operations)`
+- Each analysis feed item exposes a narration source so the frontend can label it as `LLM` or `Rule-based`.
+- `MCPClient` generates narration text, but the saved analysis feed is now persisted through `MCPServer` MCP tools so the history survives client restarts.
+- The current round-diff snapshot used to shape the next narration remains client-local and is not yet persisted.

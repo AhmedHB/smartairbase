@@ -669,3 +669,21 @@ F3 – READY – Bas A – bränsle 100 – vapen 6 – flygtid 20
 Bas A – bränsle 390 – vapen 22 – reservdelar 13
 Bas B – bränsle 300 – vapen 14 – reservdelar 8
 Bas C – bränsle 200 – vapen 0 – reservdelar 0
+
+============================================================
+ANALYSFEED
+============================================================
+
+Utöver själva spelreglerna finns en analysfeed i lösningen.
+
+- analysfeeden påverkar inte regler, resurser eller utfall
+- den beskriver vad som hänt i spelet per runda
+- narrationen genereras i MCPClient
+- feedinlägg sparas permanent av MCPServer i samma databas som spelet
+- varje inlägg är kopplat till gameId, runda och roll
+- varje inlägg kan markeras som LLM eller Rule-based beroende på
+  hur texten skapades
+
+Detta gör att analysfeeden överlever refresh och omstart av MCPClient,
+men den är fortfarande bara en kommentarström ovanpå den egentliga
+spelmotorn

@@ -236,3 +236,18 @@ De viktigaste grenarna i processen är:
 	•	Finns bränsle och vapen nog i baslager?
 	•	Blir planet kvar i holding över flera rundslut med 0 bränsle?
 	•	Har alla uppdrag slutförts och alla överlevande plan återgått till READY på bas?
+
+---------------------------
+Analysfeed
+---------------------------
+Utöver den egentliga spelmodellen finns en analysfeed i lösningen.
+
+- analysfeeden påverkar inte regler eller state transitions
+- MCPClient genererar narrationen per roll och runda
+- MCPServer sparar feedinläggen permanent i samma databas som spelet
+- varje inlägg hör till ett visst gameId och en viss runda
+- ett inlägg kan vara märkt som LLM eller Rule-based beroende på
+  hur kommentaren skapades
+
+Det här gör analysen till en del av spelets historik, men inte till en
+del av regelmotorn
