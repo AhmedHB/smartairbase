@@ -42,6 +42,13 @@ function App() {
     return gameState.aircraft.filter((aircraft) => aircraft.status === 'HOLDING');
   }, [gameState]);
 
+  const destroyedAircraft = useMemo(() => {
+    if (!gameState?.aircraft) {
+      return [];
+    }
+    return gameState.aircraft.filter((aircraft) => aircraft.status === 'CRASHED' || aircraft.status === 'DESTROYED');
+  }, [gameState]);
+
   const nextStep = useMemo(() => {
     if (!isValidGameId(gameId) || !gameState) {
       return 'CREATE_GAME';
@@ -365,6 +372,26 @@ async function request(path, options = {}) {
             </div>
           ) : (
             <p className="muted-copy">No aircraft are currently in holding.</p>
+          )}
+        </article>
+      </section>
+
+      <section className="holding-section">
+        <header className="section-heading">
+          <h2>Destroyed aircraft</h2>
+          <p className="muted-copy">Aircraft that have crashed or been lost during the game.</p>
+        </header>
+        <article className="holding-panel">
+          {destroyedAircraft.length ? (
+            <div className="holding-grid">
+              {destroyedAircraft.map((aircraft) => (
+                <div key={aircraft.code} className="holding-card">
+                  <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted-copy">No aircraft have been destroyed.</p>
           )}
         </article>
       </section>

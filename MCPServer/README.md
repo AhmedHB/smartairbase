@@ -104,8 +104,21 @@ Aircraft statuses:
 
 Implemented outcome rules:
 
-- `WON` when all missions are completed
+- `WON` when all missions are completed and all surviving aircraft are back in `READY` state at a base
 - `LOST` when no operational aircraft remain
+
+Holding behavior:
+
+- aircraft in `HOLDING` lose `5` fuel at round completion
+- an aircraft that reaches `0` fuel may still remain in holding for that round
+- if it is still in holding at a later round completion with `0` fuel, it crashes
+
+Ground service behavior:
+
+- mission fuel, weapons, and flight-hour cost are applied to the aircraft during mission resolution
+- landing may immediately trigger `REFUEL` and `REARM` from the base stock
+- repair/full service consume spare parts and maintenance slots
+- flight hours are restored only when actual service/full service completes
 
 ## Persistence
 

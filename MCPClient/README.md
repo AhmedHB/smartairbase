@@ -103,6 +103,8 @@ Example:
 - resolves all landing choices automatically when the round enters `LANDING`
 - completes the round automatically when legal
 
+The returned game state reflects the post-landing or post-round server state, which means aircraft may already have been refueled or rearmed by the time the browser renders the response.
+
 Autoplay prioritizes:
 
 - completing as many missions as possible
@@ -167,3 +169,4 @@ http://localhost:8080
 - The client API now returns typed DTO responses, not raw MCP envelopes.
 - Scenario/version normalization accepts old `smartairbase` input as an alias for `SCN_STANDARD`, and `7` as an alias for `V7`.
 - `GameRulesReferenceService` provides the English scenario summary and key numbers shown in the frontend rules panel, including deliveries, holding fuel cost, capacity, and dice outcomes.
+- The client currently drives a UI that shows aircraft `current/max` values and positive `Added:` diffs based on successive game-state snapshots.

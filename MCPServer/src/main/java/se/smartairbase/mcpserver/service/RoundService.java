@@ -464,15 +464,15 @@ public class RoundService {
                 continue;
             }
             AircraftState state = aircraftStateRepository.findByGameAircraft_Id(aircraft.getId()).orElseThrow();
-            if (state.getFuel() < HOLDING_FUEL_COST && !anyBaseCanAccept(game.getId(), state)) {
+            if (state.getFuel() <= 0) {
                 state.setFuel(0);
                 state.setInHolding(false);
                 aircraft.setStatus(AircraftStatus.CRASHED);
-                aircraftUpdates.add(aircraft.getCode() + " crashed while in holding");
-                logEvent(game, round, aircraft, null, null, EventType.CRASH, aircraft.getCode() + " crashed in holding");
+                aircraftUpdates.add(aircraft.getCode() + " crashed after exhausting fuel in holding");
+                logEvent(game, round, aircraft, null, null, EventType.CRASH,
+                        aircraft.getCode() + " crashed after exhausting fuel in holding");
                 continue;
             }
-
             state.setFuel(Math.max(0, state.getFuel() - HOLDING_FUEL_COST));
             state.setHoldingRounds(state.getHoldingRounds() + 1);
             aircraftUpdates.add(aircraft.getCode() + " remains in holding");
@@ -680,12 +680,19 @@ public class RoundService {
     private void updateGameOutcome(Game game) {
         List<GameMission> missions = gameMissionRepository.findByGame_IdOrderBySortOrder(game.getId());
         boolean allCompleted = missions.stream().allMatch(m -> m.getStatus() == MissionStatus.COMPLETED);
-        if (allCompleted) {
+        List<GameAircraft> aircraft = gameAircraftRepository.findByGame_Id(game.getId());
+        boolean allSurvivingAircraftRecovered = aircraft.stream()
+                .filter(current -> current.getStatus() != AircraftStatus.CRASHED && current.getStatus() != AircraftStatus.DESTROYED)
+                .allMatch(current -> {
+                    AircraftState state = aircraftStateRepository.findByGameAircraft_Id(current.getId()).orElseThrow();
+                    return current.getStatus() == AircraftStatus.READY && state.getCurrentBase() != null;
+                });
+        if (allCompleted && allSurvivingAircraftRecovered) {
             game.markWon(LocalDateTime.now());
             return;
         }
 
-        boolean anyOperationalAircraft = gameAircraftRepository.findByGame_Id(game.getId()).stream()
+        boolean anyOperationalAircraft = aircraft.stream()
                 .map(GameAircraft::getStatus)
                 .anyMatch(status -> status != AircraftStatus.CRASHED && status != AircraftStatus.DESTROYED);
         if (!anyOperationalAircraft) {
