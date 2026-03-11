@@ -336,6 +336,7 @@ public class RoundService {
         baseState.incrementOccupiedParkingSlots();
         state.setCurrentBase(base);
         state.setInHolding(false);
+        consumeLandingServiceResources(game, round, aircraft, state, base, baseState);
         aircraft.setStatus(resolvePostLandingStatus(game, round, aircraft, state, base, baseState));
 
         logEvent(game, round, aircraft, base, null, EventType.LANDING,
@@ -418,8 +419,9 @@ public class RoundService {
 
             if (state.getRepairRoundsRemaining() == 0) {
                 state.setDamage(DamageType.NONE);
-                aircraft.setStatus(AircraftStatus.READY);
                 BaseState baseState = baseStateRepository.findByGameBase_Id(state.getCurrentBase().getId()).orElseThrow();
+                restoreAircraftOperationalState(game, round, aircraft, state, state.getCurrentBase(), baseState, true);
+                aircraft.setStatus(AircraftStatus.READY);
                 baseState.decrementOccupiedMaintSlots();
                 logEvent(game, round, aircraft, state.getCurrentBase(), null, EventType.REPAIR_COMPLETE,
                         aircraft.getCode() + " repair completed");
@@ -536,6 +538,41 @@ public class RoundService {
                 aircraft.getCode() + " started " + state.getDamage().name());
     }
 
+    private void consumeLandingServiceResources(Game game, GameRound round, GameAircraft aircraft,
+                                                AircraftState state, GameBase base, BaseState baseState) {
+        restoreAircraftOperationalState(game, round, aircraft, state, base, baseState, false);
+    }
+
+    private void restoreAircraftOperationalState(Game game, GameRound round, GameAircraft aircraft,
+                                                 AircraftState state, GameBase base, BaseState baseState,
+                                                 boolean resetFlightHours) {
+        int fuelNeeded = Math.max(0, aircraft.getAircraftType().getMaxFuel() - state.getFuel());
+        if (fuelNeeded > 0 && baseSupportsService(base, BaseServiceType.REFUEL)) {
+            int transferredFuel = Math.min(fuelNeeded, baseState.getFuelStock());
+            if (transferredFuel > 0) {
+                baseState.consumeFuel(transferredFuel);
+                state.setFuel(state.getFuel() + transferredFuel);
+                resourceTransactionRepository.save(new ResourceTransaction(game, round, base, aircraft, ResourceType.FUEL,
+                        -transferredFuel, "GROUND_SERVICE", LocalDateTime.now()));
+            }
+        }
+
+        int weaponsNeeded = Math.max(0, aircraft.getAircraftType().getMaxWeapons() - state.getWeapons());
+        if (weaponsNeeded > 0 && baseSupportsService(base, BaseServiceType.REARM)) {
+            int transferredWeapons = Math.min(weaponsNeeded, baseState.getWeaponsStock());
+            if (transferredWeapons > 0) {
+                baseState.consumeWeapons(transferredWeapons);
+                state.setWeapons(state.getWeapons() + transferredWeapons);
+                resourceTransactionRepository.save(new ResourceTransaction(game, round, base, aircraft, ResourceType.WEAPONS,
+                        -transferredWeapons, "GROUND_SERVICE", LocalDateTime.now()));
+            }
+        }
+
+        if (resetFlightHours && baseSupportsService(base, BaseServiceType.FULL_SERVICE)) {
+            state.setRemainingFlightHours(aircraft.getAircraftType().getMaxFlightHours());
+        }
+    }
+
     private LandingOptionDto toLandingOption(GameBase base, AircraftState state) {
         BaseState baseState = baseStateRepository.findByGameBase_Id(base.getId()).orElseThrow();
         if (baseState.getOccupiedParkingSlots() >= base.getParkingCapacity()) {
@@ -576,6 +613,10 @@ public class RoundService {
                 .filter(rule -> rule.getDamage() == damageType)
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("Repair rule not found for " + damageType));
+    }
+
+    private boolean baseSupportsService(GameBase base, BaseServiceType serviceType) {
+        return baseTypeServiceRepository.existsByBaseType_IdAndServiceType(base.getBaseType().getId(), serviceType);
     }
 
     private boolean anyBaseCanAccept(Long gameId, AircraftState state) {

@@ -97,6 +97,10 @@ public class AircraftState {
         this.weapons = weapons;
     }
 
+    public void setRemainingFlightHours(Integer remainingFlightHours) {
+        this.remainingFlightHours = remainingFlightHours;
+    }
+
     public void setDamage(DamageType damage) {
         this.damage = damage;
     }
