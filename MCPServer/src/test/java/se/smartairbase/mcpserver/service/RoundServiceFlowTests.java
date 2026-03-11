@@ -31,7 +31,7 @@ class RoundServiceFlowTests {
 
     @Test
     void startRoundOpensPlanningPhase() {
-        Long gameId = gameService.createGameFromScenario("SmartAirBase", "V7").gameId();
+        Long gameId = gameService.createGameFromScenario("SCN_STANDARD", "V7").gameId();
 
         RoundExecutionResultDto result = roundService.startRound(gameId);
         GameStateDto state = gameQueryService.getGameState(gameId);
@@ -45,12 +45,12 @@ class RoundServiceFlowTests {
         assertThat(summary.roundPhase()).isEqualTo("PLANNING");
         assertThat(summary.roundOpen()).isTrue();
         assertThat(summary.canStartRound()).isFalse();
-        assertThat(summary.canCompleteRound()).isTrue();
+        assertThat(summary.canCompleteRound()).isFalse();
     }
 
     @Test
     void resolveMissionMovesAircraftToAwaitingDiceRoll() {
-        Long gameId = gameService.createGameFromScenario("SmartAirBase", "V7").gameId();
+        Long gameId = gameService.createGameFromScenario("SCN_STANDARD", "V7").gameId();
         roundService.startRound(gameId);
 
         ActionResultDto assignment = roundService.assignMission(gameId, "F1", "M1");
@@ -74,8 +74,22 @@ class RoundServiceFlowTests {
     }
 
     @Test
+    void resolveWithoutAssignmentsAllowsRoundToBeCompletedImmediately() {
+        Long gameId = gameService.createGameFromScenario("SCN_STANDARD", "V7").gameId();
+        roundService.startRound(gameId);
+
+        RoundExecutionResultDto result = roundService.resolveMissions(gameId);
+        GameStateDto state = gameQueryService.getGameState(gameId);
+
+        assertThat(result.phase()).isEqualTo("LANDING");
+        assertThat(result.pendingAircraft()).isEmpty();
+        assertThat(state.game().roundPhase()).isEqualTo("LANDING");
+        assertThat(state.game().canCompleteRound()).isTrue();
+    }
+
+    @Test
     void completeHappyPathRoundKeepsAircraftReadyAtLandingBase() {
-        Long gameId = gameService.createGameFromScenario("SmartAirBase", "V7").gameId();
+        Long gameId = gameService.createGameFromScenario("SCN_STANDARD", "V7").gameId();
         roundService.startRound(gameId);
         roundService.assignMission(gameId, "F1", "M1");
         roundService.resolveMissions(gameId);

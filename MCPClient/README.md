@@ -76,7 +76,7 @@ Example:
 
 ```json
 {
-  "scenarioName": "smartairbase",
+  "scenarioName": "SCN_STANDARD",
   "version": "7",
   "aircraftCount": 5,
   "missionTypeCounts": {
@@ -95,6 +95,7 @@ Example:
 - assigns missions automatically
 - resolves mission execution
 - may complete the round immediately if nothing is pending
+- supports rounds where no action is possible and the game effectively waits for the next round
 
 `POST /api/games/{gameId}/dice-rolls/auto`:
 
@@ -164,4 +165,5 @@ http://localhost:8080
 ## Notes
 
 - The client API now returns typed DTO responses, not raw MCP envelopes.
-- Scenario/version normalization accepts `smartairbase` and `7` as aliases for `SmartAirBase` and `V7`.
+- Scenario/version normalization accepts old `smartairbase` input as an alias for `SCN_STANDARD`, and `7` as an alias for `V7`.
+- `GameRulesReferenceService` provides the English scenario summary and key numbers shown in the frontend rules panel, including deliveries, holding fuel cost, capacity, and dice outcomes.

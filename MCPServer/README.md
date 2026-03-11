@@ -55,7 +55,7 @@ PostgreSQL
 
 ## Dynamic Game Creation
 
-Games are built from the seeded `SmartAirBase V7` scenario template.
+Games are built from the seeded `SCN_STANDARD V7` scenario template.
 
 At creation time the current implementation can override:
 
@@ -86,6 +86,8 @@ Typical sequence:
 4. `record_dice_roll`
 5. `land_aircraft` or `send_aircraft_to_holding`
 6. `complete_round`
+
+If mission resolution produces no aircraft in `AWAITING_DICE_ROLL` and no landing decisions are pending, the server now transitions directly to `LANDING`, allowing an immediate round completion. This supports valid "wait only" rounds.
 
 ## Important State
 
@@ -121,7 +123,7 @@ Seed data includes:
 - base types and capabilities
 - mission types
 - repair rules
-- `SmartAirBase V7`
+- `SCN_STANDARD V7`
 
 ## Running Locally
 
@@ -162,4 +164,5 @@ If Liquibase checksums got out of sync in a reused local database:
 ## Notes
 
 - Read services use Spring read-only transactions to avoid lazy-proxy failures while mapping DTOs.
+- `canCompleteRound` is only exposed when the active round is in `LANDING`, which keeps autoplay aligned with the server-side phase model.
 - The latest stepwise round implementation notes are in `docs/CHANGELOG_2026-03-10_stepwise_round.md`.

@@ -148,7 +148,14 @@ public class GameService {
     }
 
     private String normalizeScenarioName(String scenarioName) {
-        return scenarioName == null ? "" : scenarioName.trim();
+        if (scenarioName == null) {
+            return "";
+        }
+        String normalized = scenarioName.trim();
+        if (normalized.equalsIgnoreCase("smartairbase")) {
+            return "SCN_STANDARD";
+        }
+        return normalized;
     }
 
     private String normalizeScenarioVersion(String version) {

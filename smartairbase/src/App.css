@@ -106,6 +106,10 @@
   margin-top: 18px;
 }
 
+.holding-section {
+  margin: 18px 0;
+}
+
 .section-heading {
   margin-bottom: 12px;
 }
@@ -172,6 +176,30 @@
   background: #7587a2;
   color: #f5f7fb;
   font-weight: 600;
+}
+
+.holding-panel {
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(69, 86, 119, 0.22);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 20px 45px rgba(69, 86, 119, 0.08);
+}
+
+.holding-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.holding-card {
+  min-width: 120px;
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #7587a2;
+  color: #f5f7fb;
 }
 
 .bases-layout {
@@ -267,6 +295,23 @@
   gap: 12px;
 }
 
+.scenario-rules-panel {
+  border: 1px solid rgba(84, 97, 123, 0.18);
+  border-radius: 10px;
+  padding: 12px;
+  background: rgba(245, 247, 252, 0.92);
+}
+
+.scenario-rules-panel h4 {
+  margin: 0 0 8px;
+  font-size: 0.98rem;
+  color: #1f2430;
+}
+
+.scenario-rules-list {
+  margin-top: 8px;
+}
+
 .radio-group {
   margin: 0;
   padding: 10px 12px;
@@ -345,6 +390,11 @@ button:disabled {
 .ghost-button {
   background: #a4adbb;
   color: #ffffff;
+}
+
+.create-form .ghost-button {
+  justify-self: start;
+  width: auto;
 }
 
 .button-row {

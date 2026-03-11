@@ -56,14 +56,18 @@ Typical round sequence:
 5. land aircraft or send them to holding
 6. complete round
 
+Rounds with no available actions are also valid. If mission resolution leaves no aircraft waiting for dice or landing, the round can move directly to completion and the player simply waits for the next round.
+
 ## Dynamic Game Creation
 
-Games are created from the seeded `SmartAirBase V7` scenario template, but the current implementation also supports custom setup at creation time:
+Games are created from the seeded `SCN_STANDARD V7` scenario template, but the current implementation also supports custom setup at creation time:
 
 - number of aircraft
 - number of missions per mission type (`M1`, `M2`, `M3`)
 
 The frontend exposes these options in the create-game form.
+The scenario is selected from a dropdown and currently supports `SCN_STANDARD`.
+The aircraft field is capped at `8`, which matches the total parking capacity in the current scenario.
 
 Mission instances are generated with runtime codes such as:
 
@@ -135,3 +139,4 @@ Open:
 - `MCPServer` is the source of truth for rules and state transitions.
 - `MCPClient` unwraps MCP tool responses and returns typed DTO-based HTTP responses.
 - The frontend `Reset` button creates a fresh game from the current create-game settings.
+- The frontend includes a scenario rules panel in English with mission costs, deliveries, holding fuel cost, total capacity, and dice outcomes for `SCN_STANDARD`.
