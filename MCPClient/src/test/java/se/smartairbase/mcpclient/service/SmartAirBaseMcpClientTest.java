@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import se.smartairbase.mcpclient.controller.dto.ActionResultDTO;
+import se.smartairbase.mcpclient.controller.dto.AnalysisFeedItemDTO;
+import se.smartairbase.mcpclient.controller.dto.AnalysisFeedResponseDTO;
 import se.smartairbase.mcpclient.controller.dto.AssignMissionRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.CreateGameRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.DiceRollRequestDTO;
@@ -12,6 +14,7 @@ import se.smartairbase.mcpclient.controller.dto.LandAircraftRequestDTO;
 import se.smartairbase.mcpclient.domain.SmartAirBaseTool;
 
 import java.util.Map;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyMap;
@@ -99,5 +102,50 @@ class SmartAirBaseMcpClientTest {
                 "aircraftCode", "F3",
                 "baseCode", "B"
         ));
+    }
+
+    @Test
+    void listAnalysisFeedUsesExpectedToolPayload() {
+        McpToolExecutor executor = mock(McpToolExecutor.class);
+        AnalysisFeedResponseDTO response = new AnalysisFeedResponseDTO(List.of(), false, 2);
+        when(executor.execute(eq(SmartAirBaseTool.LIST_ANALYSIS_FEED), eq(Map.of("gameId", "9")), eq(AnalysisFeedResponseDTO.class)))
+                .thenReturn(response);
+
+        SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor, objectMapper);
+
+        AnalysisFeedResponseDTO result = client.listAnalysisFeed("9");
+
+        assertThat(result.lastAnalyzedRound()).isEqualTo(2);
+        verify(executor).execute(eq(SmartAirBaseTool.LIST_ANALYSIS_FEED), eq(Map.of("gameId", "9")), eq(AnalysisFeedResponseDTO.class));
+    }
+
+    @Test
+    void appendAnalysisFeedItemsBuildsExpectedPayload() {
+        McpToolExecutor executor = mock(McpToolExecutor.class);
+        when(executor.execute(eq(SmartAirBaseTool.APPEND_ANALYSIS_FEED_ITEMS), anyMap(), eq(AnalysisFeedResponseDTO.class)))
+                .thenReturn(new AnalysisFeedResponseDTO(List.of(), false, 3));
+
+        SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor, objectMapper);
+        List<AnalysisFeedItemDTO> items = List.of(new AnalysisFeedItemDTO(
+                "1",
+                9L,
+                3,
+                "ROUND_COMPLETE",
+                "Captain Erik Holm (Pilot)",
+                "LLM",
+                "Summary",
+                null,
+                List.of("F1"),
+                List.of("BASE_A"),
+                "2026-03-11T12:00:00Z"
+        ));
+
+        client.appendAnalysisFeedItems("9", items);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(executor).execute(eq(SmartAirBaseTool.APPEND_ANALYSIS_FEED_ITEMS), payloadCaptor.capture(), eq(AnalysisFeedResponseDTO.class));
+        assertThat(payloadCaptor.getValue()).containsEntry("gameId", "9");
+        assertThat(payloadCaptor.getValue()).containsEntry("items", items);
     }
 }

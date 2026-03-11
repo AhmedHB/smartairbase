@@ -33,6 +33,8 @@ PostgreSQL
 
 - `create_game(scenarioName, version, aircraftCount, missionTypeCounts)`
 - `get_game_state(gameId)`
+- `list_analysis_feed(gameId)`
+- `append_analysis_feed_items(gameId, items)`
 
 ### Mission
 
@@ -183,3 +185,5 @@ If Liquibase checksums got out of sync in a reused local database:
 - Read services use Spring read-only transactions to avoid lazy-proxy failures while mapping DTOs.
 - `canCompleteRound` is only exposed when the active round is in `LANDING`, which keeps autoplay aligned with the server-side phase model.
 - The latest stepwise round implementation notes are in `docs/CHANGELOG_2026-03-10_stepwise_round.md`.
+- Round analysis narration is not generated in `MCPServer`; that feed is built in `MCPClient` on top of server state and event transitions.
+- `MCPServer` now persists analysis feed entries in PostgreSQL via `game_analysis_entry`, keyed by game, round, and role so the history belongs to the game and survives client restarts.

@@ -1130,7 +1130,10 @@ async function request(path, options = {}) {
                 <article key={item.id} className="event-item analysis-feed-item">
                   <div className="analysis-feed-meta">
                     <strong>{item.role}</strong>
-                    <span>Round {item.round}</span>
+                    <div className="analysis-feed-meta-right">
+                      <span className={`analysis-source-badge analysis-source-${String(item.source || 'rule-based').toLowerCase()}`}>{item.source || 'Rule-based'}</span>
+                      <span>Round {item.round}</span>
+                    </div>
                   </div>
                   <p>{item.summary}</p>
                   {item.details ? <p className="muted-copy">{item.details}</p> : null}

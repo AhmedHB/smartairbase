@@ -166,3 +166,11 @@ Open:
 - The frontend includes a scenario rules panel in English with mission costs, deliveries, holding fuel cost, total capacity, and dice outcomes for `SCN_STANDARD`.
 - The frontend now shows the round flow as `On mission`, `Awaiting dice roll`, `Holding`, and `Destroyed aircraft`, plus per-aircraft `current/max` stats and positive `Added:` diffs for fuel, weapons, and flight hours.
 - Automated mode has separate wait settings for mission preview, dice rolls, and next-round progression.
+- The frontend also includes an `Analysis feed` panel backed by `MCPClient`, where named personas comment on each round as a running feed:
+  - `Captain Erik Holm (Pilot)`
+  - `Sara Lind (Ground Crew Chief)`
+  - `Johan Berg (Lead Maintenance Technician)`
+  - `Colonel Anna Sjöberg (Command / Operations)`
+- Each analysis entry shows whether the text came from `LLM` or `Rule-based` narration.
+- `MCPClient` supports `smartairbase.analysis.narration-mode` with `hybrid`, `rule-based`, and `llm`.
+- Analysis entries are now persisted by `MCPServer` in the same PostgreSQL database as the game state, while `MCPClient` still generates the narration text.

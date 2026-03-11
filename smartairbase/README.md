@@ -115,6 +115,22 @@ The main board also includes:
 - positive `Added:` diffs on aircraft cards when fuel, weapons, or flight hours have been restored since the previous state refresh
 - flight hours should only increase after full service, not after ordinary landing or ordinary repair
 
+### Analysis Feed
+
+The UI includes an `Analysis feed` panel that behaves like a running commentary stream.
+
+- entries are shown in chronological order, with the latest entry at the bottom
+- the panel auto-scrolls to the newest entry
+- each entry shows the narration source as `LLM` or `Rule-based`
+- each entry is written by a named persona:
+  - `Captain Erik Holm (Pilot)`
+  - `Sara Lind (Ground Crew Chief)`
+  - `Johan Berg (Lead Maintenance Technician)`
+  - `Colonel Anna Sjöberg (Command / Operations)`
+
+The feed is populated by `MCPClient` after round analysis has been generated.
+The saved feed history is persisted by `MCPServer`, so it survives browser refreshes and `MCPClient` restarts.
+
 ## API Endpoints Used
 
 - `GET /api/reference/rules`

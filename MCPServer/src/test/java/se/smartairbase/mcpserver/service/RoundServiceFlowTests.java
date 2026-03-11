@@ -53,16 +53,16 @@ class RoundServiceFlowTests {
         Long gameId = gameService.createGameFromScenario("SCN_STANDARD", "V7").gameId();
         roundService.startRound(gameId);
 
-        ActionResultDto assignment = roundService.assignMission(gameId, "F1", "M1");
+        ActionResultDto assignment = roundService.assignMission(gameId, "F1", "M1-1");
         RoundExecutionResultDto result = roundService.resolveMissions(gameId);
         GameStateDto state = gameQueryService.getGameState(gameId);
 
         AircraftStateDto f1 = aircraft(state, "F1");
-        MissionStateDto m1 = mission(state, "M1");
+        MissionStateDto m1 = mission(state, "M1-1");
 
         assertThat(assignment.success()).isTrue();
         assertThat(result.phase()).isEqualTo("DICE_ROLL");
-        assertThat(result.completedMissions()).containsExactly("M1");
+        assertThat(result.completedMissions()).containsExactly("M1-1");
         assertThat(result.pendingAircraft()).contains("F1");
         assertThat(f1.status()).isEqualTo("AWAITING_DICE_ROLL");
         assertThat(f1.fuel()).isEqualTo(80);
@@ -91,7 +91,7 @@ class RoundServiceFlowTests {
     void completeHappyPathRoundKeepsAircraftReadyAtLandingBase() {
         Long gameId = gameService.createGameFromScenario("SCN_STANDARD", "V7").gameId();
         roundService.startRound(gameId);
-        roundService.assignMission(gameId, "F1", "M1");
+        roundService.assignMission(gameId, "F1", "M1-1");
         roundService.resolveMissions(gameId);
 
         ActionResultDto diceResult = roundService.recordDiceRoll(gameId, "F1", 1);

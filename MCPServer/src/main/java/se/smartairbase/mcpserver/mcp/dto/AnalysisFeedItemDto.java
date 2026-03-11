@@ -1,8 +1,8 @@
-package se.smartairbase.mcpclient.controller.dto;
+package se.smartairbase.mcpserver.mcp.dto;
 
 import java.util.List;
 
-public record AnalysisFeedItemDTO(
+public record AnalysisFeedItemDto(
         String id,
         Long gameId,
         Integer round,

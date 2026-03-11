@@ -573,6 +573,30 @@ button:disabled {
   gap: 12px;
 }
 
+.analysis-feed-meta-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.analysis-source-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.analysis-source-llm {
+  background: rgba(65, 116, 87, 0.14);
+  color: #2f6a4b;
+}
+
+.analysis-source-rule-based {
+  background: rgba(85, 101, 127, 0.14);
+  color: #4a5972;
+}
+
 @keyframes next-step-pulse {
   0%, 100% {
     box-shadow: 0 0 0 3px rgba(212, 107, 44, 0.18), 0 14px 28px rgba(180, 85, 28, 0.24);

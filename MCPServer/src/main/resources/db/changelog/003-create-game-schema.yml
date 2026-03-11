@@ -1,1 +1,79 @@
-databaseChangeLog: []
+databaseChangeLog:
+  - changeSet:
+      id: 003-001-create-game-analysis-entry
+      author: openai
+      changes:
+        - createTable:
+            tableName: game_analysis_entry
+            columns:
+              - column:
+                  name: game_analysis_entry_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_game_analysis_entry
+                    nullable: false
+              - column:
+                  name: game_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: round_number
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: phase
+                  type: VARCHAR(40)
+              - column:
+                  name: role_name
+                  type: VARCHAR(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source
+                  type: VARCHAR(40)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: summary
+                  type: VARCHAR(1000)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: details
+                  type: VARCHAR(2000)
+              - column:
+                  name: related_aircraft
+                  type: VARCHAR(1000)
+              - column:
+                  name: related_bases
+                  type: VARCHAR(1000)
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: game_analysis_entry
+            baseColumnNames: game_id
+            referencedTableName: game
+            referencedColumnNames: game_id
+            constraintName: fk_game_analysis_entry_game
+
+        - addUniqueConstraint:
+            tableName: game_analysis_entry
+            columnNames: game_id, round_number, role_name
+            constraintName: uk_game_analysis_entry_game_round_role
+
+        - createIndex:
+            tableName: game_analysis_entry
+            indexName: idx_game_analysis_entry_game_created
+            columns:
+              - column:
+                  name: game_id
+              - column:
+                  name: created_at
