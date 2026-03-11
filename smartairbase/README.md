@@ -24,9 +24,10 @@ The frontend provides a guided operator workflow:
 - choose number of aircraft
 - choose number of missions per mission type
 - start the next round
+- in manual mode, resolve planned missions explicitly
 - submit dice rolls
 - inspect bases, aircraft, and mission progress
-- reset into a fresh game using the current configuration
+- reset the UI back to its initial state
 
 The player does not manually assign missions or landing bases in the main flow. Those decisions are made by `MCPClient` autoplay.
 
@@ -73,7 +74,20 @@ For `SCN_STANDARD` the panel currently summarizes:
 
 ### Reset
 
-The `Reset` button creates a completely new game using the current create-game settings.
+The `Reset` button does not create a new game anymore. It resets the UI, stops automation, clears the active game from the screen, restores default control-panel settings, and writes a reset entry to event history.
+
+### Manual and Automated Round Flow
+
+Automated mode:
+
+- `Next turn` keeps the one-click autoplay flow
+- mission preview, dice rolls, and next-round progression each have separate wait settings
+
+Manual mode:
+
+- `Next turn` starts the round and prepares mission assignments
+- `Resolve missions` moves those aircraft from `On mission` into `Awaiting dice roll`
+- `Roll dice` stays manual
 
 ### Mission Cards
 
@@ -92,6 +106,7 @@ Runtime mission codes can therefore look like:
 
 The main board also includes:
 
+- `On mission`, `Awaiting dice roll`, `Holding`, and `Destroyed aircraft` panels ordered to match the round flow
 - a dedicated `Holding` panel for aircraft that could not land
 - a dedicated `Destroyed aircraft` panel for aircraft that have crashed or been lost
 - support text under `Missions`, `Holding`, and `Bases`
@@ -105,6 +120,8 @@ The main board also includes:
 - `POST /api/games`
 - `GET /api/games/{gameId}`
 - `POST /api/games/{gameId}/rounds/next`
+- `POST /api/games/{gameId}/rounds/plan`
+- `POST /api/games/{gameId}/missions/resolve-auto`
 - `POST /api/games/{gameId}/dice-rolls/auto`
 
 ## Environment

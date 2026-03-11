@@ -140,4 +140,54 @@ class GameControllerTest {
 
         verify(autoPlayService).startNextRound("13");
     }
+
+    @Test
+    void planNextRoundDelegatesToAutoplayService() throws Exception {
+        AutoPlayResponseDTO response = new AutoPlayResponseDTO(
+                TestStateFactory.state(
+                        TestStateFactory.summary(1, "PLANNING", true, false, false, "ACTIVE"),
+                        java.util.List.of(TestStateFactory.aircraft("F1", "READY", "A", 100, 6, 20, "NONE")),
+                        java.util.List.of(TestStateFactory.mission("M1", "AVAILABLE"))
+                ),
+                "RESOLVE_MISSIONS",
+                false,
+                false,
+                java.util.List.of(),
+                java.util.List.of("F1 -> M1"),
+                java.util.List.of(),
+                java.util.List.of("Round started")
+        );
+        when(autoPlayService.planNextRound("13")).thenReturn(response);
+
+        mockMvc.perform(post("/api/games/13/rounds/plan"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nextAction").value("RESOLVE_MISSIONS"));
+
+        verify(autoPlayService).planNextRound("13");
+    }
+
+    @Test
+    void resolvePlannedMissionsDelegatesToAutoplayService() throws Exception {
+        AutoPlayResponseDTO response = new AutoPlayResponseDTO(
+                TestStateFactory.state(
+                        TestStateFactory.summary(1, "DICE_ROLL", true, false, false, "ACTIVE"),
+                        java.util.List.of(TestStateFactory.aircraft("F1", "AWAITING_DICE_ROLL", null, 80, 6, 16, "NONE")),
+                        java.util.List.of(TestStateFactory.mission("M1", "COMPLETED"))
+                ),
+                "ROLL_DICE",
+                false,
+                false,
+                java.util.List.of("F1"),
+                java.util.List.of(),
+                java.util.List.of(),
+                java.util.List.of("Mission resolution completed")
+        );
+        when(autoPlayService.resolvePlannedMissions("13")).thenReturn(response);
+
+        mockMvc.perform(post("/api/games/13/missions/resolve-auto"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pendingDiceAircraft[0]").value("F1"));
+
+        verify(autoPlayService).resolvePlannedMissions("13");
+    }
 }

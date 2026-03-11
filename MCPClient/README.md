@@ -51,10 +51,12 @@ Main endpoints:
 - `POST /api/games`
 - `GET /api/games/{gameId}`
 - `POST /api/games/{gameId}/rounds/next`
+- `POST /api/games/{gameId}/rounds/plan`
 - `POST /api/games/{gameId}/dice-rolls/auto`
 - `POST /api/games/{gameId}/rounds/start`
 - `POST /api/games/{gameId}/missions/assign`
 - `POST /api/games/{gameId}/missions/resolve`
+- `POST /api/games/{gameId}/missions/resolve-auto`
 - `POST /api/games/{gameId}/dice-rolls`
 - `GET /api/games/{gameId}/landing-bases?aircraftCode=...`
 - `POST /api/games/{gameId}/landings`
@@ -97,11 +99,24 @@ Example:
 - may complete the round immediately if nothing is pending
 - supports rounds where no action is possible and the game effectively waits for the next round
 
+`POST /api/games/{gameId}/rounds/plan`:
+
+- starts the round
+- assigns missions automatically
+- stops in `PLANNING` so the frontend can show aircraft in `On mission` before mission resolution
+
+`POST /api/games/{gameId}/missions/resolve-auto`:
+
+- resolves the already planned missions
+- moves the round into dice, landing, or direct completion
+- returns the same autoplay-style response shape used by the frontend
+
 `POST /api/games/{gameId}/dice-rolls/auto`:
 
 - records one dice roll
 - resolves all landing choices automatically when the round enters `LANDING`
 - completes the round automatically when legal
+- returns current state instead of failing the UI if a late dice request arrives after the round already moved to `LANDING`
 
 The returned game state reflects the post-landing or post-round server state, which means aircraft may already have been refueled or rearmed by the time the browser renders the response.
 
@@ -170,3 +185,4 @@ http://localhost:8080
 - Scenario/version normalization accepts old `smartairbase` input as an alias for `SCN_STANDARD`, and `7` as an alias for `V7`.
 - `GameRulesReferenceService` provides the English scenario summary and key numbers shown in the frontend rules panel, including deliveries, holding fuel cost, capacity, and dice outcomes.
 - The client currently drives a UI that shows aircraft `current/max` values and positive `Added:` diffs based on successive game-state snapshots.
+- Base lookups in autoplay normalize both `A` and `BASE_A` style codes so landing logic stays aligned with runtime state and rules reference data.

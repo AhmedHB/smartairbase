@@ -56,6 +56,11 @@ Typical round sequence:
 5. land aircraft or send them to holding
 6. complete round
 
+Current UI flow:
+
+- automated mode keeps a one-click round start and then auto-runs dice and landings
+- manual mode is split into `Next turn` and `Resolve missions` so the player can inspect the `On mission` state before dice handling starts
+
 Rounds with no available actions are also valid. If mission resolution leaves no aircraft waiting for dice or landing, the round can move directly to completion and the player simply waits for the next round.
 
 ## Dynamic Game Creation
@@ -155,6 +160,7 @@ Open:
 
 - `MCPServer` is the source of truth for rules and state transitions.
 - `MCPClient` unwraps MCP tool responses and returns typed DTO-based HTTP responses.
-- The frontend `Reset` button creates a fresh game from the current create-game settings.
+- The frontend `Reset` button now resets the UI to its initial state, stops automation, clears the active game from the screen, and logs that the previous game ended through reset.
 - The frontend includes a scenario rules panel in English with mission costs, deliveries, holding fuel cost, total capacity, and dice outcomes for `SCN_STANDARD`.
-- The frontend now shows dedicated panels for `Holding` and `Destroyed aircraft`, plus per-aircraft `current/max` stats and positive `Added:` diffs for fuel, weapons, and flight hours.
+- The frontend now shows the round flow as `On mission`, `Awaiting dice roll`, `Holding`, and `Destroyed aircraft`, plus per-aircraft `current/max` stats and positive `Added:` diffs for fuel, weapons, and flight hours.
+- Automated mode has separate wait settings for mission preview, dice rolls, and next-round progression.

@@ -90,6 +90,14 @@ public class GameController {
     }
 
     /**
+     * Starts the next round and performs automatic mission assignment without resolving missions.
+     */
+    @PostMapping("/games/{gameId}/rounds/plan")
+    public AutoPlayResponseDTO planNextRound(@PathVariable String gameId) {
+        return autoPlayService.planNextRound(gameId);
+    }
+
+    /**
      * Assigns one mission to one aircraft.
      */
     @PostMapping("/games/{gameId}/missions/assign")
@@ -103,6 +111,14 @@ public class GameController {
     @PostMapping("/games/{gameId}/missions/resolve")
     public RoundExecutionResultDTO resolveMissions(@PathVariable String gameId) {
         return mcpClient.resolveMissions(gameId);
+    }
+
+    /**
+     * Resolves already planned missions and returns an autoplay-style response for the UI.
+     */
+    @PostMapping("/games/{gameId}/missions/resolve-auto")
+    public AutoPlayResponseDTO resolvePlannedMissions(@PathVariable String gameId) {
+        return autoPlayService.resolvePlannedMissions(gameId);
     }
 
     /**

@@ -1,8 +1,8 @@
 SmartAirBase – Formell Spelregel och Petri‑nät Specifikation
 
-Version 7 – Med parkeringsplatser, maintenance-platser, reservdelar, bränsle- och vapenregler
+SCN_STANDARD V7 – Med parkeringsplatser, maintenance-platser, reservdelar, bränsle- och vapenregler
 Skapad: 2026-03-09
-Uppdaterad: 2026-03-09
+Uppdaterad: 2026-03-11
 
 ============================================================
 1. SPELETS MÅL
@@ -12,21 +12,32 @@ Målet är att slutföra alla uppdrag med de flygplan som finns
 tillgängliga, på så få rundor som möjligt och med så många
 flygplan kvar som möjligt.
 
+Vinst inträffar när:
+- alla uppdrag är slutförda
+- alla överlevande flygplan är tillbaka i READY på en bas
+
 Förlust inträffar om:
-- alla flygplan förstörs
-- uppdrag inte längre kan genomföras
+- inga operativa flygplan återstår
 
 ============================================================
 2. STARTLÄGE
 ============================================================
 
-Vid spelets start finns:
+Spelet byggs från scenariomallen SCN_STANDARD V7.
+
+Vid spelets start i standardupplägget finns:
 
 Flygplan: 3
 Baser: A, B, C
 Uppdrag: 3
 
-Alla flygplan börjar spelet på Bas A.*
+Alla flygplan börjar spelet på Bas A så länge kapacitet finns.
+Om fler flygplan skapas än vad Bas A rymmer fördelas de vidare till
+nästa bas med ledig parkering.
+
+I implementationen kan game creation också konfigurera:
+- antal flygplan
+- antal uppdrag per missiontyp (M1, M2, M3)
 
 Flygplanets maxkapacitet:
 
@@ -274,10 +285,11 @@ Bränsleförbrukning per runda i HOLDING:
 
 5
 
-Om bränslet är mindre än 5 när HOLDING ska fortsätta och ingen bas
-kan ta emot planet -> CRASH.
+Om ett flygplan i HOLDING når 0 bränsle vid rundslut ligger det kvar
+i holding den rundan.
 
-Om bränslet tar slut -> CRASH.
+Om flygplanet fortfarande är kvar i HOLDING vid ett senare rundslut
+med 0 bränsle -> CRASH.
 
 ============================================================
 10. TÄRNING
@@ -312,11 +324,23 @@ får flyga ett nytt uppdrag.
 Varje runda:
 
 1 Planering
-2 Resurskontroll
-3 Uppdrag
+2 Uppdrag
+3 Mission resolution
 4 Tärning
 5 Landning och underhåll
 6 Resursuppdatering
+
+I nuvarande UI gäller:
+
+- automatiskt läge kör planering, mission resolution, tärning och landning
+  med autoplay
+- manuellt läge är uppdelat i:
+  - Next turn
+  - Resolve missions
+  - Roll dice
+
+Det gör att spelaren kan se flygplan i ON_MISSION innan de går vidare
+till AWAITING_DICE_ROLL.
 
 Resursuppdatering:
 - var 2:a runda: bränsleleverans
@@ -623,6 +647,10 @@ Flygplan kvar: 3
 Mission completed: 3
 
 Terminal state: WIN
+
+Anledningen till att detta är vinst är att:
+- alla uppdrag är slutförda
+- alla överlevande flygplan står i READY på bas
 
 Slutstatus:
 

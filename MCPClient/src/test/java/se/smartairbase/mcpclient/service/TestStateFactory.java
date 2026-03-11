@@ -46,6 +46,12 @@ public final class TestStateFactory {
         return new LandingOptionDTO(baseCode, "Base " + baseCode, canLand, canLand ? "Landing available" : "Blocked");
     }
 
+    public static BaseStateDTO base(String code, String name, int fuel, int weapons, int spareParts,
+                                    int occupiedParkingSlots, int parkingCapacity, int occupiedMaintSlots, int maintenanceCapacity) {
+        return new BaseStateDTO(code, name, "MAIN", fuel, weapons, spareParts,
+                occupiedParkingSlots, parkingCapacity, occupiedMaintSlots, maintenanceCapacity);
+    }
+
     private static List<String> allowedActions(String status) {
         return switch (status) {
             case "READY" -> List.of("ASSIGN_MISSION");

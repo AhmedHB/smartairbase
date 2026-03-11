@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 /**
@@ -75,6 +76,56 @@ public class AutoPlayService {
     }
 
     /**
+     * Starts a new round and performs automatic mission assignment without resolving the missions yet.
+     */
+    public AutoPlayResponseDTO planNextRound(String gameId) {
+        List<String> messages = new ArrayList<>();
+        List<String> autoAssignments = new ArrayList<>();
+        List<String> autoLandings = List.of();
+
+        GameStateDTO stateBefore = mcpClient.getGameStateView(gameId);
+        if (!"ACTIVE".equals(stateBefore.game().status())) {
+            return buildResponse(stateBefore, false, autoAssignments, autoLandings, messages);
+        }
+
+        mcpClient.startRound(gameId);
+        messages.add("Round started");
+
+        GameStateDTO planningState = mcpClient.getGameStateView(gameId);
+        for (MissionAssignment assignment : chooseMissionAssignments(planningState)) {
+            mcpClient.assignMission(gameId, new AssignMissionRequestDTO(assignment.aircraftCode(), assignment.missionCode()));
+            autoAssignments.add(assignment.aircraftCode() + " -> " + assignment.missionCode());
+        }
+
+        GameStateDTO finalState = mcpClient.getGameStateView(gameId);
+        messages.add(autoAssignments.isEmpty() ? "No valid mission assignments were available" : "Mission planning prepared");
+        return buildResponse(finalState, false, autoAssignments, autoLandings, messages);
+    }
+
+    /**
+     * Resolves already assigned missions and moves the round forward to dice, landing or completion.
+     */
+    public AutoPlayResponseDTO resolvePlannedMissions(String gameId) {
+        List<String> messages = new ArrayList<>();
+        List<String> autoAssignments = List.of();
+        List<String> autoLandings = new ArrayList<>();
+
+        GameStateDTO stateBefore = mcpClient.getGameStateView(gameId);
+        if (!stateBefore.game().roundOpen() || !"PLANNING".equals(stateBefore.game().roundPhase())) {
+            messages.add("Mission resolution is not available");
+            return buildResponse(stateBefore, false, autoAssignments, autoLandings, messages);
+        }
+
+        mcpClient.resolveMissions(gameId);
+        messages.add("Mission resolution completed");
+
+        GameStateDTO afterResolution = mcpClient.getGameStateView(gameId);
+        boolean roundCompleted = maybeCompleteRound(gameId, afterResolution, messages);
+        GameStateDTO finalState = mcpClient.getGameStateView(gameId);
+        return buildResponse(finalState, roundCompleted, autoAssignments, autoLandings, messages);
+    }
+
+    /**
      * Records the player's dice roll and lets the client resolve all landing decisions automatically.
      */
     public AutoPlayResponseDTO resolveDiceRoll(String gameId, DiceRollRequestDTO request) {
@@ -82,8 +133,27 @@ public class AutoPlayService {
         List<String> autoAssignments = List.of();
         List<String> autoLandings = new ArrayList<>();
 
-        mcpClient.recordDiceRoll(gameId, request);
-        messages.add("Dice roll recorded for " + request.aircraftCode());
+        GameStateDTO stateBefore = mcpClient.getGameStateView(gameId);
+        boolean aircraftPending = stateBefore.aircraft().stream()
+                .anyMatch(aircraft -> request.aircraftCode().equals(aircraft.code())
+                        && "AWAITING_DICE_ROLL".equals(aircraft.status()));
+        if (!"DICE_ROLL".equals(stateBefore.game().roundPhase()) || !aircraftPending) {
+            messages.add("Dice step already finished");
+            return buildResponse(stateBefore, false, autoAssignments, autoLandings, messages);
+        }
+
+        try {
+            mcpClient.recordDiceRoll(gameId, request);
+            messages.add("Dice roll recorded for " + request.aircraftCode());
+        }
+        catch (IllegalStateException exception) {
+            if (isLateDiceRoll(exception)) {
+                GameStateDTO currentState = mcpClient.getGameStateView(gameId);
+                messages.add("Dice step already finished");
+                return buildResponse(currentState, false, autoAssignments, autoLandings, messages);
+            }
+            throw exception;
+        }
 
         GameStateDTO state = mcpClient.getGameStateView(gameId);
         if ("LANDING".equals(state.game().roundPhase())) {
@@ -96,8 +166,21 @@ public class AutoPlayService {
         return buildResponse(finalState, roundCompleted, autoAssignments, autoLandings, messages);
     }
 
+    private boolean isLateDiceRoll(IllegalStateException exception) {
+        return exception.getMessage() != null
+                && exception.getMessage().contains("Round is in phase LANDING");
+    }
+
     private boolean maybeCompleteRound(String gameId, GameStateDTO state, List<String> messages) {
-        if (!state.game().roundOpen() || !state.game().canCompleteRound()) {
+        if (!state.game().roundOpen()) {
+            return false;
+        }
+        boolean noPendingRoundDecisions = state.aircraft().stream()
+                .noneMatch(aircraft -> "AWAITING_DICE_ROLL".equals(aircraft.status())
+                        || "AWAITING_LANDING".equals(aircraft.status()));
+        boolean canSafelyComplete = state.game().canCompleteRound()
+                || ("LANDING".equals(state.game().roundPhase()) && noPendingRoundDecisions);
+        if (!canSafelyComplete) {
             return false;
         }
 
@@ -243,10 +326,10 @@ public class AutoPlayService {
 
         Map<String, BaseReference> baseReferenceByCode = baseReferenceByCode();
         Map<String, BaseStateDTO> baseStateByCode = state.bases().stream()
-                .collect(Collectors.toMap(BaseStateDTO::code, base -> base));
+                .collect(Collectors.toMap(base -> normalizeBaseCode(base.code()), base -> base, (first, second) -> first));
         List<MissionReference> remainingMissions = remainingMissionReferences(state);
         boolean alternativeRearmBaseExists = validOptions.stream()
-                .map(candidate -> baseReferenceByCode.get(candidate.baseCode()))
+                .map(candidate -> baseReferenceByCode.get(normalizeBaseCode(candidate.baseCode())))
                 .anyMatch(candidateBase -> candidateBase != null
                         && !"A".equals(candidateBase.code())
                         && canRearm(candidateBase));
@@ -255,8 +338,8 @@ public class AutoPlayService {
                 .max(Comparator.comparingInt(option -> landingScore(
                         aircraft,
                         option,
-                        baseReferenceByCode.get(option.baseCode()),
-                        baseStateByCode.get(option.baseCode()),
+                        baseReferenceByCode.get(normalizeBaseCode(option.baseCode())),
+                        baseStateByCode.get(normalizeBaseCode(option.baseCode())),
                         remainingMissions,
                         validOptions,
                         alternativeRearmBaseExists)))
@@ -286,8 +369,8 @@ public class AutoPlayService {
             }
 
             if (!"FULL_SERVICE_REQUIRED".equals(damage)
-                    && !"A".equals(option.baseCode())
-                    && validOptions.stream().anyMatch(candidate -> "A".equals(candidate.baseCode()))) {
+                    && !"A".equals(normalizeBaseCode(option.baseCode()))
+                    && validOptions.stream().anyMatch(candidate -> "A".equals(normalizeBaseCode(candidate.baseCode())))) {
                 score += 40;
             }
         }
@@ -302,11 +385,11 @@ public class AutoPlayService {
                 if (baseState != null && baseState.weaponsStock() >= maxRemainingWeaponCost) {
                     score += 60;
                 }
-                if ("A".equals(option.baseCode()) && alternativeRearmBaseExists) {
+                if ("A".equals(normalizeBaseCode(option.baseCode())) && alternativeRearmBaseExists) {
                     score -= 20;
                 }
             }
-            else if ("C".equals(option.baseCode())) {
+            else if ("C".equals(normalizeBaseCode(option.baseCode()))) {
                 score += 25;
             }
         }
@@ -353,6 +436,9 @@ public class AutoPlayService {
     }
 
     private List<String> normalizeCapabilities(BaseReference base) {
+        if (base == null || base.capabilities() == null) {
+            return List.of();
+        }
         return base.capabilities().stream()
                 .map(String::toLowerCase)
                 .toList();
@@ -384,7 +470,14 @@ public class AutoPlayService {
 
     private Map<String, BaseReference> baseReferenceByCode() {
         return rulesReferenceService.getRules().bases().stream()
-                .collect(Collectors.toMap(BaseReference::code, base -> base));
+                .collect(Collectors.toMap(base -> normalizeBaseCode(base.code()), base -> base, (first, second) -> first));
+    }
+
+    private String normalizeBaseCode(String code) {
+        if (code == null) {
+            return "";
+        }
+        return code.toUpperCase(Locale.ROOT).replace("BASE_", "");
     }
 
     private int landingPriority(AircraftStateDTO aircraft) {
@@ -433,6 +526,9 @@ public class AutoPlayService {
     private String nextAction(GameStateDTO state, List<String> pendingDiceAircraft) {
         if (!"ACTIVE".equals(state.game().status())) {
             return "GAME_OVER";
+        }
+        if (state.game().roundOpen() && "PLANNING".equals(state.game().roundPhase())) {
+            return "RESOLVE_MISSIONS";
         }
         if (!pendingDiceAircraft.isEmpty()) {
             return "ROLL_DICE";
