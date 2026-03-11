@@ -69,6 +69,7 @@ For `SCN_STANDARD` the panel currently summarizes:
 - delivery schedules for fuel, weapons, and spare parts
 - dice outcome meanings
 - the fact that some rounds may be pure wait rounds
+- the current holding crash rule after fuel has already reached `0`
 
 ### Reset
 
@@ -92,8 +93,11 @@ Runtime mission codes can therefore look like:
 The main board also includes:
 
 - a dedicated `Holding` panel for aircraft that could not land
+- a dedicated `Destroyed aircraft` panel for aircraft that have crashed or been lost
 - support text under `Missions`, `Holding`, and `Bases`
 - base cards with maximum inventory values and delivery timing summaries for the current scenario
+- aircraft cards in `Holding`, `Park`, and `Repair` with `current/max` values for fuel, weapons, and flight hours
+- positive `Added:` diffs on aircraft cards when fuel, weapons, or flight hours have been restored since the previous state refresh
 
 ## API Endpoints Used
 

@@ -86,8 +86,25 @@ Aircraft are generated as:
 
 Current implemented outcome rules:
 
-- `WON` when all missions are completed
+- `WON` when all missions are completed and all surviving aircraft are back in `READY` state at a base
 - `LOST` when no operational aircraft remain
+
+Aircraft may still be destroyed during play. Destroyed aircraft do not by themselves block victory as long as the remaining surviving aircraft have been recovered to a stable end state.
+
+## Service and Holding
+
+Current service rules in the implementation:
+
+- mission cost is always applied to the aircraft first
+- after landing, a base may refuel and rearm the aircraft immediately if that base supports those services and has stock available
+- repair and full service consume maintenance capacity and spare parts
+- flight hours are not restored on landing; they are restored only when actual service/full service completes
+
+Current holding rule in the implementation:
+
+- aircraft in `HOLDING` lose `5` fuel at round completion
+- when fuel first reaches `0`, the aircraft remains in holding
+- if it is still in holding at a later round completion with `0` fuel, it crashes
 
 ## Running Locally
 
@@ -140,3 +157,4 @@ Open:
 - `MCPClient` unwraps MCP tool responses and returns typed DTO-based HTTP responses.
 - The frontend `Reset` button creates a fresh game from the current create-game settings.
 - The frontend includes a scenario rules panel in English with mission costs, deliveries, holding fuel cost, total capacity, and dice outcomes for `SCN_STANDARD`.
+- The frontend now shows dedicated panels for `Holding` and `Destroyed aircraft`, plus per-aircraft `current/max` stats and positive `Added:` diffs for fuel, weapons, and flight hours.
