@@ -35,6 +35,8 @@ function App() {
   const [diceValue, setDiceValue] = useState(1);
   const [useRandomDice, setUseRandomDice] = useState(true);
   const [eventLog, setEventLog] = useState([]);
+  const [analysisFeed, setAnalysisFeed] = useState([]);
+  const [analysisPending, setAnalysisPending] = useState(false);
   const [status, setStatus] = useState({ kind: 'idle', message: 'Create a game to begin.' });
   const automationInFlightRef = useRef(false);
   const nextRoundInFlightRef = useRef(false);
@@ -42,6 +44,8 @@ function App() {
   const [nextRoundCountdown, setNextRoundCountdown] = useState(null);
   const missionPreviewTimerRef = useRef(null);
   const autoDiceTimerRef = useRef(null);
+  const lastAnalysisRequestKeyRef = useRef(null);
+  const analysisFeedListRef = useRef(null);
   const [missionPreviewActive, setMissionPreviewActive] = useState(false);
   const [manualMissionPreviewAssignments, setManualMissionPreviewAssignments] = useState({});
 
@@ -329,6 +333,58 @@ async function request(path, options = {}) {
     };
   }, []);
 
+  useEffect(() => {
+    const round = gameState?.game?.currentRound;
+    const statusValue = gameState?.game?.status;
+    const shouldGenerate = isValidGameId(gameId)
+      && round > 0
+      && !gameState?.game?.roundOpen
+      && (statusValue === 'ACTIVE' || statusValue === 'WON' || statusValue === 'LOST');
+    if (!shouldGenerate) {
+      return undefined;
+    }
+
+    const requestKey = `${gameId}-${round}-${statusValue}`;
+    if (lastAnalysisRequestKeyRef.current === requestKey) {
+      return undefined;
+    }
+
+    let ignore = false;
+    lastAnalysisRequestKeyRef.current = requestKey;
+    setAnalysisPending(true);
+
+    async function generateAnalysis() {
+      try {
+        await request(`/games/${gameId}/analysis/generate`, { method: 'POST' });
+        const feedResponse = await request(`/games/${gameId}/analysis-feed`);
+        if (!ignore) {
+          setAnalysisFeed(feedResponse.items || []);
+        }
+      } catch (_error) {
+        if (!ignore) {
+          setAnalysisFeed((current) => current);
+        }
+      } finally {
+        if (!ignore) {
+          setAnalysisPending(false);
+        }
+      }
+    }
+
+    void generateAnalysis();
+    return () => {
+      ignore = true;
+    };
+  }, [gameId, gameState]);
+
+  useEffect(() => {
+    const container = analysisFeedListRef.current;
+    if (!container) {
+      return;
+    }
+    container.scrollTop = container.scrollHeight;
+  }, [analysisFeed, analysisPending]);
+
   function pushLog(title, payload) {
     const stamp = new Date().toLocaleTimeString('en-GB');
     setEventLog((current) => [
@@ -401,6 +457,9 @@ async function request(path, options = {}) {
     setUseRandomDice(true);
     setStatus({ kind: 'idle', message: 'Create a game to begin.' });
     setEventLog([]);
+    setAnalysisFeed([]);
+    setAnalysisPending(false);
+    lastAnalysisRequestKeyRef.current = null;
 
     if (previousGameId) {
       pushLog('Game reset', {
@@ -438,6 +497,9 @@ async function request(path, options = {}) {
       setDiceValue(1);
       setUseRandomDice(true);
       setEventLog([]);
+      setAnalysisFeed([]);
+      setAnalysisPending(false);
+      lastAnalysisRequestKeyRef.current = null;
       setPreviousGameState(null);
       stopAutomation();
       await refreshGameState(nextGameId);
@@ -798,19 +860,21 @@ async function request(path, options = {}) {
                       })}
                     </div>
                   </div>
-                  <div className="slot-panel">
-                    <h3>Repair</h3>
-                    <div className="slots">
-                      {Array.from({ length: base.maintenanceCapacity }).map((_, index) => {
-                        const aircraft = base.maintenance[index];
-                        return (
-                          <div key={`${base.code}-repair-${index}`} className={`slot slot-${aircraft ? 'repairing' : 'empty'}`}>
-                            {aircraft ? <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} compact /> : `Slot ${index + 1}`}
-                          </div>
-                        );
-                      })}
+                  {base.maintenanceCapacity > 0 ? (
+                    <div className="slot-panel">
+                      <h3>Repair</h3>
+                      <div className="slots">
+                        {Array.from({ length: base.maintenanceCapacity }).map((_, index) => {
+                          const aircraft = base.maintenance[index];
+                          return (
+                            <div key={`${base.code}-repair-${index}`} className={`slot slot-${aircraft ? 'repairing' : 'empty'}`}>
+                              {aircraft ? <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} compact /> : `Slot ${index + 1}`}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
+                  ) : null}
                 </div>
               </article>
             ))}
@@ -1053,6 +1117,30 @@ async function request(path, options = {}) {
             </ul>
           ) : (
             <p>Roll dice to see automatic landing decisions.</p>
+          )}
+        </article>
+        <article className="info-panel analysis-feed-panel">
+          <div className="analysis-feed-header">
+            <h3>Analysis feed</h3>
+            {analysisPending ? <span className="analysis-pending">Pending...</span> : null}
+          </div>
+          {analysisFeed.length ? (
+            <div ref={analysisFeedListRef} className="event-list analysis-feed-list">
+              {analysisFeed.map((item) => (
+                <article key={item.id} className="event-item analysis-feed-item">
+                  <div className="analysis-feed-meta">
+                    <strong>{item.role}</strong>
+                    <span>Round {item.round}</span>
+                  </div>
+                  <p>{item.summary}</p>
+                  {item.details ? <p className="muted-copy">{item.details}</p> : null}
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="analysis-feed-empty">
+              <p className="muted-copy">Round analysis will appear here as a running feed.</p>
+            </div>
           )}
         </article>
       </section>
