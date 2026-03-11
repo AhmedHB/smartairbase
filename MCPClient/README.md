@@ -120,6 +120,12 @@ Example:
 
 The returned game state reflects the post-landing or post-round server state, which means aircraft may already have been refueled or rearmed by the time the browser renders the response.
 
+Flight hours are different from fuel and weapons:
+
+- they are not restored on ordinary landing
+- they are not restored by ordinary repair
+- they are restored only when actual full service completes, either because the dice outcome required full service or because the aircraft had reached `0` remaining flight hours
+
 Autoplay prioritizes:
 
 - completing as many missions as possible

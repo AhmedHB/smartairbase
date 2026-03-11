@@ -159,7 +159,10 @@ REARM?
 - fyll upp till max 6 eller tills lagret tar slut
 
 Flygtimmar återställs inte direkt vid landning.
-De återställs först när riktig reparation eller full service är klar.
+Vanlig reparation återställer inte flygtimmar.
+De återställs först när riktig full service är klar, antingen efter
+ett tärningsutfall som kräver full service eller när planet nått 0
+återstående flygtimmar.
 
 Reparation per runda
 För varje flygplan i maintenance:

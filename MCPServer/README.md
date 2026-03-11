@@ -120,7 +120,9 @@ Ground service behavior:
 - mission fuel, weapons, and flight-hour cost are applied to the aircraft during mission resolution
 - landing may immediately trigger `REFUEL` and `REARM` from the base stock
 - repair/full service consume spare parts and maintenance slots
-- flight hours are restored only when actual service/full service completes
+- flight hours are never restored on ordinary landing
+- ordinary repair does not restore flight hours
+- flight hours are restored only when actual `FULL_SERVICE_REQUIRED` work completes, whether that requirement came from the dice outcome or from the aircraft reaching `0` remaining flight hours
 
 ## Persistence
 

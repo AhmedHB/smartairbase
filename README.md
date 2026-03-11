@@ -103,7 +103,9 @@ Current service rules in the implementation:
 - mission cost is always applied to the aircraft first
 - after landing, a base may refuel and rearm the aircraft immediately if that base supports those services and has stock available
 - repair and full service consume maintenance capacity and spare parts
-- flight hours are not restored on landing; they are restored only when actual service/full service completes
+- flight hours are never restored on ordinary landing
+- ordinary repair does not restore flight hours
+- flight hours are restored only when actual full service completes, either because the dice result required full service or because the aircraft had reached `0` remaining flight hours
 
 Current holding rule in the implementation:
 

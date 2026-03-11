@@ -113,6 +113,7 @@ The main board also includes:
 - base cards with maximum inventory values and delivery timing summaries for the current scenario
 - aircraft cards in `Holding`, `Park`, and `Repair` with `current/max` values for fuel, weapons, and flight hours
 - positive `Added:` diffs on aircraft cards when fuel, weapons, or flight hours have been restored since the previous state refresh
+- flight hours should only increase after full service, not after ordinary landing or ordinary repair
 
 ## API Endpoints Used
 
