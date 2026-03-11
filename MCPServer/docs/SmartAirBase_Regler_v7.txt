@@ -317,6 +317,14 @@ Reparationstid
 När flygtimmar når 0 måste flygplanet genomgå full service innan det
 får flyga ett nytt uppdrag.
 
+Flygtimmar återställs inte när planet bara landar.
+
+Flygtimmar återställs inte heller av vanlig reparation.
+
+Flygtimmar återställs endast när full service är klar, antingen för att:
+- tärningskastet gav full service krävs
+- flygtimmarna hade nått 0
+
 ============================================================
 12. SPELRUNDA
 ============================================================

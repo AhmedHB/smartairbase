@@ -418,9 +418,11 @@ public class RoundService {
                     aircraft.getCode() + " maintenance progress");
 
             if (state.getRepairRoundsRemaining() == 0) {
+                DamageType completedDamage = state.getDamage();
                 state.setDamage(DamageType.NONE);
                 BaseState baseState = baseStateRepository.findByGameBase_Id(state.getCurrentBase().getId()).orElseThrow();
-                restoreAircraftOperationalState(game, round, aircraft, state, state.getCurrentBase(), baseState, true);
+                restoreAircraftOperationalState(game, round, aircraft, state, state.getCurrentBase(), baseState,
+                        completedDamage == DamageType.FULL_SERVICE_REQUIRED);
                 aircraft.setStatus(AircraftStatus.READY);
                 baseState.decrementOccupiedMaintSlots();
                 logEvent(game, round, aircraft, state.getCurrentBase(), null, EventType.REPAIR_COMPLETE,
@@ -545,7 +547,7 @@ public class RoundService {
 
     private void restoreAircraftOperationalState(Game game, GameRound round, GameAircraft aircraft,
                                                  AircraftState state, GameBase base, BaseState baseState,
-                                                 boolean resetFlightHours) {
+                                                 boolean restoreFlightHours) {
         int fuelNeeded = Math.max(0, aircraft.getAircraftType().getMaxFuel() - state.getFuel());
         if (fuelNeeded > 0 && baseSupportsService(base, BaseServiceType.REFUEL)) {
             int transferredFuel = Math.min(fuelNeeded, baseState.getFuelStock());
@@ -568,7 +570,7 @@ public class RoundService {
             }
         }
 
-        if (resetFlightHours && baseSupportsService(base, BaseServiceType.FULL_SERVICE)) {
+        if (restoreFlightHours && baseSupportsService(base, BaseServiceType.FULL_SERVICE)) {
             state.setRemainingFlightHours(aircraft.getAircraftType().getMaxFlightHours());
         }
     }
