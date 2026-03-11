@@ -19,6 +19,7 @@ function App() {
   const [gameId, setGameId] = useState('');
   const [rules, setRules] = useState(null);
   const [showScenarioRules, setShowScenarioRules] = useState(false);
+  const [previousGameState, setPreviousGameState] = useState(null);
   const [gameState, setGameState] = useState(null);
   const [lastAutoResponse, setLastAutoResponse] = useState(null);
   const [selectedAircraft, setSelectedAircraft] = useState('');
@@ -98,6 +99,18 @@ function App() {
   const baseReferenceByCode = useMemo(() => {
     return Object.fromEntries((rules?.bases || []).map((base) => [normalizeBaseCode(base.code), base]));
   }, [rules]);
+
+  const aircraftAdditionsByCode = useMemo(() => {
+    const previousAircraft = Object.fromEntries((previousGameState?.aircraft || []).map((aircraft) => [aircraft.code, aircraft]));
+    return Object.fromEntries((gameState?.aircraft || []).map((aircraft) => {
+      const previous = previousAircraft[aircraft.code];
+      return [aircraft.code, {
+        fuel: Math.max(0, (aircraft.fuel ?? 0) - (previous?.fuel ?? aircraft.fuel ?? 0)),
+        weapons: Math.max(0, (aircraft.weapons ?? 0) - (previous?.weapons ?? aircraft.weapons ?? 0)),
+        hours: Math.max(0, (aircraft.remainingFlightHours ?? 0) - (previous?.remainingFlightHours ?? aircraft.remainingFlightHours ?? 0)),
+      }];
+    }));
+  }, [gameState, previousGameState]);
 
   const missionCards = useMemo(() => {
     if (!rules?.missions) {
@@ -191,8 +204,13 @@ async function request(path, options = {}) {
       return;
     }
     const data = await request(`/games/${targetGameId}`);
-    setGameState(data);
+    applyGameState(data);
     return data;
+  }
+
+  function applyGameState(nextState) {
+    setPreviousGameState(gameState);
+    setGameState(nextState);
   }
 
   async function handleCreateGame(event) {
@@ -221,6 +239,7 @@ async function request(path, options = {}) {
       setDiceValue(1);
       setUseRandomDice(true);
       setEventLog([]);
+      setPreviousGameState(null);
       await refreshGameState(nextGameId);
       setStatus({ kind: 'success', message: `${successPrefix} ${nextGameId}.` });
       pushLog(successPrefix, data);
@@ -242,7 +261,7 @@ async function request(path, options = {}) {
     try {
       const data = await request(`/games/${gameId}/rounds/next`, { method: 'POST' });
       setLastAutoResponse(data);
-      setGameState(data.gameState);
+      applyGameState(data.gameState);
       setStatus({
         kind: 'success',
         message: data.gameFinished
@@ -276,7 +295,7 @@ async function request(path, options = {}) {
         }),
       });
       setLastAutoResponse(data);
-      setGameState(data.gameState);
+      applyGameState(data.gameState);
       setStatus({
         kind: data.gameFinished ? 'success' : 'idle',
         message: data.gameFinished
@@ -340,9 +359,7 @@ async function request(path, options = {}) {
             <div className="holding-grid">
               {holdingAircraft.map((aircraft) => (
                 <div key={aircraft.code} className="holding-card">
-                  <strong>{aircraft.code}</strong>
-                  <span>Fuel {aircraft.fuel}</span>
-                  <span>{humanizeStatus(aircraft.damage)}</span>
+                  <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} />
                 </div>
               ))}
             </div>
@@ -376,6 +393,8 @@ async function request(path, options = {}) {
                   <p>Fuel {base.fuelStock}</p>
                   <p>Weapons {base.weaponsStock}</p>
                   <p>Reserveparts {base.sparePartsStock}</p>
+                  <p>Parking slots free {Math.max(0, base.parkingCapacity - base.parked.length)} / {base.parkingCapacity}</p>
+                  <p>Repair slots free {Math.max(0, base.maintenanceCapacity - base.maintenance.length)} / {base.maintenanceCapacity}</p>
                 </div>
                 <div className="slot-grid">
                   <div className="slot-panel">
@@ -385,7 +404,7 @@ async function request(path, options = {}) {
                         const aircraft = base.parked[index];
                         return (
                           <div key={`${base.code}-park-${index}`} className={`slot slot-${aircraft ? 'filled' : 'empty'}`}>
-                            {aircraft ? aircraft.code : `Slot ${index + 1}`}
+                            {aircraft ? <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} compact /> : `Slot ${index + 1}`}
                           </div>
                         );
                       })}
@@ -398,7 +417,7 @@ async function request(path, options = {}) {
                         const aircraft = base.maintenance[index];
                         return (
                           <div key={`${base.code}-repair-${index}`} className={`slot slot-${aircraft ? 'repairing' : 'empty'}`}>
-                            {aircraft ? aircraft.code : `Slot ${index + 1}`}
+                            {aircraft ? <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} compact /> : `Slot ${index + 1}`}
                           </div>
                         );
                       })}
@@ -581,6 +600,32 @@ function MetricCard({ label, value }) {
       <span>{label}</span>
       <strong>{value}</strong>
     </article>
+  );
+}
+
+function AircraftStatusCard({ aircraft, additions, compact = false }) {
+  const maxStats = {
+    fuel: 100,
+    weapons: 6,
+    hours: 20,
+  };
+  const positiveAdditions = [
+    additions?.fuel ? `Fuel +${additions.fuel}` : null,
+    additions?.weapons ? `Weapons +${additions.weapons}` : null,
+    additions?.hours ? `Flight hours +${additions.hours}` : null,
+  ].filter(Boolean);
+
+  return (
+    <div className={`aircraft-status-card${compact ? ' aircraft-status-card-compact' : ''}`}>
+      <strong>{aircraft.code}</strong>
+      <ul className="aircraft-stats-list">
+        <li>Fuel {aircraft.fuel}/{maxStats.fuel}</li>
+        <li>Weapons {aircraft.weapons}/{maxStats.weapons}</li>
+        <li>Flight hours {aircraft.remainingFlightHours}/{maxStats.hours}</li>
+        <li>{aircraft.damage === 'NONE' ? 'Repair none' : `Repair ${humanizeStatus(aircraft.damage)}`}</li>
+      </ul>
+      {positiveAdditions.length ? <p className="aircraft-added-copy">Added: {positiveAdditions.join(', ')}</p> : null}
+    </div>
   );
 }
 

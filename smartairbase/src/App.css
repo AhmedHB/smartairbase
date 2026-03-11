@@ -202,6 +202,40 @@
   color: #f5f7fb;
 }
 
+.aircraft-status-card {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+}
+
+.aircraft-status-card strong,
+.aircraft-status-card span {
+  display: block;
+}
+
+.aircraft-status-card strong {
+  font-size: 0.94rem;
+}
+
+.aircraft-stats-list {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.aircraft-stats-list li {
+  font-size: 0.78rem;
+}
+
+.aircraft-status-card-compact .aircraft-stats-list li {
+  font-size: 0.72rem;
+}
+
+.aircraft-added-copy {
+  margin: 0;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.82);
+}
+
 .bases-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.52fr);
@@ -266,10 +300,12 @@
   min-height: 62px;
   border: 2px solid #c9c9c9;
   display: grid;
-  place-items: center;
+  align-items: start;
+  justify-items: stretch;
   color: #8e8e8e;
   font-weight: 700;
   background: rgba(255, 255, 255, 0.9);
+  padding: 8px;
 }
 
 .slot-filled,
