@@ -7,10 +7,10 @@ START
 Planering
   |
   v
-Resurskontroll
+Mission
   |
   v
-Mission
+Mission resolution
   |
   v
 Tärning/skada
@@ -39,7 +39,7 @@ Processöversikt
 START SPEL
    |
    v
-Initiera scenario
+Initiera scenario SCN_STANDARD V7
 - baser
 - flygplan
 - missioner
@@ -65,13 +65,8 @@ NY RUNDA
   * inte i full service-krav
   * har tillräckligt bränsle
   * har tillräckligt vapen
-   |
-   v
-2. RESURSKONTROLL
-- kontrollera bränslekrav för mission
-- kontrollera vapenkrav för mission
-- kontrollera återstående flygtimmar
-- kontrollera att mission fortfarande är ledig
+  * har tillräckliga återstående flygtimmar
+  * har en ledig mission att tilldelas
    |
    +---- nej ------------------> planet kan inte flyga
    |                              stannar på bas / väntar
@@ -79,9 +74,14 @@ NY RUNDA
    +---- ja
    |
    v
-3. UPPDRAG GENOMFÖRS
+2. UPPDRAG
 - planet lyfter
-- mission markeras som utförd
+- mission tilldelas
+- i manuellt UI kan flygplanet nu visas som ON_MISSION
+   |
+   v
+3. MISSION RESOLUTION
+- mission markeras som slutförd
 - resurser förbrukas:
   * bränsle minskar
   * vapen minskar
@@ -114,7 +114,11 @@ NY RUNDA
                                    |
                                    +---- bränsle > 0 --> försök landa nästa runda
                                    |
-                                   +---- bränsle = 0 --> CRASH
+                                   +---- bränsle = 0 --> kvar i holding denna runda
+                                                             |
+                                                             +---- fortfarande i holding
+                                                                   vid senare rundslut
+                                                                   --> CRASH
 
 Efter landning
 Om planet har landat:
@@ -153,6 +157,9 @@ REARM?
 - basen måste kunna rearm
 - basen måste ha vapen i lager
 - fyll upp till max 6 eller tills lagret tar slut
+
+Flygtimmar återställs inte direkt vid landning.
+De återställs först när riktig reparation eller full service är klar.
 
 Reparation per runda
 För varje flygplan i maintenance:
@@ -195,6 +202,10 @@ RESURSUPPDATERING
    v
 Lager får aldrig överstiga maxlager
 
+Om en runda efter mission resolution inte lämnar några flygplan i
+AWAITING_DICE_ROLL eller AWAITING_LANDING kan rundan gå direkt vidare
+till completion. Det är alltså möjligt med rena vänteturer.
+
 ---------------------------
 Slutkontroll per runda
 ---------------------------
@@ -202,10 +213,10 @@ Kontrollera WIN / LOSE
    |
    +---- WIN:
    |     alla missioner slutförda
+   |     och alla överlevande flygplan är READY på bas
    |
    +---- LOSE:
-   |     alla flygplan förstörda
-   |     eller inga missioner kan längre genomföras
+   |     inga operativa flygplan återstår
    |
    +---- annars:
          nästa runda
@@ -215,9 +226,10 @@ Viktiga beslutspunkter i Version 7
 ---------------------------
 De viktigaste grenarna i processen är:
 	•	Kan planet flyga uppdraget?
+	•	Ska rundan stanna i ON_MISSION i manuellt läge tills Resolve missions trycks?
 	•	Kan planet landa på någon bas?
 	•	Finns maintenance-slot?
 	•	Finns reservdelar nog för reparation?
 	•	Finns bränsle och vapen nog i baslager?
-	•	Blir planet kvar i holding för länge och kraschar?
-	•	Har alla uppdrag slutförts?
+	•	Blir planet kvar i holding över flera rundslut med 0 bränsle?
+	•	Har alla uppdrag slutförts och alla överlevande plan återgått till READY på bas?

@@ -87,6 +87,8 @@ Typical sequence:
 5. `land_aircraft` or `send_aircraft_to_holding`
 6. `complete_round`
 
+The server-side phase model itself is unchanged by the newer manual UI flow. The split between `Next turn` and `Resolve missions` is implemented in `MCPClient` and the frontend by calling these same MCP tools in two separate steps.
+
 If mission resolution produces no aircraft in `AWAITING_DICE_ROLL` and no landing decisions are pending, the server now transitions directly to `LANDING`, allowing an immediate round completion. This supports valid "wait only" rounds.
 
 ## Important State

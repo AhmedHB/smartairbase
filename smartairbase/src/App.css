@@ -344,6 +344,11 @@
   color: #1f2430;
 }
 
+.automation-panel {
+  display: grid;
+  gap: 12px;
+}
+
 .scenario-rules-list {
   margin-top: 8px;
 }

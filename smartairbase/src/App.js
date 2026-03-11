@@ -1,5 +1,5 @@
 import './App.css';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api';
 
@@ -14,8 +14,17 @@ const INITIAL_CREATE_FORM = {
   },
 };
 
+const INITIAL_DICE_AUTOMATION = {
+  mode: 'MANUAL',
+  strategy: 'RANDOM',
+  diceDelaySeconds: 5,
+  nextRoundDelaySeconds: 5,
+  missionPreviewSeconds: 5,
+};
+
 function App() {
   const [createForm, setCreateForm] = useState(INITIAL_CREATE_FORM);
+  const [diceAutomation, setDiceAutomation] = useState(INITIAL_DICE_AUTOMATION);
   const [gameId, setGameId] = useState('');
   const [rules, setRules] = useState(null);
   const [showScenarioRules, setShowScenarioRules] = useState(false);
@@ -27,6 +36,14 @@ function App() {
   const [useRandomDice, setUseRandomDice] = useState(true);
   const [eventLog, setEventLog] = useState([]);
   const [status, setStatus] = useState({ kind: 'idle', message: 'Create a game to begin.' });
+  const automationInFlightRef = useRef(false);
+  const nextRoundInFlightRef = useRef(false);
+  const gameStateRef = useRef(null);
+  const [nextRoundCountdown, setNextRoundCountdown] = useState(null);
+  const missionPreviewTimerRef = useRef(null);
+  const autoDiceTimerRef = useRef(null);
+  const [missionPreviewActive, setMissionPreviewActive] = useState(false);
+  const [manualMissionPreviewAssignments, setManualMissionPreviewAssignments] = useState({});
 
   const pendingDiceAircraft = useMemo(() => {
     if (!gameState?.aircraft) {
@@ -49,12 +66,45 @@ function App() {
     return gameState.aircraft.filter((aircraft) => aircraft.status === 'CRASHED' || aircraft.status === 'DESTROYED');
   }, [gameState]);
 
+  const automationEnabled = diceAutomation.mode === 'AUTOMATED';
+
+  const onMissionAircraft = useMemo(() => {
+    const actualOnMission = (gameState?.aircraft || []).filter((aircraft) => aircraft.status === 'ON_MISSION');
+    if (!automationEnabled && pendingDiceAircraft.length) {
+      return actualOnMission;
+    }
+    const pendingByCode = Object.fromEntries(pendingDiceAircraft.map((aircraft) => [aircraft.code, aircraft]));
+    const syntheticPreview = Object.entries(manualMissionPreviewAssignments)
+      .map(([aircraftCode, missionCode]) => {
+        const pendingAircraft = pendingByCode[aircraftCode];
+        if (!pendingAircraft) {
+          return null;
+        }
+        return {
+          ...pendingAircraft,
+          status: 'ON_MISSION',
+          assignedMission: missionCode,
+        };
+      })
+      .filter(Boolean);
+
+    return [...actualOnMission, ...syntheticPreview];
+  }, [automationEnabled, gameState, manualMissionPreviewAssignments, pendingDiceAircraft]);
+
   const nextStep = useMemo(() => {
     if (!isValidGameId(gameId) || !gameState) {
       return 'CREATE_GAME';
     }
+    if (missionPreviewActive && automationEnabled) {
+      return 'NONE';
+    }
     if (gameState?.game?.status && gameState.game.status !== 'ACTIVE') {
       return 'NONE';
+    }
+    // Manual mode deliberately stops after planning so the user can inspect "On mission"
+    // before moving the round into dice resolution.
+    if (!automationEnabled && gameState?.game?.roundOpen && gameState?.game?.roundPhase === 'PLANNING') {
+      return 'RESOLVE_MISSIONS';
     }
     if (pendingDiceAircraft.length) {
       return 'ROLL_DICE';
@@ -63,9 +113,10 @@ function App() {
       return 'NEXT_TURN';
     }
     return 'NONE';
-  }, [gameId, gameState, lastAutoResponse, pendingDiceAircraft]);
+  }, [automationEnabled, gameId, gameState, lastAutoResponse, missionPreviewActive, pendingDiceAircraft]);
 
   const canStartNextTurn = nextStep === 'NEXT_TURN';
+  const canResolveMissions = nextStep === 'RESOLVE_MISSIONS';
   const canRollDice = nextStep === 'ROLL_DICE';
   const selectedScenarioRules = scenarioRulesFor(createForm.scenarioName);
 
@@ -78,6 +129,80 @@ function App() {
       setSelectedAircraft(pendingDiceAircraft[0].code);
     }
   }, [pendingDiceAircraft, selectedAircraft]);
+
+  useEffect(() => {
+    const roundPhase = gameState?.game?.roundPhase;
+    if (autoDiceTimerRef.current) {
+      window.clearTimeout(autoDiceTimerRef.current);
+      autoDiceTimerRef.current = null;
+    }
+    if (!automationEnabled || !isValidGameId(gameId) || roundPhase !== 'DICE_ROLL' || !pendingDiceAircraft.length) {
+      return undefined;
+    }
+    if (automationInFlightRef.current || status.kind === 'loading') {
+      return undefined;
+    }
+
+    autoDiceTimerRef.current = window.setTimeout(async () => {
+      autoDiceTimerRef.current = null;
+      automationInFlightRef.current = true;
+      try {
+        const latestState = gameStateRef.current;
+        const latestPendingDiceAircraft = (latestState?.aircraft || []).filter((aircraft) => aircraft.status === 'AWAITING_DICE_ROLL');
+        const aircraftCode = latestPendingDiceAircraft[0]?.code;
+        if (latestState?.game?.roundPhase !== 'DICE_ROLL') {
+          return;
+        }
+        if (!aircraftCode) {
+          return;
+        }
+        await submitDiceRoll(aircraftCode, automatedDiceValue(diceAutomation.strategy), true);
+      } finally {
+        automationInFlightRef.current = false;
+      }
+    }, Number(diceAutomation.diceDelaySeconds || 0) * 1000);
+
+    return () => {
+      if (autoDiceTimerRef.current) {
+        window.clearTimeout(autoDiceTimerRef.current);
+        autoDiceTimerRef.current = null;
+      }
+    };
+  }, [automationEnabled, diceAutomation.diceDelaySeconds, diceAutomation.strategy, gameId, gameState?.game?.roundPhase, pendingDiceAircraft, status.kind]);
+
+  useEffect(() => {
+    if (!automationEnabled || !canStartNextTurn || !isValidGameId(gameId) || status.kind === 'loading' || nextRoundInFlightRef.current) {
+      setNextRoundCountdown(null);
+      return undefined;
+    }
+
+    const initialDelay = Math.max(0, Number(diceAutomation.nextRoundDelaySeconds || 0));
+    setNextRoundCountdown(initialDelay);
+
+    if (initialDelay === 0) {
+      void handleNextRound();
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setNextRoundCountdown((current) => {
+        if (current === null) {
+          return null;
+        }
+        if (current <= 1) {
+          window.clearInterval(intervalId);
+          void handleNextRound();
+          return 0;
+        }
+        return current - 1;
+      });
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+      setNextRoundCountdown(null);
+    };
+  }, [automationEnabled, canStartNextTurn, diceAutomation.nextRoundDelaySeconds, gameId, status.kind]);
 
   const basesWithAircraft = useMemo(() => {
     const baseSource = gameState?.bases?.length
@@ -193,6 +318,17 @@ async function request(path, options = {}) {
     };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (missionPreviewTimerRef.current) {
+        window.clearTimeout(missionPreviewTimerRef.current);
+      }
+      if (autoDiceTimerRef.current) {
+        window.clearTimeout(autoDiceTimerRef.current);
+      }
+    };
+  }, []);
+
   function pushLog(title, payload) {
     const stamp = new Date().toLocaleTimeString('en-GB');
     setEventLog((current) => [
@@ -216,8 +352,29 @@ async function request(path, options = {}) {
   }
 
   function applyGameState(nextState) {
+    gameStateRef.current = nextState;
     setPreviousGameState(gameState);
     setGameState(nextState);
+  }
+
+  function clearMissionPreview() {
+    if (missionPreviewTimerRef.current) {
+      window.clearTimeout(missionPreviewTimerRef.current);
+      missionPreviewTimerRef.current = null;
+    }
+    setMissionPreviewActive(false);
+  }
+
+  function stopAutomation() {
+    automationInFlightRef.current = false;
+    nextRoundInFlightRef.current = false;
+    setNextRoundCountdown(null);
+    setManualMissionPreviewAssignments({});
+    if (autoDiceTimerRef.current) {
+      window.clearTimeout(autoDiceTimerRef.current);
+      autoDiceTimerRef.current = null;
+    }
+    clearMissionPreview();
   }
 
   async function handleCreateGame(event) {
@@ -225,13 +382,48 @@ async function request(path, options = {}) {
     await createNewGame('Creating game...', 'Game created');
   }
 
-  async function handleResetGame() {
-    await createNewGame('Resetting game...', 'Game reset');
+  function handleResetGame() {
+    const previousGameId = isValidGameId(gameId) ? String(gameId) : null;
+    const previousGameStatus = gameState?.game?.status || null;
+
+    stopAutomation();
+    setCreateForm(INITIAL_CREATE_FORM);
+    setDiceAutomation(INITIAL_DICE_AUTOMATION);
+    setGameId('');
+    setRules(rules);
+    setShowScenarioRules(false);
+    setPreviousGameState(null);
+    gameStateRef.current = null;
+    setGameState(null);
+    setLastAutoResponse(null);
+    setSelectedAircraft('');
+    setDiceValue(1);
+    setUseRandomDice(true);
+    setStatus({ kind: 'idle', message: 'Create a game to begin.' });
+    setEventLog([]);
+
+    if (previousGameId) {
+      pushLog('Game reset', {
+        messages: [
+          previousGameStatus
+            ? `Game ${previousGameId} ended through reset with status ${previousGameStatus}.`
+            : `Game ${previousGameId} ended through reset.`,
+        ],
+      });
+    }
   }
 
-  async function createNewGame(loadingMessage, successPrefix) {
+  function handleResetView() {
+    stopAutomation();
+    refreshGameState()
+      .then((data) => data && pushLog('State refreshed', data))
+      .catch((error) => setStatus({ kind: 'error', message: error.message }));
+  }
+
+  async function createNewGame(loadingMessage, successPrefix, options = {}) {
     setStatus({ kind: 'loading', message: loadingMessage });
     try {
+      const previousGameId = isValidGameId(gameId) ? String(gameId) : null;
       const data = await request('/games', {
         method: 'POST',
         body: JSON.stringify(createForm),
@@ -247,6 +439,7 @@ async function request(path, options = {}) {
       setUseRandomDice(true);
       setEventLog([]);
       setPreviousGameState(null);
+      stopAutomation();
       await refreshGameState(nextGameId);
       setStatus({ kind: 'success', message: `${successPrefix} ${nextGameId}.` });
       pushLog(successPrefix, data);
@@ -256,6 +449,9 @@ async function request(path, options = {}) {
   }
 
   async function handleNextRound() {
+    if (nextRoundInFlightRef.current) {
+      return;
+    }
     if (!gameId) {
       setStatus({ kind: 'error', message: 'Create a game first.' });
       return;
@@ -264,18 +460,90 @@ async function request(path, options = {}) {
       setStatus({ kind: 'error', message: 'Game ID is invalid. Create a new game first.' });
       return;
     }
+    nextRoundInFlightRef.current = true;
+    setNextRoundCountdown(null);
     setStatus({ kind: 'loading', message: 'Starting next round and assigning missions...' });
     try {
-      const data = await request(`/games/${gameId}/rounds/next`, { method: 'POST' });
+      // Automated mode keeps the previous one-click flow. Manual mode now splits this
+      // into planning first and mission resolution as an explicit second step.
+      const data = await request(
+        automationEnabled ? `/games/${gameId}/rounds/next` : `/games/${gameId}/rounds/plan`,
+        { method: 'POST' }
+      );
       setLastAutoResponse(data);
+      if (!automationEnabled) {
+        setManualMissionPreviewAssignments({});
+        applyGameState(data.gameState);
+        setStatus({
+          kind: 'success',
+          message: data.gameFinished
+            ? finalGameMessage(data.gameState)
+            : `Round planned. Next action: ${humanizeAction(data.nextAction)}.`,
+        });
+      } else {
+        const previewSeconds = Math.max(0, Number(diceAutomation.missionPreviewSeconds || 0));
+        const previewState = buildMissionPreviewState(gameState, data.autoAssignments);
+        if (previewState && previewSeconds > 0) {
+        clearMissionPreview();
+        gameStateRef.current = previewState;
+        setPreviousGameState(gameState);
+        setGameState(previewState);
+        setMissionPreviewActive(true);
+        setStatus({
+          kind: 'idle',
+          message: `Showing mission preview for ${previewSeconds}s before mission resolution.`,
+        });
+        missionPreviewTimerRef.current = window.setTimeout(() => {
+          setPreviousGameState(previewState);
+          gameStateRef.current = data.gameState;
+          setGameState(data.gameState);
+          setMissionPreviewActive(false);
+          missionPreviewTimerRef.current = null;
+          setStatus({
+            kind: 'success',
+            message: data.gameFinished
+              ? finalGameMessage(data.gameState)
+              : `Round prepared. Next action: ${humanizeAction(data.nextAction)}.`,
+          });
+        }, previewSeconds * 1000);
+        } else {
+          applyGameState(data.gameState);
+          setStatus({
+            kind: 'success',
+            message: data.gameFinished
+              ? finalGameMessage(data.gameState)
+              : `Round prepared. Next action: ${humanizeAction(data.nextAction)}.`,
+          });
+        }
+      }
+      pushLog(data.gameFinished ? finalGameLogTitle(data.gameState) : (automationEnabled ? 'Autoplay round start' : 'Manual round plan'), enrichGameFinishedPayload(data));
+    } catch (error) {
+      setStatus({ kind: 'error', message: error.message });
+    } finally {
+      nextRoundInFlightRef.current = false;
+    }
+  }
+
+  async function handleResolveMissions() {
+    if (!isValidGameId(gameId)) {
+      setStatus({ kind: 'error', message: 'Game ID is invalid. Create a new game first.' });
+      return;
+    }
+    // This step exists only to make the manual flow observable: planned aircraft stay in
+    // "On mission" until the operator explicitly resolves missions into dice handling.
+    setStatus({ kind: 'loading', message: 'Resolving planned missions...' });
+    try {
+      const data = await request(`/games/${gameId}/missions/resolve-auto`, { method: 'POST' });
+      setLastAutoResponse(data);
+      setManualMissionPreviewAssignments({});
       applyGameState(data.gameState);
       setStatus({
         kind: 'success',
         message: data.gameFinished
-          ? `Game finished with status ${data.gameState.game.status}.`
-          : `Round prepared. Next action: ${humanizeAction(data.nextAction)}.`,
+          ? finalGameMessage(data.gameState)
+          : `Mission resolution completed. Next action: ${humanizeAction(data.nextAction)}.`,
       });
-      pushLog('Autoplay round start', data);
+      pushLog(data.gameFinished ? finalGameLogTitle(data.gameState) : 'Manual mission resolution', enrichGameFinishedPayload(data));
     } catch (error) {
       setStatus({ kind: 'error', message: error.message });
     }
@@ -291,32 +559,83 @@ async function request(path, options = {}) {
       setStatus({ kind: 'error', message: 'Game ID is invalid. Create a new game first.' });
       return;
     }
-    setStatus({ kind: 'loading', message: `Submitting dice roll for ${selectedAircraft}...` });
+    await submitDiceRoll(selectedAircraft, useRandomDice ? randomDiceValue() : Number(diceValue), false);
+  }
+
+  async function submitDiceRoll(aircraftCode, resolvedDiceValue, automated) {
+    const latestState = gameStateRef.current;
+    const stillPending = (latestState?.aircraft || []).some(
+      (aircraft) => aircraft.code === aircraftCode && aircraft.status === 'AWAITING_DICE_ROLL'
+    );
+    if (latestState?.game?.roundPhase !== 'DICE_ROLL' || !stillPending) {
+      if (isValidGameId(gameId)) {
+        try {
+          await refreshGameState(gameId);
+        } catch (error) {
+          setStatus({ kind: 'error', message: error.message });
+          return;
+        }
+      }
+      setStatus({
+        kind: 'idle',
+        message: 'Dice step already completed. Game state refreshed.',
+      });
+      return;
+    }
+
+    setStatus({
+      kind: 'loading',
+      message: automated
+        ? `Automating dice roll for ${aircraftCode} in round ${gameState?.game?.currentRound ?? '-' }...`
+        : `Submitting dice roll for ${aircraftCode}...`,
+    });
     try {
-      const resolvedDiceValue = useRandomDice ? randomDiceValue() : Number(diceValue);
       const data = await request(`/games/${gameId}/dice-rolls/auto`, {
         method: 'POST',
         body: JSON.stringify({
-          aircraftCode: selectedAircraft,
+          aircraftCode,
           diceValue: resolvedDiceValue,
         }),
+      });
+      setManualMissionPreviewAssignments((current) => {
+        if (!current[aircraftCode]) {
+          return current;
+        }
+        const nextAssignments = { ...current };
+        delete nextAssignments[aircraftCode];
+        return nextAssignments;
       });
       setLastAutoResponse(data);
       applyGameState(data.gameState);
       setStatus({
         kind: data.gameFinished ? 'success' : 'idle',
         message: data.gameFinished
-          ? `Game finished with status ${data.gameState.game.status}.`
-          : `Dice resolved. Next action: ${humanizeAction(data.nextAction)}.`,
+          ? finalGameMessage(data.gameState)
+          : automated
+            ? `Automated dice resolved. Next action: ${humanizeAction(data.nextAction)}.`
+            : `Dice resolved. Next action: ${humanizeAction(data.nextAction)}.`,
       });
-      pushLog(`Dice submitted for ${selectedAircraft}`, {
+      pushLog(data.gameFinished ? finalGameLogTitle(data.gameState) : (automated ? `Automated dice for ${aircraftCode}` : `Dice submitted for ${aircraftCode}`), enrichGameFinishedPayload({
         ...data,
         diceRoll: {
-          aircraftCode: selectedAircraft,
+          aircraftCode,
           diceValue: resolvedDiceValue,
         },
-      });
+      }));
     } catch (error) {
+      if (String(error.message).includes('Round is in phase LANDING')) {
+        try {
+          await refreshGameState(gameId);
+          setStatus({
+            kind: 'idle',
+            message: 'Dice step had already finished. Game state refreshed.',
+          });
+          return;
+        } catch (refreshError) {
+          setStatus({ kind: 'error', message: refreshError.message });
+          return;
+        }
+      }
       setStatus({ kind: 'error', message: error.message });
     }
   }
@@ -354,6 +673,48 @@ async function request(path, options = {}) {
             </article>
           ))}
         </div>
+      </section>
+
+      <section className="holding-section">
+        <header className="section-heading">
+          <h2>On mission</h2>
+          <p className="muted-copy">Aircraft currently flying an assigned mission. Statistics show the aircraft state before mission completion.</p>
+        </header>
+        <article className="holding-panel">
+          {onMissionAircraft.length ? (
+            <div className="holding-grid">
+              {onMissionAircraft.map((aircraft) => (
+                <div key={aircraft.code} className="holding-card">
+                  <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} />
+                  <p className="aircraft-added-copy">Mission: {aircraft.assignedMission || 'Assigned'}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted-copy">No aircraft are currently on mission.</p>
+          )}
+        </article>
+      </section>
+
+      <section className="holding-section">
+        <header className="section-heading">
+          <h2>Awaiting dice roll</h2>
+          <p className="muted-copy">Aircraft that have completed their mission and are waiting for a dice outcome.</p>
+        </header>
+        <article className="holding-panel">
+          {pendingDiceAircraft.length ? (
+            <div className="holding-grid">
+              {pendingDiceAircraft.map((aircraft) => (
+                <div key={aircraft.code} className="holding-card">
+                  <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} />
+                  <p className="aircraft-added-copy">Mission: {aircraft.assignedMission || 'Completed'}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted-copy">No aircraft are currently waiting for a dice roll.</p>
+          )}
+        </article>
       </section>
 
       <section className="holding-section">
@@ -482,6 +843,79 @@ async function request(path, options = {}) {
                   </ul>
                 </article>
               ) : null}
+              <fieldset className="radio-group">
+                <legend>Dice handling</legend>
+                <label className="radio-option">
+                  <input
+                    type="radio"
+                    name="diceAutomationMode"
+                    checked={diceAutomation.mode === 'MANUAL'}
+                    onChange={() => setDiceAutomation((current) => ({ ...current, mode: 'MANUAL' }))}
+                  />
+                  <span>Manual</span>
+                </label>
+                <label className="radio-option">
+                  <input
+                    type="radio"
+                    name="diceAutomationMode"
+                    checked={diceAutomation.mode === 'AUTOMATED'}
+                    onChange={() => setDiceAutomation((current) => ({ ...current, mode: 'AUTOMATED' }))}
+                  />
+                  <span>Automated</span>
+                </label>
+              </fieldset>
+              {diceAutomation.mode === 'AUTOMATED' ? (
+                <article className="scenario-rules-panel automation-panel">
+                  <label>
+                    Dice strategy
+                    <select
+                      value={diceAutomation.strategy}
+                      onChange={(event) => setDiceAutomation((current) => ({ ...current, strategy: event.target.value }))}
+                    >
+                      <option value="RANDOM">Random dice outcome</option>
+                      <option value="MIN_DAMAGE">Favor as little damage as possible</option>
+                      <option value="MAX_DAMAGE">Cause as much damage as possible</option>
+                    </select>
+                  </label>
+                  <label>
+                    Mission preview seconds
+                    <input
+                      type="number"
+                      min="0"
+                      value={diceAutomation.missionPreviewSeconds}
+                      onChange={(event) => setDiceAutomation((current) => ({
+                        ...current,
+                        missionPreviewSeconds: Math.max(0, Number(event.target.value) || 0),
+                      }))}
+                    />
+                  </label>
+                  <label>
+                    Seconds before dice roll
+                    <input
+                      type="number"
+                      min="0"
+                      value={diceAutomation.diceDelaySeconds}
+                      onChange={(event) => setDiceAutomation((current) => ({
+                        ...current,
+                        diceDelaySeconds: Math.max(0, Number(event.target.value) || 0),
+                      }))}
+                    />
+                  </label>
+                  <label>
+                    Seconds before next round
+                    <input
+                      type="number"
+                      min="0"
+                      value={diceAutomation.nextRoundDelaySeconds}
+                      onChange={(event) => setDiceAutomation((current) => ({
+                        ...current,
+                        nextRoundDelaySeconds: Math.max(0, Number(event.target.value) || 0),
+                      }))}
+                    />
+                  </label>
+                  <p className="muted-copy">Automated dice rolls and next rounds use separate wait times.</p>
+                </article>
+              ) : null}
               <label>
                 Aircraft
                 <input
@@ -521,8 +955,12 @@ async function request(path, options = {}) {
               </label>
               <div className="button-row">
                 <button type="button" className={nextStep === 'NEXT_TURN' ? 'next-step-button' : ''} onClick={handleNextRound} disabled={!canStartNextTurn}>Next turn</button>
-                <button type="button" className="ghost-button" onClick={() => refreshGameState().then((data) => data && pushLog('State refreshed', data)).catch((error) => setStatus({ kind: 'error', message: error.message }))}>Refresh</button>
+                <button type="button" className={nextStep === 'RESOLVE_MISSIONS' ? 'next-step-button' : ''} onClick={handleResolveMissions} disabled={!canResolveMissions}>Resolve missions</button>
+                <button type="button" className="ghost-button" onClick={handleResetView}>Reset</button>
               </div>
+              {automationEnabled && nextRoundCountdown !== null ? (
+                <p className="muted-copy">Auto next round in {nextRoundCountdown}s. You can still press Next turn manually.</p>
+              ) : null}
               <p className={`status-pill status-${status.kind}`}>{status.message}</p>
           </section>
 
@@ -562,7 +1000,7 @@ async function request(path, options = {}) {
           <form className="dice-form" onSubmit={handleRollDice}>
             <label>
               Aircraft
-              <select value={selectedAircraft} onChange={(event) => setSelectedAircraft(event.target.value)} disabled={!canRollDice}>
+              <select value={selectedAircraft} onChange={(event) => setSelectedAircraft(event.target.value)} disabled={!canRollDice || automationEnabled}>
                 {pendingDiceAircraft.length ? (
                   pendingDiceAircraft.map((aircraft) => (
                     <option key={aircraft.code} value={aircraft.code}>
@@ -582,7 +1020,7 @@ async function request(path, options = {}) {
                   name="diceMode"
                   checked={useRandomDice}
                   onChange={() => setUseRandomDice(true)}
-                  disabled={!canRollDice}
+                  disabled={!canRollDice || automationEnabled}
                 />
                 <span>Random roll</span>
               </label>
@@ -592,7 +1030,7 @@ async function request(path, options = {}) {
                   name="diceMode"
                   checked={!useRandomDice}
                   onChange={() => setUseRandomDice(false)}
-                  disabled={!canRollDice}
+                  disabled={!canRollDice || automationEnabled}
                 />
                 <span>Choose outcome</span>
               </label>
@@ -600,14 +1038,15 @@ async function request(path, options = {}) {
             {!useRandomDice ? (
               <label>
                 Dice
-                <input type="number" min="1" max="6" value={diceValue} onChange={(event) => setDiceValue(event.target.value)} disabled={!canRollDice} />
+                <input type="number" min="1" max="6" value={diceValue} onChange={(event) => setDiceValue(event.target.value)} disabled={!canRollDice || automationEnabled} />
               </label>
             ) : null}
             <div className="button-row bottom-actions">
               <button type="button" className="ghost-button" onClick={handleResetGame}>Reset</button>
-              <button type="submit" className={nextStep === 'ROLL_DICE' ? 'next-step-button' : ''} disabled={!canRollDice}>Roll dice</button>
+              <button type="submit" className={nextStep === 'ROLL_DICE' ? 'next-step-button' : ''} disabled={!canRollDice || automationEnabled}>Roll dice</button>
             </div>
           </form>
+          {automationEnabled ? <p>Automated dice handling is active.</p> : null}
           {lastAutoResponse?.autoLandings?.length ? (
             <ul className="compact-list">
               {lastAutoResponse.autoLandings.map((entry) => <li key={entry}>{entry}</li>)}
@@ -700,6 +1139,35 @@ function totalConfiguredMissionCount(missionTypeCounts) {
   return Object.values(missionTypeCounts || {}).reduce((total, count) => total + Number(count || 0), 0);
 }
 
+function finalGameMessage(gameState) {
+  const summary = summarizeGameOutcome(gameState);
+  return `Game finished with status ${gameState?.game?.status}. ${summary}`;
+}
+
+function finalGameLogTitle(gameState) {
+  return gameState?.game?.status === 'WON' ? 'Game won' : 'Game lost';
+}
+
+function enrichGameFinishedPayload(payload) {
+  if (!payload?.gameFinished || !payload?.gameState) {
+    return payload;
+  }
+  const summary = summarizeGameOutcome(payload.gameState);
+  return {
+    ...payload,
+    messages: [...(payload.messages || []), summary],
+  };
+}
+
+function summarizeGameOutcome(gameState) {
+  const completedMissions = completedMissionCount(gameState);
+  const totalMissions = gameState?.missions?.length || 0;
+  const landedAircraft = (gameState?.aircraft || []).filter((aircraft) => aircraft.currentBase && aircraft.status === 'READY').length;
+  const destroyedAircraft = crashedCount(gameState);
+  const rounds = gameState?.game?.currentRound ?? 0;
+  return `${completedMissions}/${totalMissions} missions completed, ${landedAircraft} aircraft landed, ${destroyedAircraft} destroyed, ${rounds} rounds.`;
+}
+
 function scenarioRulesFor(scenarioName) {
   if (scenarioName === 'SCN_STANDARD') {
     return {
@@ -773,6 +1241,63 @@ function buildDeliveryEntry(resourceLabel, baseCode, currentRound, schedule) {
 
 function randomDiceValue() {
   return Math.floor(Math.random() * 6) + 1;
+}
+
+function automatedDiceValue(strategy) {
+  if (strategy === 'MIN_DAMAGE') {
+    return 1;
+  }
+  if (strategy === 'MAX_DAMAGE') {
+    return 6;
+  }
+  return randomDiceValue();
+}
+
+function buildMissionPreviewState(currentState, autoAssignments) {
+  if (!currentState?.aircraft?.length || !autoAssignments?.length) {
+    return null;
+  }
+
+  const assignmentsByAircraft = Object.fromEntries(
+    autoAssignments
+      .map((entry) => String(entry).split(' -> '))
+      .filter((parts) => parts.length === 2)
+  );
+
+  const previewAircraft = currentState.aircraft.map((aircraft) => {
+    const missionCode = assignmentsByAircraft[aircraft.code];
+    if (!missionCode) {
+      return aircraft;
+    }
+    return {
+      ...aircraft,
+      status: 'ON_MISSION',
+      assignedMission: missionCode,
+    };
+  });
+
+  if (!previewAircraft.some((aircraft) => aircraft.status === 'ON_MISSION')) {
+    return null;
+  }
+
+  const previewMissions = (currentState.missions || []).map((mission) => {
+    const missionAssigned = Object.values(assignmentsByAircraft).includes(mission.code);
+    return missionAssigned ? { ...mission, status: 'ASSIGNED', assignmentBlocker: null } : mission;
+  });
+
+  return {
+    ...currentState,
+    aircraft: previewAircraft,
+    missions: previewMissions,
+  };
+}
+
+function extractMissionAssignments(autoAssignments) {
+  return Object.fromEntries(
+    (autoAssignments || [])
+      .map((entry) => String(entry).split(' -> '))
+      .filter((parts) => parts.length === 2)
+  );
 }
 
 function renderEventDetails(entry, rules) {
