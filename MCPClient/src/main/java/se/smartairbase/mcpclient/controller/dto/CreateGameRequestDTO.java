@@ -8,6 +8,7 @@ import java.util.Map;
 public record CreateGameRequestDTO(
         @NotBlank String scenarioName,
         @Pattern(regexp = "(?i)v?\\d+", message = "version must be numeric, with optional V prefix") String version,
+        @Pattern(regexp = "^(?!\\s*$).+", message = "gameName must not be blank") String gameName,
         Integer aircraftCount,
         Map<String, Integer> missionTypeCounts
 ) {

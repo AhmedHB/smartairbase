@@ -39,7 +39,7 @@ Processöversikt
 START SPEL
    |
    v
-Initiera scenario SCN_STANDARD V7
+Initiera scenario SCN_STANDARD
 - baser
 - flygplan
 - missioner
@@ -226,7 +226,7 @@ Kontrollera WIN / LOSE
          nästa runda
 
 ---------------------------
-Viktiga beslutspunkter i Version 7
+Viktiga beslutspunkter i nuvarande regeluppsättning
 ---------------------------
 De viktigaste grenarna i processen är:
 	•	Kan planet flyga uppdraget?

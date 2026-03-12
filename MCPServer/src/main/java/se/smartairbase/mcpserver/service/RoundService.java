@@ -161,13 +161,13 @@ public class RoundService {
         if (aircraftState.getDamage() == DamageType.FULL_SERVICE_REQUIRED || aircraftState.getRemainingFlightHours() == 0) {
             return new ActionResultDto(false, "Aircraft requires full service");
         }
-        if (aircraftState.getFuel() < mission.getMissionType().getFuelCost()) {
+        if (aircraftState.getFuel() < mission.getFuelCost()) {
             return new ActionResultDto(false, "Aircraft lacks fuel for mission");
         }
-        if (aircraftState.getWeapons() < mission.getMissionType().getWeaponCost()) {
+        if (aircraftState.getWeapons() < mission.getWeaponCost()) {
             return new ActionResultDto(false, "Aircraft lacks weapons for mission");
         }
-        if (aircraftState.getRemainingFlightHours() < mission.getMissionType().getFlightTimeCost()) {
+        if (aircraftState.getRemainingFlightHours() < mission.getFlightTimeCost()) {
             return new ActionResultDto(false, "Aircraft lacks remaining flight hours");
         }
 
@@ -203,8 +203,7 @@ public class RoundService {
             }
 
             mission.setStatus(MissionStatus.COMPLETED);
-            state.applyMissionCosts(mission.getMissionType().getFuelCost(), mission.getMissionType().getWeaponCost(),
-                    mission.getMissionType().getFlightTimeCost());
+            state.applyMissionCosts(mission.getFuelCost(), mission.getWeaponCost(), mission.getFlightTimeCost());
             state.clearAssignedMission();
             state.setCurrentBase(null);
             aircraft.setStatus(AircraftStatus.AWAITING_DICE_ROLL);
@@ -212,10 +211,10 @@ public class RoundService {
             aircraftUpdates.add(aircraft.getCode() + " completed " + mission.getCode());
 
             resourceTransactionRepository.save(new ResourceTransaction(game, round, null, aircraft, ResourceType.FUEL,
-                    -mission.getMissionType().getFuelCost(), "MISSION_COST", LocalDateTime.now()));
-            if (mission.getMissionType().getWeaponCost() > 0) {
+                    -mission.getFuelCost(), "MISSION_COST", LocalDateTime.now()));
+            if (mission.getWeaponCost() > 0) {
                 resourceTransactionRepository.save(new ResourceTransaction(game, round, null, aircraft, ResourceType.WEAPONS,
-                        -mission.getMissionType().getWeaponCost(), "MISSION_COST", LocalDateTime.now()));
+                        -mission.getWeaponCost(), "MISSION_COST", LocalDateTime.now()));
             }
 
             logEvent(game, round, aircraft, null, mission, EventType.MISSION_COMPLETED,
@@ -562,7 +561,7 @@ public class RoundService {
     private void restoreAircraftOperationalState(Game game, GameRound round, GameAircraft aircraft,
                                                  AircraftState state, GameBase base, BaseState baseState,
                                                  boolean restoreFlightHours) {
-        int fuelNeeded = Math.max(0, aircraft.getAircraftType().getMaxFuel() - state.getFuel());
+        int fuelNeeded = Math.max(0, aircraft.getFuelCapacity() - state.getFuel());
         if (fuelNeeded > 0 && baseSupportsService(base, BaseServiceType.REFUEL)) {
             int transferredFuel = Math.min(fuelNeeded, baseState.getFuelStock());
             if (transferredFuel > 0) {
@@ -573,7 +572,7 @@ public class RoundService {
             }
         }
 
-        int weaponsNeeded = Math.max(0, aircraft.getAircraftType().getMaxWeapons() - state.getWeapons());
+        int weaponsNeeded = Math.max(0, aircraft.getWeaponsCapacity() - state.getWeapons());
         if (weaponsNeeded > 0 && baseSupportsService(base, BaseServiceType.REARM)) {
             int transferredWeapons = Math.min(weaponsNeeded, baseState.getWeaponsStock());
             if (transferredWeapons > 0) {
@@ -585,7 +584,7 @@ public class RoundService {
         }
 
         if (restoreFlightHours && baseSupportsService(base, BaseServiceType.FULL_SERVICE)) {
-            state.setRemainingFlightHours(aircraft.getAircraftType().getMaxFlightHours());
+            state.setRemainingFlightHours(aircraft.getFlightHoursCapacity());
         }
     }
 

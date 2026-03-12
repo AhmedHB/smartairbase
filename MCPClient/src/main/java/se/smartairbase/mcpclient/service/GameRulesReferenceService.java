@@ -16,7 +16,7 @@ import java.util.Map;
 
 @Service
 /**
- * Exposes a client-side reference view of the game rules from version 7.
+ * Exposes a client-side reference view of the current game rules.
  *
  * <p>The MCP server remains authoritative for validation. This service is only
  * used to present a readable rules summary in the client UI.</p>

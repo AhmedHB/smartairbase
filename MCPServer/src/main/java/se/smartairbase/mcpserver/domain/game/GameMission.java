@@ -24,6 +24,15 @@ public class GameMission {
     @JoinColumn(name = "mission_type_id", nullable = false)
     private MissionType missionType;
 
+    @Column(name = "fuel_cost", nullable = false)
+    private Integer fuelCost;
+
+    @Column(name = "weapon_cost", nullable = false)
+    private Integer weaponCost;
+
+    @Column(name = "flight_time_cost", nullable = false)
+    private Integer flightTimeCost;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private MissionStatus status = MissionStatus.AVAILABLE;
@@ -34,11 +43,20 @@ public class GameMission {
     protected GameMission() {
     }
 
-    public GameMission(Game game, String code, MissionType missionType, Integer sortOrder) {
+    public GameMission(Game game,
+                       String code,
+                       MissionType missionType,
+                       Integer sortOrder,
+                       Integer fuelCost,
+                       Integer weaponCost,
+                       Integer flightTimeCost) {
         this.game = game;
         this.code = code;
         this.missionType = missionType;
         this.sortOrder = sortOrder;
+        this.fuelCost = fuelCost;
+        this.weaponCost = weaponCost;
+        this.flightTimeCost = flightTimeCost;
     }
 
     public void setStatus(MissionStatus status) {
@@ -49,6 +67,9 @@ public class GameMission {
     public Game getGame() { return game; }
     public String getCode() { return code; }
     public MissionType getMissionType() { return missionType; }
+    public Integer getFuelCost() { return fuelCost; }
+    public Integer getWeaponCost() { return weaponCost; }
+    public Integer getFlightTimeCost() { return flightTimeCost; }
     public MissionStatus getStatus() { return status; }
     public Integer getSortOrder() { return sortOrder; }
 }

@@ -159,6 +159,19 @@ class RoundServiceFlowTests {
         assertThat(round.getEndedAt()).isNotNull();
     }
 
+    @Test
+    void createGameUsesGeneratedSequentialDefaultNamesWhenNoNameIsProvided() {
+        GameSummaryDto firstGame = gameService.createGameFromScenario("SCN_STANDARD", "V7", null);
+        GameSummaryDto secondGame = gameService.createGameFromScenario("SCN_STANDARD", "V7", "   ");
+
+        assertThat(firstGame.name()).matches("GAME_\\d{3}");
+        assertThat(secondGame.name()).matches("GAME_\\d{3}");
+
+        int firstNumber = Integer.parseInt(firstGame.name().substring("GAME_".length()));
+        int secondNumber = Integer.parseInt(secondGame.name().substring("GAME_".length()));
+        assertThat(secondNumber).isEqualTo(firstNumber + 1);
+    }
+
     private AircraftStateDto aircraft(GameStateDto state, String code) {
         return state.aircraft().stream()
                 .filter(aircraft -> aircraft.code().equals(code))

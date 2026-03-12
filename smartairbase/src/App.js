@@ -5,7 +5,7 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:808
 
 const INITIAL_CREATE_FORM = {
   scenarioName: 'SCN_STANDARD',
-  version: '7',
+  gameName: '',
   aircraftCount: 3,
   missionTypeCounts: {
     M1: 1,
@@ -22,11 +22,23 @@ const INITIAL_DICE_AUTOMATION = {
   missionPreviewSeconds: 5,
 };
 
+const BASE_TYPE_LABELS = {
+  A: 'Main Airbase',
+  B: 'Forward Base',
+  C: 'Fuel Outpost',
+};
+
 function App() {
+  const [currentView, setCurrentView] = useState('PLAY');
   const [createForm, setCreateForm] = useState(INITIAL_CREATE_FORM);
   const [diceAutomation, setDiceAutomation] = useState(INITIAL_DICE_AUTOMATION);
   const [gameId, setGameId] = useState('');
   const [rules, setRules] = useState(null);
+  const [scenarios, setScenarios] = useState([]);
+  const [selectedScenarioId, setSelectedScenarioId] = useState('');
+  const [selectedScenario, setSelectedScenario] = useState(null);
+  const [scenarioBusy, setScenarioBusy] = useState(false);
+  const [duplicateScenarioName, setDuplicateScenarioName] = useState('');
   const [showScenarioRules, setShowScenarioRules] = useState(false);
   const [previousGameState, setPreviousGameState] = useState(null);
   const [gameState, setGameState] = useState(null);
@@ -38,6 +50,9 @@ function App() {
   const [analysisFeed, setAnalysisFeed] = useState([]);
   const [analysisPending, setAnalysisPending] = useState(false);
   const [status, setStatus] = useState({ kind: 'idle', message: 'Create a game to begin.' });
+  const hasValidDuplicateScenarioName = duplicateScenarioName.trim().length > 0;
+  const [showCreateGamePrompt, setShowCreateGamePrompt] = useState(false);
+  const [useCustomGameName, setUseCustomGameName] = useState(false);
   const automationInFlightRef = useRef(false);
   const nextRoundInFlightRef = useRef(false);
   const gameStateRef = useRef(null);
@@ -123,7 +138,10 @@ function App() {
   const canStartNextTurn = nextStep === 'NEXT_TURN';
   const canResolveMissions = nextStep === 'RESOLVE_MISSIONS';
   const canRollDice = nextStep === 'ROLL_DICE';
-  const selectedScenarioRules = scenarioRulesFor(createForm.scenarioName);
+  const selectedScenarioRules = useMemo(
+    () => scenarioRulesFor(selectedScenario, createForm.scenarioName),
+    [selectedScenario, createForm.scenarioName]
+  );
 
   useEffect(() => {
     if (!pendingDiceAircraft.length) {
@@ -212,6 +230,19 @@ function App() {
   const basesWithAircraft = useMemo(() => {
     const baseSource = gameState?.bases?.length
       ? gameState.bases
+      : (selectedScenario?.bases || []).length
+        ? (selectedScenario.bases || []).map((base) => ({
+            code: base.code,
+            name: BASE_TYPE_LABELS[base.baseTypeCode] || base.name,
+            baseType: base.baseTypeCode || 'BASE',
+            fuelStock: base.fuelStart || 0,
+            weaponsStock: base.weaponsStart || 0,
+            sparePartsStock: base.sparePartsStart || 0,
+            occupiedParkingSlots: 0,
+            parkingCapacity: base.parkingCapacity || 0,
+            occupiedMaintSlots: 0,
+            maintenanceCapacity: base.maintenanceCapacity || 0,
+          }))
       : (rules?.bases || []).map((base) => ({
           code: base.code,
           name: base.name,
@@ -231,11 +262,21 @@ function App() {
       const maintenance = onBase.filter((aircraft) => aircraft.status === 'IN_MAINTENANCE');
       return { ...base, parked, maintenance };
     });
-  }, [gameState, rules]);
+  }, [gameState, rules, selectedScenario]);
 
   const baseReferenceByCode = useMemo(() => {
+    if ((selectedScenario?.bases || []).length) {
+      return Object.fromEntries((selectedScenario.bases || []).map((base) => [normalizeBaseCode(base.code), {
+        code: base.code,
+        maxInventory: {
+          fuel: base.fuelMax ?? 0,
+          weapons: base.weaponsMax ?? 0,
+          spareParts: base.sparePartsMax ?? 0,
+        },
+      }]));
+    }
     return Object.fromEntries((rules?.bases || []).map((base) => [normalizeBaseCode(base.code), base]));
-  }, [rules]);
+  }, [rules, selectedScenario]);
 
   const aircraftAdditionsByCode = useMemo(() => {
     const previousAircraft = Object.fromEntries((previousGameState?.aircraft || []).map((aircraft) => [aircraft.code, aircraft]));
@@ -283,6 +324,22 @@ function App() {
     );
   }, [rules, gameState, createForm.missionTypeCounts]);
 
+  const scenarioAircraftGroups = useMemo(() => {
+    const grouped = new Map();
+    for (const aircraft of selectedScenario?.aircraft || []) {
+      const typeCode = aircraft.aircraftTypeCode || 'Unknown';
+      if (!grouped.has(typeCode)) {
+        grouped.set(typeCode, []);
+      }
+      grouped.get(typeCode).push(aircraft);
+    }
+    return Array.from(grouped.entries()).map(([typeCode, aircraft]) => ({
+      typeCode,
+      aircraft,
+      representative: aircraft[0],
+    }));
+  }, [selectedScenario]);
+
 async function request(path, options = {}) {
     const controller = new AbortController();
     activeRequestControllersRef.current.add(controller);
@@ -315,11 +372,19 @@ async function request(path, options = {}) {
   useEffect(() => {
     let ignore = false;
 
-    async function loadRules() {
+    async function loadInitialData() {
       try {
-        const data = await request('/reference/rules');
+        const [rulesData, scenarioData] = await Promise.all([
+          request('/reference/rules'),
+          request('/scenarios'),
+        ]);
         if (!ignore) {
-          setRules(data);
+          setRules(rulesData);
+          setScenarios(scenarioData || []);
+          if ((scenarioData || []).length) {
+            const initialScenarioId = String(scenarioData[0].scenarioId);
+            setSelectedScenarioId(initialScenarioId);
+          }
         }
       } catch (error) {
         if (isAbortError(error)) {
@@ -331,11 +396,51 @@ async function request(path, options = {}) {
       }
     }
 
-    loadRules();
+    loadInitialData();
     return () => {
       ignore = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!selectedScenarioId) {
+      setSelectedScenario(null);
+      return;
+    }
+
+    let ignore = false;
+
+    async function loadScenario() {
+      try {
+        const data = await request(`/scenarios/${selectedScenarioId}`);
+        if (!ignore) {
+          setSelectedScenario(data);
+          setCreateForm((current) => ({
+            ...current,
+            scenarioName: data?.name || current.scenarioName,
+            aircraftCount: (data?.aircraft || []).length || current.aircraftCount,
+            missionTypeCounts: Object.fromEntries((data?.missions || []).map((mission) => [
+              mission.missionTypeCode || mission.code,
+              Number(mission.defaultCount ?? 0),
+            ])),
+          }));
+          setDuplicateScenarioName(defaultDuplicateScenarioName(data?.name));
+        }
+      } catch (error) {
+        if (isAbortError(error)) {
+          return;
+        }
+        if (!ignore) {
+          setStatus({ kind: 'error', message: error.message });
+        }
+      }
+    }
+
+    void loadScenario();
+    return () => {
+      ignore = true;
+    };
+  }, [selectedScenarioId]);
 
   useEffect(() => {
     return () => {
@@ -404,7 +509,15 @@ async function request(path, options = {}) {
   }, [analysisFeed, analysisPending]);
 
   function pushLog(title, payload) {
-    const stamp = new Date().toLocaleTimeString('en-GB');
+    const stamp = new Date().toLocaleString('sv-SE', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
     setEventLog((current) => [
       {
         id: `${Date.now()}-${Math.random()}`,
@@ -458,7 +571,38 @@ async function request(path, options = {}) {
 
   async function handleCreateGame(event) {
     event.preventDefault();
-    await createNewGame('Creating game...', 'Game created');
+    setShowCreateGamePrompt(true);
+    setUseCustomGameName(false);
+    setCreateForm((current) => ({ ...current, gameName: '' }));
+  }
+
+  async function finalizeCreatedGame(data, successPrefix) {
+    if (!isValidGameId(data?.gameId)) {
+      throw new Error('Create game did not return a valid gameId.');
+    }
+    const nextGameId = String(data.gameId);
+    const createdGameName = data?.name || `Game ${nextGameId}`;
+    setGameId(nextGameId);
+    setLastAutoResponse(null);
+    setSelectedAircraft('');
+    setDiceValue(1);
+    setUseRandomDice(true);
+    setEventLog([]);
+    setAnalysisFeed([]);
+    setAnalysisPending(false);
+    lastAnalysisRequestKeyRef.current = null;
+    setPreviousGameState(null);
+    stopAutomation();
+    await refreshGameState(nextGameId);
+    setCurrentView('PLAY');
+    setShowCreateGamePrompt(false);
+    setUseCustomGameName(false);
+    setCreateForm((current) => ({ ...current, gameName: '' }));
+    setStatus({ kind: 'success', message: `${successPrefix} ${createdGameName} (${nextGameId}).` });
+    pushLog(successPrefix, {
+      ...data,
+      messages: [`${createdGameName} created with Game ID ${nextGameId}.`],
+    });
   }
 
   function resetUiToStartupState(previousGameId, previousGameStatus) {
@@ -469,6 +613,8 @@ async function request(path, options = {}) {
     setGameId('');
     setRules((current) => current);
     setShowScenarioRules(false);
+    setShowCreateGamePrompt(false);
+    setUseCustomGameName(false);
     setPreviousGameState(null);
     gameStateRef.current = null;
     setGameState(null);
@@ -520,34 +666,155 @@ async function request(path, options = {}) {
   async function createNewGame(loadingMessage, successPrefix, options = {}) {
     setStatus({ kind: 'loading', message: loadingMessage });
     try {
-      const previousGameId = isValidGameId(gameId) ? String(gameId) : null;
       const data = await request('/games', {
         method: 'POST',
-        body: JSON.stringify(createForm),
+        body: JSON.stringify({
+          ...createForm,
+          gameName: options.gameName ?? null,
+        }),
       });
-      if (!isValidGameId(data?.gameId)) {
-        throw new Error('Create game did not return a valid gameId.');
-      }
-      const nextGameId = String(data.gameId);
-      setGameId(nextGameId);
-      setLastAutoResponse(null);
-      setSelectedAircraft('');
-      setDiceValue(1);
-      setUseRandomDice(true);
-      setEventLog([]);
-      setAnalysisFeed([]);
-      setAnalysisPending(false);
-      lastAnalysisRequestKeyRef.current = null;
-      setPreviousGameState(null);
-      stopAutomation();
-      await refreshGameState(nextGameId);
-      setStatus({ kind: 'success', message: `${successPrefix} ${nextGameId}.` });
-      pushLog(successPrefix, data);
+      await finalizeCreatedGame(data, successPrefix);
     } catch (error) {
       if (isAbortError(error)) {
         return;
       }
       setStatus({ kind: 'error', message: error.message });
+    }
+  }
+
+  async function handleCreateGameWithDefaultName() {
+    await createNewGame('Creating game...', 'Game created');
+  }
+
+  async function handleCreateGameWithCustomName() {
+    if (!createForm.gameName.trim()) {
+      setStatus({ kind: 'error', message: 'Enter a name for the game or use the default name.' });
+      return;
+    }
+    await createNewGame('Creating game...', 'Game created', { gameName: createForm.gameName.trim() });
+  }
+
+  async function handleDuplicateScenario() {
+    if (!selectedScenarioId || !duplicateScenarioName.trim()) {
+      setStatus({ kind: 'error', message: 'Enter a name for the duplicated scenario.' });
+      return;
+    }
+    setScenarioBusy(true);
+    setStatus({ kind: 'loading', message: 'Duplicating scenario...' });
+    try {
+      const duplicated = await request(`/scenarios/${selectedScenarioId}/duplicate`, {
+        method: 'POST',
+        body: JSON.stringify({ name: duplicateScenarioName.trim() }),
+      });
+      const updatedScenarios = await request('/scenarios');
+      setScenarios(updatedScenarios || []);
+      setSelectedScenarioId(String(duplicated.scenarioId));
+      setStatus({ kind: 'success', message: `Scenario duplicated as ${duplicated.name}.` });
+    } catch (error) {
+      if (isAbortError(error)) {
+        return;
+      }
+      setStatus({ kind: 'error', message: error.message });
+    } finally {
+      setScenarioBusy(false);
+    }
+  }
+
+  async function handleDeleteScenario() {
+    if (!selectedScenarioId || !selectedScenario?.deletable) {
+      setStatus({ kind: 'error', message: 'This scenario cannot be deleted.' });
+      return;
+    }
+    setScenarioBusy(true);
+    setStatus({ kind: 'loading', message: `Deleting ${selectedScenario.name}...` });
+    try {
+      await request(`/scenarios/${selectedScenarioId}`, { method: 'DELETE' });
+      const updatedScenarios = await request('/scenarios');
+      setScenarios(updatedScenarios || []);
+      const nextScenario = (updatedScenarios || [])[0] || null;
+      setSelectedScenarioId(nextScenario ? String(nextScenario.scenarioId) : '');
+      setSelectedScenario(null);
+      setDuplicateScenarioName(nextScenario ? defaultDuplicateScenarioName(nextScenario.name) : '');
+      setStatus({ kind: 'success', message: 'Scenario deleted.' });
+    } catch (error) {
+      if (isAbortError(error)) {
+        return;
+      }
+      setStatus({ kind: 'error', message: error.message });
+    } finally {
+      setScenarioBusy(false);
+    }
+  }
+
+  function updateSelectedScenarioCollection(section, itemCode, patch) {
+    setSelectedScenario((current) => {
+      if (!current) {
+        return current;
+      }
+      return {
+        ...current,
+        [section]: (current[section] || []).map((item) => (
+          item.code === itemCode ? { ...item, ...patch } : item
+        )),
+      };
+    });
+  }
+
+  function updateScenarioNumberField(section, itemCode, field, value) {
+    const parsedValue = Number(value);
+    const numericValue = Number.isFinite(parsedValue) ? Math.max(0, parsedValue) : 0;
+    updateSelectedScenarioCollection(section, itemCode, { [field]: numericValue });
+  }
+
+  function updateScenarioTextField(section, itemCode, field, value) {
+    updateSelectedScenarioCollection(section, itemCode, { [field]: value });
+  }
+
+  function updateScenarioAircraftGroupField(typeCode, field, value) {
+    setSelectedScenario((current) => {
+      if (!current) {
+        return current;
+      }
+      return {
+        ...current,
+        aircraft: (current.aircraft || []).map((aircraft) => (
+          aircraft.aircraftTypeCode === typeCode ? { ...aircraft, [field]: value } : aircraft
+        )),
+      };
+    });
+  }
+
+  function updateScenarioAircraftGroupNumberField(typeCode, field, value) {
+    updateScenarioAircraftGroupField(typeCode, field, Math.max(0, Number(value || 0)));
+  }
+
+  async function handleSaveScenario() {
+    if (!selectedScenarioId || !selectedScenario?.editable) {
+      setStatus({ kind: 'error', message: 'This scenario cannot be edited.' });
+      return;
+    }
+    setScenarioBusy(true);
+    setStatus({ kind: 'loading', message: `Saving ${selectedScenario.name}...` });
+    try {
+      const updatedScenario = await request(`/scenarios/${selectedScenarioId}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          description: selectedScenario.description || '',
+          bases: selectedScenario.bases || [],
+          aircraft: selectedScenario.aircraft || [],
+          missions: selectedScenario.missions || [],
+        }),
+      });
+      setSelectedScenario(updatedScenario);
+      setDuplicateScenarioName(defaultDuplicateScenarioName(updatedScenario?.name));
+      setStatus({ kind: 'success', message: 'Scenario saved.' });
+    } catch (error) {
+      if (isAbortError(error)) {
+        return;
+      }
+      setStatus({ kind: 'error', message: error.message });
+    } finally {
+      setScenarioBusy(false);
     }
   }
 
@@ -763,18 +1030,327 @@ async function request(path, options = {}) {
       <section className="topbar">
         <div className="brand-card brand-card-wide">Smart Air Base</div>
         <div className="headline-divider" />
-        <div className="status-stack">
-          <MetricCard label="Game status" value={humanizeStatus(gameState?.game?.status || 'Not started')} />
-          <MetricCard
-            label="Scenario setup"
-            value={`${gameState?.aircraft?.length || createForm.aircraftCount || rules?.initialSetup?.aircraftCount || 0} planes / ${gameState?.missions?.length || totalConfiguredMissionCount(createForm.missionTypeCounts)} missions`}
-          />
-          <MetricCard label="Round" value={gameState?.game?.currentRound ?? 0} />
-          <MetricCard label="Mission status" value={`${completedMissionCount(gameState)}/${gameState?.missions?.length || 0} Complete`} />
-          <MetricCard label="Holding status" value={`${holdingCount(gameState)} planes`} />
-          <MetricCard label="Crash status" value={`${crashedCount(gameState)} destroyed`} />
+        <div className="top-mode-tabs">
+          <div className="mode-tabs" role="tablist" aria-label="Workspace mode">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={currentView === 'PLAY'}
+              className={`mode-tab ${currentView === 'PLAY' ? 'mode-tab-active' : ''}`}
+              onClick={() => setCurrentView('PLAY')}
+            >
+              Play
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={currentView === 'SCENARIOS'}
+              className={`mode-tab ${currentView === 'SCENARIOS' ? 'mode-tab-active' : ''}`}
+              onClick={() => setCurrentView('SCENARIOS')}
+            >
+              Scenario editor
+            </button>
+          </div>
+          <p className="muted-copy">
+            {currentView === 'PLAY'
+              ? 'Play the current game and manage rounds, dice, and abort.'
+            : 'Inspect and edit the selected scenario without adding new bases, mission types, or aircraft types.'}
+          </p>
         </div>
+        {currentView === 'PLAY' ? (
+          <div className="status-stack">
+            <MetricCard label="Game status" value={humanizeStatus(gameState?.game?.status || 'Not started')} />
+            <MetricCard
+              label="Scenario setup"
+              value={`${gameState?.aircraft?.length || createForm.aircraftCount || rules?.initialSetup?.aircraftCount || 0} planes / ${gameState?.missions?.length || totalConfiguredMissionCount(createForm.missionTypeCounts)} missions`}
+            />
+            <MetricCard label="Round" value={gameState?.game?.currentRound ?? 0} />
+            <MetricCard label="Mission status" value={`${completedMissionCount(gameState)}/${gameState?.missions?.length || 0} Complete`} />
+            <MetricCard label="Holding status" value={`${holdingCount(gameState)} planes`} />
+            <MetricCard label="Crash status" value={`${crashedCount(gameState)} destroyed`} />
+          </div>
+        ) : null}
       </section>
+
+      {currentView === 'SCENARIOS' ? (
+        <section className="scenario-browser">
+          <article className="event-panel">
+            <h3>Scenario library</h3>
+            <div className="scenario-list">
+              {scenarios.map((scenario) => (
+                <button
+                  key={scenario.scenarioId}
+                  type="button"
+                  className={`scenario-list-item ${String(scenario.scenarioId) === String(selectedScenarioId) ? 'scenario-list-item-active' : ''}`}
+                  onClick={() => setSelectedScenarioId(String(scenario.scenarioId))}
+                >
+                  <strong>{scenario.name}</strong>
+                  <span>{humanizeStatus(scenario.sourceType)}</span>
+                </button>
+              ))}
+            </div>
+          </article>
+          <article className="info-panel scenario-detail-panel">
+            <h3>Scenario details</h3>
+            {selectedScenario ? (
+              <>
+                <p><strong>{selectedScenario.name}</strong></p>
+                <p>Type: {humanizeStatus(selectedScenario.sourceType)}. Editable: {selectedScenario.editable ? 'Yes' : 'No'}. Deletable: {selectedScenario.deletable ? 'Yes' : 'No'}.</p>
+                <section className="scenario-reference-section">
+                  <header className="section-heading">
+                    <h4>Scenario overview</h4>
+                    <p className="muted-copy">Reference information for the selected scenario, including deliveries and the fixed repair rules.</p>
+                  </header>
+                  <div className="scenario-summary-grid">
+                    <div>
+                      <h4>Bases</h4>
+                      <ul className="compact-list">
+                        {(selectedScenario.bases || []).map((base) => (
+                          <li key={base.code}>{base.code} {BASE_TYPE_LABELS[base.baseTypeCode] || base.name} · park {base.parkingCapacity} · repair {base.maintenanceCapacity}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <h4>Game rules</h4>
+                      <ul className="compact-list">
+                        {(selectedScenario.diceRules || []).map((rule) => (
+                          <li key={rule.diceValue}>
+                            {rule.diceValue} = {humanizeStatus(rule.damageType)} · spare parts {rule.sparePartsCost ?? 0} · {rule.requiresFullService ? 'Full service' : `${rule.repairRounds} rounds`}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="scenario-summary-wide">
+                      <h4>Deliveries</h4>
+                      <ul className="compact-list">
+                        {(selectedScenario.bases || []).map((base) => (
+                          <li key={`${base.code}-deliveries`}>
+                            {base.code} {BASE_TYPE_LABELS[base.baseTypeCode] || base.name}: {' '}
+                            {(base.supplyRules || []).length
+                              ? base.supplyRules.map((rule) => (
+                                `${humanizeStatus(rule.resource)} +${rule.deliveryAmount} every ${rule.frequencyRounds} rounds`
+                              )).join(' · ')
+                              : 'No scheduled deliveries'}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="scenario-summary-wide">
+                      <h4>Base resources</h4>
+                      <ul className="compact-list">
+                        {(selectedScenario.bases || []).map((base) => (
+                          <li key={`${base.code}-resources`}>
+                            {base.code} {BASE_TYPE_LABELS[base.baseTypeCode] || base.name}: {' '}
+                            Fuel {base.fuelStart ?? 0}/{base.fuelMax ?? 0} ·
+                            {' '}Weapons {base.weaponsStart ?? 0}/{base.weaponsMax ?? 0} ·
+                            {' '}Spare parts {base.sparePartsStart ?? 0}/{base.sparePartsMax ?? 0}
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="muted-copy">Values are shown as start/max per base.</p>
+                    </div>
+                  </div>
+                </section>
+                <label>
+                  Duplicate as
+                  <input
+                    value={duplicateScenarioName}
+                    onChange={(event) => setDuplicateScenarioName(normalizeScenarioTemplateName(event.target.value))}
+                    aria-invalid={!hasValidDuplicateScenarioName}
+                    disabled={scenarioBusy}
+                  />
+                </label>
+                {!hasValidDuplicateScenarioName ? (
+                  <p className="muted-copy">Name is required and must contain at least 1 uppercase letter, digit, or underscore.</p>
+                ) : null}
+                <div className="button-row">
+                  <button
+                    type="button"
+                    className={selectedScenario.sourceType === 'SYSTEM' ? 'compact-button' : ''}
+                    onClick={handleDuplicateScenario}
+                    disabled={scenarioBusy || !hasValidDuplicateScenarioName}
+                  >
+                    Duplicate
+                  </button>
+                  {selectedScenario.editable ? (
+                    <button type="button" onClick={handleSaveScenario} disabled={scenarioBusy}>Save scenario</button>
+                  ) : null}
+                  {selectedScenario.deletable ? (
+                    <button type="button" className="ghost-button" onClick={handleDeleteScenario} disabled={scenarioBusy}>Delete scenario</button>
+                  ) : null}
+                </div>
+                {status.message && ['success', 'loading', 'error'].includes(status.kind) && status.message.includes('Scenario') ? (
+                  <p className={`status-pill status-${status.kind}`}>{status.message}</p>
+                ) : null}
+                <section className="scenario-editor-sections">
+                  <header className="section-heading">
+                    <h4>Editable settings</h4>
+                    <p className="muted-copy">Change only the scenario data that is allowed to vary. System scenarios stay read-only.</p>
+                  </header>
+
+                  <article className="scenario-editor-card">
+                    <header className="section-heading">
+                      <h4>Scenario description</h4>
+                      <p className="muted-copy">Update the descriptive text for this scenario when the scenario is editable.</p>
+                    </header>
+                    <label>
+                      Description
+                      <textarea
+                        rows="3"
+                        value={selectedScenario.description || ''}
+                        disabled={scenarioBusy || !selectedScenario.editable}
+                        onChange={(event) => setSelectedScenario((current) => (
+                          current ? { ...current, description: event.target.value } : current
+                        ))}
+                      />
+                    </label>
+                  </article>
+
+                  <article className="scenario-editor-card">
+                    <header className="section-heading">
+                      <h4>Aircraft settings</h4>
+                      <p className="muted-copy">Review the aircraft types already used in this scenario. You can adjust existing aircraft instances, but not add new aircraft types.</p>
+                    </header>
+                    <p className="muted-copy">{scenarioAircraftGroups.length} aircraft type{scenarioAircraftGroups.length === 1 ? '' : 's'} across {(selectedScenario.aircraft || []).length} aircraft.</p>
+                    <div className="scenario-config-grid scenario-config-grid-aircraft">
+                      <div className="scenario-config-row scenario-config-head">
+                        <span>Type</span>
+                        <span>Count</span>
+                        <span>Fuel</span>
+                        <span>Weapons</span>
+                        <span>Flight hours</span>
+                      </div>
+                      {scenarioAircraftGroups.map((group) => (
+                        <div key={group.typeCode} className="scenario-config-row">
+                          <strong>{group.typeCode}</strong>
+                          <span>{group.aircraft.length}</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={group.representative.fuelStart ?? 0}
+                            disabled={scenarioBusy || !selectedScenario.editable}
+                            onChange={(event) => updateScenarioAircraftGroupNumberField(group.typeCode, 'fuelStart', event.target.value)}
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            value={group.representative.weaponsStart ?? 0}
+                            disabled={scenarioBusy || !selectedScenario.editable}
+                            onChange={(event) => updateScenarioAircraftGroupNumberField(group.typeCode, 'weaponsStart', event.target.value)}
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            value={group.representative.flightHoursStart ?? 0}
+                            disabled={scenarioBusy || !selectedScenario.editable}
+                            onChange={(event) => updateScenarioAircraftGroupNumberField(group.typeCode, 'flightHoursStart', event.target.value)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+
+                  <article className="scenario-editor-card">
+                    <header className="section-heading">
+                      <h4>Mission settings</h4>
+                      <p className="muted-copy">Mission types are fixed. You can only adjust what each mission consumes.</p>
+                    </header>
+                    <div className="scenario-config-grid scenario-config-grid-missions">
+                      <div className="scenario-config-row scenario-config-head">
+                        <span>Mission</span>
+                        <span>Type</span>
+                        <span>Fuel cost</span>
+                        <span>Weapon cost</span>
+                        <span>Flight time</span>
+                      </div>
+                      {(selectedScenario.missions || []).map((mission) => (
+                        <div key={mission.code} className="scenario-config-row">
+                          <strong>{mission.code}</strong>
+                          <span>{mission.missionTypeName || mission.missionTypeCode}</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={mission.fuelCost ?? 0}
+                            disabled={scenarioBusy || !selectedScenario.editable}
+                            onChange={(event) => updateScenarioNumberField('missions', mission.code, 'fuelCost', event.target.value)}
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            value={mission.weaponCost ?? 0}
+                            disabled={scenarioBusy || !selectedScenario.editable}
+                            onChange={(event) => updateScenarioNumberField('missions', mission.code, 'weaponCost', event.target.value)}
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            value={mission.flightTimeCost ?? 0}
+                            disabled={scenarioBusy || !selectedScenario.editable}
+                            onChange={(event) => updateScenarioNumberField('missions', mission.code, 'flightTimeCost', event.target.value)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+
+                  <article className="scenario-editor-card">
+                    <header className="section-heading">
+                      <h4>Base settings</h4>
+                      <p className="muted-copy">Bases are fixed. You can only change parking slots and repair slots for the bases already in this scenario.</p>
+                    </header>
+                    <div className="scenario-config-grid scenario-config-grid-bases">
+                      <div className="scenario-config-row scenario-config-head">
+                        <span>Base</span>
+                        <span>Name</span>
+                        <span>Parking slots</span>
+                        <span>Repair slots</span>
+                      </div>
+                      {(selectedScenario.bases || []).map((base) => {
+                        const supportsRepairSlots = base.code !== 'C' && base.baseTypeCode !== 'FUEL';
+                        return (
+                          <div key={base.code} className="scenario-base-block">
+                            <div className="scenario-config-row">
+                              <strong>{base.code}</strong>
+                              <span>{BASE_TYPE_LABELS[base.baseTypeCode] || base.name || base.baseTypeCode || 'Base'}</span>
+                              <input
+                                type="number"
+                                min="0"
+                                value={base.parkingCapacity ?? 0}
+                                disabled={scenarioBusy || !selectedScenario.editable}
+                                onChange={(event) => updateScenarioNumberField('bases', base.code, 'parkingCapacity', event.target.value)}
+                              />
+                              {supportsRepairSlots ? (
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={base.maintenanceCapacity ?? 0}
+                                  disabled={scenarioBusy || !selectedScenario.editable}
+                                  onChange={(event) => updateScenarioNumberField('bases', base.code, 'maintenanceCapacity', event.target.value)}
+                                />
+                              ) : (
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={0}
+                                  disabled
+                                  readOnly
+                                />
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </article>
+                </section>
+              </>
+            ) : (
+              <p className="muted-copy">Select a scenario to inspect it.</p>
+            )}
+          </article>
+        </section>
+      ) : (
+        <>
 
       <section className="mission-section">
         <header className="section-heading">
@@ -944,12 +1520,24 @@ async function request(path, options = {}) {
                 Scenario
                 <select
                   value={createForm.scenarioName}
-                  onChange={(event) => setCreateForm((current) => ({ ...current, scenarioName: event.target.value }))}
+                  onChange={(event) => {
+                    const nextScenarioName = event.target.value;
+                    const nextScenario = scenarios.find((scenario) => scenario.name === nextScenarioName);
+                    if (nextScenario) {
+                      setSelectedScenarioId(String(nextScenario.scenarioId));
+                    }
+                    setCreateForm((current) => ({
+                      ...current,
+                      scenarioName: nextScenarioName,
+                    }));
+                  }}
                 >
-                  <option value="SCN_STANDARD">SCN_STANDARD</option>
+                  {scenarios.map((scenario) => (
+                    <option key={scenario.scenarioId} value={scenario.name}>{scenario.name}</option>
+                  ))}
                 </select>
               </label>
-              <button type="button" className="ghost-button" onClick={() => setShowScenarioRules((current) => !current)}>
+              <button type="button" onClick={() => setShowScenarioRules((current) => !current)}>
                 {showScenarioRules ? 'Hide scenario rules' : 'Show scenario rules'}
               </button>
               {showScenarioRules ? (
@@ -1068,6 +1656,53 @@ async function request(path, options = {}) {
                   </label>
                 ))}
                 <button type="submit" className={nextStep === 'CREATE_GAME' ? 'next-step-button' : ''}>Create game</button>
+                {showCreateGamePrompt ? (
+                  <article className="scenario-rules-panel">
+                    <h4>Name game</h4>
+                    <p className="muted-copy">Choose the default game name with a running number, or enter your own name.</p>
+                    <div className="button-row">
+                      <button type="button" onClick={handleCreateGameWithDefaultName} disabled={status.kind === 'loading'}>
+                        Use default name
+                      </button>
+                      <button
+                        type="button"
+                        className={useCustomGameName ? 'next-step-button' : ''}
+                        onClick={() => setUseCustomGameName(true)}
+                        disabled={status.kind === 'loading'}
+                      >
+                        Enter name
+                      </button>
+                    </div>
+                    {useCustomGameName ? (
+                      <>
+                        <label>
+                          Game name
+                          <input
+                            value={createForm.gameName}
+                            onChange={(event) => setCreateForm((current) => ({
+                              ...current,
+                              gameName: event.target.value,
+                            }))}
+                            aria-invalid={!createForm.gameName.trim()}
+                            disabled={status.kind === 'loading'}
+                          />
+                        </label>
+                        {!createForm.gameName.trim() ? (
+                          <p className="muted-copy">Game name is required when you choose a custom name.</p>
+                        ) : null}
+                        <div className="button-row">
+                          <button
+                            type="button"
+                            onClick={handleCreateGameWithCustomName}
+                            disabled={status.kind === 'loading' || !createForm.gameName.trim()}
+                          >
+                            Create named game
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
+                  </article>
+                ) : null}
               </form>
               <label>
                 Game ID
@@ -1091,7 +1726,7 @@ async function request(path, options = {}) {
                 {eventLog.map((entry) => (
                   <article key={entry.id} className="event-item">
                     <strong>{entry.title}</strong>
-                    <span>{entry.stamp}</span>
+                    <span>{eventMeta(entry)}</span>
                     {renderEventDetails(entry, rules)}
                     {entry.payload?.messages?.length ? <p>{entry.payload.messages.join(' ')}</p> : null}
                   </article>
@@ -1154,6 +1789,9 @@ async function request(path, options = {}) {
                 />
                 <span>Choose outcome</span>
               </label>
+              {!lastAutoResponse?.autoLandings?.length ? (
+                <p className="muted-copy">Roll dice to see automatic landing decisions.</p>
+              ) : null}
             </fieldset>
             {!useRandomDice ? (
               <label>
@@ -1162,8 +1800,13 @@ async function request(path, options = {}) {
               </label>
             ) : null}
             <div className="button-row bottom-actions">
-              <button type="button" className="ghost-button" onClick={handleAbortGame}>Abort game</button>
-              <button type="submit" className={nextStep === 'ROLL_DICE' ? 'next-step-button' : ''} disabled={!canRollDice || automationEnabled}>Roll dice</button>
+              <button
+                type="submit"
+                className={`${nextStep === 'ROLL_DICE' ? 'next-step-button ' : ''}${canRollDice && !automationEnabled ? 'active-button ' : ''}compact-button`}
+                disabled={!canRollDice || automationEnabled}
+              >
+                Roll dice
+              </button>
             </div>
           </form>
           {automationEnabled ? <p>Automated dice handling is active.</p> : null}
@@ -1171,9 +1814,7 @@ async function request(path, options = {}) {
             <ul className="compact-list">
               {lastAutoResponse.autoLandings.map((entry) => <li key={entry}>{entry}</li>)}
             </ul>
-          ) : (
-            <p>Roll dice to see automatic landing decisions.</p>
-          )}
+          ) : null}
         </article>
         <article className="info-panel analysis-feed-panel">
           <div className="analysis-feed-header">
@@ -1203,6 +1844,8 @@ async function request(path, options = {}) {
           )}
         </article>
       </section>
+        </>
+      )}
     </main>
   );
 }
@@ -1291,6 +1934,16 @@ function finalGameMessage(gameState) {
   return `Game finished with status ${gameState?.game?.status}. ${summary}`;
 }
 
+function defaultDuplicateScenarioName(name) {
+  return normalizeScenarioTemplateName(name ? `${name}_COPY` : 'SCENARIO_COPY');
+}
+
+function normalizeScenarioTemplateName(value) {
+  return (value || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9_]/g, '');
+}
+
 function finalGameLogTitle(gameState) {
   if (gameState?.game?.status === 'WON') {
     return 'Game won';
@@ -1321,29 +1974,78 @@ function summarizeGameOutcome(gameState) {
   return `${completedMissions}/${totalMissions} missions completed, ${landedAircraft} aircraft landed, ${destroyedAircraft} destroyed, ${rounds} rounds.`;
 }
 
-function scenarioRulesFor(scenarioName) {
-  if (scenarioName === 'SCN_STANDARD') {
+function scenarioRulesFor(selectedScenario, scenarioName) {
+  if (!selectedScenario) {
     return {
-      title: 'SCN_STANDARD',
-      summary: 'Baseline scenario focused on completing missions with limited aircraft, parking, maintenance capacity, and base resources.',
-      points: [
-        'Aircraft start with Fuel 100, Weapons 6, and Flight Hours 20.',
-        'Mission costs: M1 Recon 20 fuel / 0 weapons / 4 hours, M2 Strike 30 fuel / 2 weapons / 6 hours, M3 Deep Strike 40 fuel / 4 weapons / 8 hours.',
-        'Total base capacity in this scenario is 8 parking slots and 3 maintenance slots.',
-        'Holding consumes 5 fuel per round until the aircraft can land or is lost.',
-        'Fuel deliveries arrive every 2 rounds: A +50, B +40, C +30.',
-        'Spare parts arrive every 3 rounds: A +3, B +2, C +0.',
-        'Weapons arrive every 4 rounds: A +6, B +4, C +0.',
-        'Dice outcomes: 1 destroyed, 2 full service required, 3 major repair, 4 component damage, 5 minor repair, 6 no fault.',
-        'Some rounds may have no available actions and can be passed directly to the next round.',
-      ],
+      title: scenarioName || 'Scenario',
+      summary: 'No scenario description is available for this setup yet.',
+      points: [],
     };
   }
 
+  const aircraft = selectedScenario.aircraft || [];
+  const missions = selectedScenario.missions || [];
+  const bases = selectedScenario.bases || [];
+  const diceRules = selectedScenario.diceRules || [];
+  const totalParking = bases.reduce((sum, base) => sum + Number(base.parkingCapacity || 0), 0);
+  const totalRepair = bases.reduce((sum, base) => sum + Number(base.maintenanceCapacity || 0), 0);
+  const groupedAircraft = Object.values(aircraft.reduce((accumulator, item) => {
+    const key = item.aircraftTypeCode || item.code;
+    accumulator[key] = accumulator[key] || [];
+    accumulator[key].push(item);
+    return accumulator;
+  }, {}));
+
+  const aircraftPoint = groupedAircraft.length
+    ? `Aircraft start with ${groupedAircraft.map((group) => {
+        const sample = group[0];
+        return `${sample.aircraftTypeCode} x${group.length} at Fuel ${sample.fuelStart}, Weapons ${sample.weaponsStart}, and Flight Hours ${sample.flightHoursStart}`;
+      }).join('; ')}.`
+    : null;
+
+  const missionPoint = missions.length
+    ? `Mission costs: ${missions.map((mission) => (
+        `${mission.missionTypeCode} ${mission.missionTypeName} ${mission.fuelCost} fuel / ${mission.weaponCost} weapons / ${mission.flightTimeCost} hours`
+      )).join(', ')}.`
+    : null;
+
+  const capacityPoint = bases.length
+    ? `Total base capacity in this scenario is ${totalParking} parking slots and ${totalRepair} maintenance slots.`
+    : null;
+
+  const deliveryPoints = ['FUEL', 'SPARE_PARTS', 'WEAPONS']
+    .map((resource) => {
+      const deliveries = bases.map((base) => {
+        const match = (base.supplyRules || []).find((rule) => rule.resource === resource);
+        if (!match || Number(match.deliveryAmount || 0) <= 0) {
+          return null;
+        }
+        return `${base.code} +${match.deliveryAmount} every ${match.frequencyRounds} rounds`;
+      }).filter(Boolean);
+      if (!deliveries.length) {
+        return null;
+      }
+      return `${humanizeStatus(resource)} deliveries: ${deliveries.join(', ')}.`;
+    })
+    .filter(Boolean);
+
+  const dicePoint = diceRules.length
+    ? `Dice outcomes: ${diceRules.map((rule) => (
+        `${rule.diceValue} ${humanizeStatus(rule.damageType)}`
+      )).join(', ')}.`
+    : null;
+
   return {
-    title: scenarioName || 'Scenario',
-    summary: 'No scenario description is available for this setup yet.',
-    points: [],
+    title: selectedScenario.name || scenarioName || 'Scenario',
+    summary: selectedScenario.description || 'Scenario configuration generated from the selected setup.',
+    points: [
+      aircraftPoint,
+      missionPoint,
+      capacityPoint,
+      ...deliveryPoints,
+      dicePoint,
+      'Some rounds may have no available actions and can be passed directly to the next round.',
+    ].filter(Boolean),
   };
 }
 
@@ -1470,4 +2172,13 @@ function renderEventDetails(entry, rules) {
   ].filter(Boolean);
 
   return details.length ? <p>{details.join(' | ')}</p> : null;
+}
+
+function eventMeta(entry) {
+  const round = entry?.payload?.gameState?.game?.currentRound
+    ?? entry?.payload?.currentRound
+    ?? entry?.payload?.roundNumber;
+  return round === undefined || round === null
+    ? `Time: ${entry.stamp}`
+    : `Time: ${entry.stamp} | Round: ${round}`;
 }

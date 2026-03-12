@@ -24,6 +24,15 @@ public class GameAircraft {
     @JoinColumn(name = "aircraft_type_id", nullable = false)
     private AircraftType aircraftType;
 
+    @Column(name = "fuel_capacity", nullable = false)
+    private Integer fuelCapacity;
+
+    @Column(name = "weapons_capacity", nullable = false)
+    private Integer weaponsCapacity;
+
+    @Column(name = "flight_hours_capacity", nullable = false)
+    private Integer flightHoursCapacity;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
     private AircraftStatus status = AircraftStatus.READY;
@@ -31,10 +40,18 @@ public class GameAircraft {
     protected GameAircraft() {
     }
 
-    public GameAircraft(Game game, String code, AircraftType aircraftType) {
+    public GameAircraft(Game game,
+                        String code,
+                        AircraftType aircraftType,
+                        Integer fuelCapacity,
+                        Integer weaponsCapacity,
+                        Integer flightHoursCapacity) {
         this.game = game;
         this.code = code;
         this.aircraftType = aircraftType;
+        this.fuelCapacity = fuelCapacity;
+        this.weaponsCapacity = weaponsCapacity;
+        this.flightHoursCapacity = flightHoursCapacity;
     }
 
     public void setStatus(AircraftStatus status) {
@@ -45,5 +62,8 @@ public class GameAircraft {
     public Game getGame() { return game; }
     public String getCode() { return code; }
     public AircraftType getAircraftType() { return aircraftType; }
+    public Integer getFuelCapacity() { return fuelCapacity; }
+    public Integer getWeaponsCapacity() { return weaponsCapacity; }
+    public Integer getFlightHoursCapacity() { return flightHoursCapacity; }
     public AircraftStatus getStatus() { return status; }
 }

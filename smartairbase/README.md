@@ -49,28 +49,28 @@ The player does not manually assign missions or landing bases in the main flow. 
 The create-game form currently exposes:
 
 - scenario name
+- optional game name, chosen through a prompt after pressing `Create game`
 - aircraft count
 - mission count for each mission type
 
 The scenario version is kept internally and is no longer shown in the GUI.
 The scenario name is selected from a dropdown and is not free-text editable.
 Default scenario name: `SCN_STANDARD`.
+If the user does not provide a custom name, the backend generates a default game name such as `GAME_001`.
 The aircraft field is capped at `8` and the UI explains that this is the maximum for the current scenario.
 
 ### Scenario Rules Panel
 
 Under the scenario selector the UI includes a toggle button that shows a compact rules panel for the selected scenario.
 
-For `SCN_STANDARD` the panel currently summarizes:
+The panel now summarizes the currently selected scenario from real scenario data and can reflect user-edited scenario copies. It includes:
 
 - aircraft start values
 - mission costs
 - total parking and maintenance capacity
-- holding fuel cost
 - delivery schedules for fuel, weapons, and spare parts
 - dice outcome meanings
 - the fact that some rounds may be pure wait rounds
-- the current holding crash rule after fuel has already reached `0`
 
 ### Abort Game
 
@@ -128,10 +128,19 @@ The main board also includes:
 - a dedicated `Holding` panel for aircraft that could not land
 - a dedicated `Destroyed aircraft` panel for aircraft that have crashed or been lost
 - support text under `Missions`, `Holding`, and `Bases`
-- base cards with maximum inventory values and delivery timing summaries for the current scenario
+- base cards with slot layout, maximum inventory values, and delivery timing summaries for the currently selected scenario before game start
 - aircraft cards in `Holding`, `Park`, and `Repair` with `current/max` values for fuel, weapons, and flight hours
 - positive `Added:` diffs on aircraft cards when fuel, weapons, or flight hours have been restored since the previous state refresh
 - flight hours should only increase after full service, not after ordinary landing or ordinary repair
+
+### Event History
+
+The event history panel now shows:
+
+- event title
+- timestamp
+- round number when available
+- event-specific details such as dice outcome meaning and create-game messages
 
 ### Analysis Feed
 

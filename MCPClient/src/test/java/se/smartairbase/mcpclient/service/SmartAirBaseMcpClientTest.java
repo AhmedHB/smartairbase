@@ -7,10 +7,18 @@ import se.smartairbase.mcpclient.controller.dto.ActionResultDTO;
 import se.smartairbase.mcpclient.controller.dto.AnalysisFeedItemDTO;
 import se.smartairbase.mcpclient.controller.dto.AnalysisFeedResponseDTO;
 import se.smartairbase.mcpclient.controller.dto.AssignMissionRequestDTO;
+import se.smartairbase.mcpclient.controller.dto.CreateScenarioGameRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.CreateGameRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.DiceRollRequestDTO;
+import se.smartairbase.mcpclient.controller.dto.DuplicateScenarioRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.GameSummaryDTO;
 import se.smartairbase.mcpclient.controller.dto.LandAircraftRequestDTO;
+import se.smartairbase.mcpclient.controller.dto.ScenarioAircraftDTO;
+import se.smartairbase.mcpclient.controller.dto.ScenarioBaseDTO;
+import se.smartairbase.mcpclient.controller.dto.ScenarioDefinitionDTO;
+import se.smartairbase.mcpclient.controller.dto.ScenarioMissionDTO;
+import se.smartairbase.mcpclient.controller.dto.ScenarioSummaryDTO;
+import se.smartairbase.mcpclient.controller.dto.UpdateScenarioRequestDTO;
 import se.smartairbase.mcpclient.domain.SmartAirBaseTool;
 
 import java.util.Map;
@@ -31,7 +39,7 @@ class SmartAirBaseMcpClientTest {
     void createGameUsesCreateGameToolAndRequestBody() {
         McpToolExecutor executor = mock(McpToolExecutor.class);
         GameSummaryDTO response = new GameSummaryDTO(1L, "smartairbase-v7", "smartairbase", "7", "ACTIVE", 0, null, false, true, false);
-        CreateGameRequestDTO request = new CreateGameRequestDTO("smartairbase", "7", 3, Map.of("M1", 1, "M2", 1, "M3", 1));
+        CreateGameRequestDTO request = new CreateGameRequestDTO("smartairbase", "7", "GAME_001", 3, Map.of("M1", 1, "M2", 1, "M3", 1));
         when(executor.execute(eq(SmartAirBaseTool.CREATE_GAME), eq(request), eq(GameSummaryDTO.class)))
                 .thenReturn(response);
 
@@ -41,6 +49,126 @@ class SmartAirBaseMcpClientTest {
 
         assertThat(result.gameId()).isEqualTo(1L);
         verify(executor).execute(eq(SmartAirBaseTool.CREATE_GAME), eq(request), eq(GameSummaryDTO.class));
+    }
+
+    @Test
+    void listScenariosUsesExpectedToolPayload() {
+        McpToolExecutor executor = mock(McpToolExecutor.class);
+        when(executor.execute(eq(SmartAirBaseTool.LIST_SCENARIOS), eq(Map.of()), eq(Object.class)))
+                .thenReturn(List.of(Map.of(
+                        "scenarioId", 1,
+                        "name", "Standard Scenario",
+                        "version", "V7",
+                        "sourceType", "SYSTEM",
+                        "editable", false,
+                        "deletable", false,
+                        "published", true
+                )));
+
+        SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor, objectMapper);
+
+        List<ScenarioSummaryDTO> result = client.listScenarios();
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().name()).isEqualTo("Standard Scenario");
+        verify(executor).execute(eq(SmartAirBaseTool.LIST_SCENARIOS), eq(Map.of()), eq(Object.class));
+    }
+
+    @Test
+    void getScenarioUsesExpectedToolPayload() {
+        McpToolExecutor executor = mock(McpToolExecutor.class);
+        when(executor.execute(eq(SmartAirBaseTool.GET_SCENARIO), eq(Map.of("scenarioId", "1")), eq(ScenarioDefinitionDTO.class)))
+                .thenReturn(new ScenarioDefinitionDTO(1L, "Standard Scenario", "V7", "desc", "SYSTEM", false, false, true,
+                        List.of(), List.of(), List.of(), List.of()));
+
+        SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor, objectMapper);
+
+        ScenarioDefinitionDTO result = client.getScenario("1");
+
+        assertThat(result.name()).isEqualTo("Standard Scenario");
+        verify(executor).execute(eq(SmartAirBaseTool.GET_SCENARIO), eq(Map.of("scenarioId", "1")), eq(ScenarioDefinitionDTO.class));
+    }
+
+    @Test
+    void duplicateScenarioBuildsExpectedPayload() {
+        McpToolExecutor executor = mock(McpToolExecutor.class);
+        DuplicateScenarioRequestDTO request = new DuplicateScenarioRequestDTO("STANDARD_SCENARIO_COPY");
+        when(executor.execute(eq(SmartAirBaseTool.DUPLICATE_SCENARIO), anyMap(), eq(ScenarioDefinitionDTO.class)))
+                .thenReturn(new ScenarioDefinitionDTO(2L, "STANDARD_SCENARIO_COPY", "V7", "desc", "USER", true, true, false,
+                        List.of(), List.of(), List.of(), List.of()));
+
+        SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor, objectMapper);
+
+        client.duplicateScenario("1", request);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(executor).execute(eq(SmartAirBaseTool.DUPLICATE_SCENARIO), payloadCaptor.capture(), eq(ScenarioDefinitionDTO.class));
+        assertThat(payloadCaptor.getValue()).containsExactlyInAnyOrderEntriesOf(Map.of(
+                "scenarioId", "1",
+                "name", "STANDARD_SCENARIO_COPY"
+        ));
+    }
+
+    @Test
+    void createGameFromScenarioBuildsExpectedPayload() {
+        McpToolExecutor executor = mock(McpToolExecutor.class);
+        CreateScenarioGameRequestDTO request = new CreateScenarioGameRequestDTO("Scenario test");
+        when(executor.execute(eq(SmartAirBaseTool.CREATE_GAME_FROM_SCENARIO), anyMap(), eq(GameSummaryDTO.class)))
+                .thenReturn(new GameSummaryDTO(11L, "Scenario test", "SCN_STANDARD", "V7", "ACTIVE", 0, null, false, true, false));
+
+        SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor, objectMapper);
+
+        client.createGameFromScenario("5", request);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(executor).execute(eq(SmartAirBaseTool.CREATE_GAME_FROM_SCENARIO), payloadCaptor.capture(), eq(GameSummaryDTO.class));
+        assertThat(payloadCaptor.getValue()).containsExactlyInAnyOrderEntriesOf(Map.of(
+                "scenarioId", "5",
+                "gameName", "Scenario test"
+        ));
+    }
+
+    @Test
+    void updateScenarioBuildsExpectedPayload() {
+        McpToolExecutor executor = mock(McpToolExecutor.class);
+        UpdateScenarioRequestDTO request = new UpdateScenarioRequestDTO(
+                "Updated description",
+                List.of(new ScenarioBaseDTO("A", "Base A", "MAIN", 5, 3, 100, 100, 0, 0, 0, 0, List.of())),
+                List.of(new ScenarioAircraftDTO("F1", "JAS39", "A", 90, 4, 18)),
+                List.of(new ScenarioMissionDTO("M1", "M1", "Recon", 1, 1, 25, 1, 5))
+        );
+        when(executor.execute(eq(SmartAirBaseTool.UPDATE_SCENARIO), anyMap(), eq(ScenarioDefinitionDTO.class)))
+                .thenReturn(new ScenarioDefinitionDTO(2L, "WINTER_OPS", "V7", "desc", "USER", true, true, false,
+                        request.bases(), request.aircraft(), request.missions(), List.of()));
+
+        SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor, objectMapper);
+
+        client.updateScenario("2", request);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(executor).execute(eq(SmartAirBaseTool.UPDATE_SCENARIO), payloadCaptor.capture(), eq(ScenarioDefinitionDTO.class));
+        assertThat(payloadCaptor.getValue()).containsEntry("scenarioId", "2");
+        assertThat(payloadCaptor.getValue()).containsEntry("description", "Updated description");
+        assertThat(payloadCaptor.getValue()).containsEntry("bases", request.bases());
+        assertThat(payloadCaptor.getValue()).containsEntry("aircraft", request.aircraft());
+        assertThat(payloadCaptor.getValue()).containsEntry("missions", request.missions());
+    }
+
+    @Test
+    void deleteScenarioBuildsExpectedPayload() {
+        McpToolExecutor executor = mock(McpToolExecutor.class);
+        when(executor.execute(eq(SmartAirBaseTool.DELETE_SCENARIO), eq(Map.of("scenarioId", "7")), eq(ActionResultDTO.class)))
+                .thenReturn(new ActionResultDTO(true, "Scenario deleted"));
+
+        SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor, objectMapper);
+
+        ActionResultDTO result = client.deleteScenario("7");
+
+        assertThat(result.success()).isTrue();
+        verify(executor).execute(eq(SmartAirBaseTool.DELETE_SCENARIO), eq(Map.of("scenarioId", "7")), eq(ActionResultDTO.class));
     }
 
     @Test
