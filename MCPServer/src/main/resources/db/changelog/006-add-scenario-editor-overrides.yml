@@ -1,0 +1,182 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-001-add-scenario-aircraft-overrides
+      author: openai
+      changes:
+        - addColumn:
+            tableName: scenario_aircraft
+            columns:
+              - column:
+                  name: fuel_start
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: weapons_start
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: flight_hours_start
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: |
+              UPDATE scenario_aircraft sa
+              SET fuel_start = at.max_fuel,
+                  weapons_start = at.max_weapons,
+                  flight_hours_start = at.max_flight_hours
+              FROM aircraft_type at
+              WHERE sa.aircraft_type_id = at.aircraft_type_id;
+
+              ALTER TABLE scenario_aircraft
+              ADD CONSTRAINT chk_scenario_aircraft_fuel_start CHECK (fuel_start >= 0);
+
+              ALTER TABLE scenario_aircraft
+              ADD CONSTRAINT chk_scenario_aircraft_weapons_start CHECK (weapons_start >= 0);
+
+              ALTER TABLE scenario_aircraft
+              ADD CONSTRAINT chk_scenario_aircraft_flight_hours_start CHECK (flight_hours_start >= 0);
+
+  - changeSet:
+      id: 006-002-add-scenario-mission-overrides
+      author: openai
+      changes:
+        - addColumn:
+            tableName: scenario_mission
+            columns:
+              - column:
+                  name: default_count
+                  type: INTEGER
+                  defaultValueNumeric: 1
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fuel_cost
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: weapon_cost
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: flight_time_cost
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: |
+              UPDATE scenario_mission sm
+              SET default_count = 1,
+                  fuel_cost = mt.fuel_cost,
+                  weapon_cost = mt.weapon_cost,
+                  flight_time_cost = mt.flight_time_cost
+              FROM mission_type mt
+              WHERE sm.mission_type_id = mt.mission_type_id;
+
+              ALTER TABLE scenario_mission
+              ADD CONSTRAINT chk_scenario_mission_default_count CHECK (default_count >= 0);
+
+              ALTER TABLE scenario_mission
+              ADD CONSTRAINT chk_scenario_mission_fuel_cost CHECK (fuel_cost >= 0);
+
+              ALTER TABLE scenario_mission
+              ADD CONSTRAINT chk_scenario_mission_weapon_cost CHECK (weapon_cost >= 0);
+
+              ALTER TABLE scenario_mission
+              ADD CONSTRAINT chk_scenario_mission_flight_time_cost CHECK (flight_time_cost >= 0);
+
+  - changeSet:
+      id: 006-003-add-game-aircraft-overrides
+      author: openai
+      changes:
+        - addColumn:
+            tableName: game_aircraft
+            columns:
+              - column:
+                  name: fuel_capacity
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: weapons_capacity
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: flight_hours_capacity
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: |
+              UPDATE game_aircraft ga
+              SET fuel_capacity = at.max_fuel,
+                  weapons_capacity = at.max_weapons,
+                  flight_hours_capacity = at.max_flight_hours
+              FROM aircraft_type at
+              WHERE ga.aircraft_type_id = at.aircraft_type_id;
+
+              ALTER TABLE game_aircraft
+              ADD CONSTRAINT chk_game_aircraft_fuel_capacity CHECK (fuel_capacity >= 0);
+
+              ALTER TABLE game_aircraft
+              ADD CONSTRAINT chk_game_aircraft_weapons_capacity CHECK (weapons_capacity >= 0);
+
+              ALTER TABLE game_aircraft
+              ADD CONSTRAINT chk_game_aircraft_flight_hours_capacity CHECK (flight_hours_capacity >= 0);
+
+  - changeSet:
+      id: 006-004-add-game-mission-overrides
+      author: openai
+      changes:
+        - addColumn:
+            tableName: game_mission
+            columns:
+              - column:
+                  name: fuel_cost
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: weapon_cost
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: flight_time_cost
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: |
+              UPDATE game_mission gm
+              SET fuel_cost = mt.fuel_cost,
+                  weapon_cost = mt.weapon_cost,
+                  flight_time_cost = mt.flight_time_cost
+              FROM mission_type mt
+              WHERE gm.mission_type_id = mt.mission_type_id;
+
+              ALTER TABLE game_mission
+              ADD CONSTRAINT chk_game_mission_fuel_cost CHECK (fuel_cost >= 0);
+
+              ALTER TABLE game_mission
+              ADD CONSTRAINT chk_game_mission_weapon_cost CHECK (weapon_cost >= 0);
+
+              ALTER TABLE game_mission
+              ADD CONSTRAINT chk_game_mission_flight_time_cost CHECK (flight_time_cost >= 0);

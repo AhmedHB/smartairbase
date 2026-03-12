@@ -74,6 +74,9 @@ public class GameService {
     /**
      * Creates a new game from a named scenario version and populates all runtime
      * tables such as bases, aircraft, missions and their initial state rows.
+     *
+     * <p>If no explicit game name is supplied, the service generates one using
+     * the `GAME_###` format.</p>
      */
     public GameSummaryDto createGameFromScenario(String scenarioName, String version, String gameName) {
         return createGameFromScenario(scenarioName, version, gameName, null, null);
@@ -90,13 +93,17 @@ public class GameService {
 
         Scenario scenario = scenarioRepository.findAll().stream()
                 .filter(candidate -> candidate.getName() != null
-                        && candidate.getVersion() != null
-                        && candidate.getName().equalsIgnoreCase(normalizedName)
-                        && normalizeScenarioVersion(candidate.getVersion()).equals(normalizedVersion))
+                        && candidate.getName().equalsIgnoreCase(normalizedName))
+                .filter(candidate -> normalizedVersion.isBlank()
+                        || (candidate.getVersion() != null
+                        && normalizeScenarioVersion(candidate.getVersion()).equals(normalizedVersion)))
+                .sorted((left, right) -> right.getUpdatedAt().compareTo(left.getUpdatedAt()))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Scenario not found: " + scenarioName + " v" + version));
+                .orElseThrow(() -> normalizedVersion.isBlank()
+                        ? new IllegalArgumentException("Scenario not found: " + scenarioName)
+                        : new IllegalArgumentException("Scenario not found: " + scenarioName + " v" + version));
 
-        Game game = new Game(scenario, gameName == null || gameName.isBlank() ? scenarioName + " " + version : gameName);
+        Game game = new Game(scenario, resolveGameName(gameName));
         game.markActive(LocalDateTime.now());
         game = gameRepository.save(game);
 
@@ -124,11 +131,18 @@ public class GameService {
         for (int index = 0; index < requestedAircraftCount; index++) {
             ScenarioAircraft template = scenarioAircraft.get(index % scenarioAircraft.size());
             GameBase startBase = selectStartBase(template.getStartBaseCode(), scenarioBases, gameBaseByCode, occupiedStartSlots);
-            GameAircraft ga = gameAircraftRepository.save(new GameAircraft(game, "F" + (index + 1), template.getAircraftType()));
+            GameAircraft ga = gameAircraftRepository.save(new GameAircraft(
+                    game,
+                    "F" + (index + 1),
+                    template.getAircraftType(),
+                    template.getFuelStart(),
+                    template.getWeaponsStart(),
+                    template.getFlightHoursStart()
+            ));
             aircraftStateRepository.save(new AircraftState(ga, startBase,
-                    template.getAircraftType().getMaxFuel(),
-                    template.getAircraftType().getMaxWeapons(),
-                    template.getAircraftType().getMaxFlightHours()));
+                    template.getFuelStart(),
+                    template.getWeaponsStart(),
+                    template.getFlightHoursStart()));
             BaseState baseState = baseStateRepository.findByGameBase_Id(startBase.getId()).orElseThrow();
             baseState.setOccupiedParkingSlots(baseState.getOccupiedParkingSlots() + 1);
             baseStateRepository.save(baseState);
@@ -138,10 +152,18 @@ public class GameService {
         List<ScenarioMission> scenarioMissions = scenarioMissionRepository.findByScenario_IdOrderBySortOrder(scenario.getId());
         Map<String, Integer> requestedMissionCounts = normalizeMissionTypeCounts(missionTypeCounts, scenarioMissions);
         for (ScenarioMission template : scenarioMissions) {
-            int count = requestedMissionCounts.getOrDefault(template.getMissionType().getCode(), 0);
+            int count = requestedMissionCounts.getOrDefault(template.getMissionType().getCode(), template.getDefaultCount());
             for (int index = 0; index < count; index++) {
                 String missionCode = template.getMissionType().getCode() + "-" + (index + 1);
-                gameMissionRepository.save(new GameMission(game, missionCode, template.getMissionType(), template.getSortOrder() * 100 + index));
+                gameMissionRepository.save(new GameMission(
+                        game,
+                        missionCode,
+                        template.getMissionType(),
+                        template.getSortOrder() * 100 + index,
+                        template.getFuelCost(),
+                        template.getWeaponCost(),
+                        template.getFlightTimeCost()
+                ));
             }
         }
 
@@ -228,7 +250,7 @@ public class GameService {
         Map<String, Integer> normalized = new HashMap<>();
         if (missionTypeCounts == null || missionTypeCounts.isEmpty()) {
             for (ScenarioMission scenarioMission : scenarioMissions) {
-                normalized.put(scenarioMission.getMissionType().getCode(), 1);
+                normalized.put(scenarioMission.getMissionType().getCode(), scenarioMission.getDefaultCount());
             }
             return normalized;
         }
@@ -242,5 +264,13 @@ public class GameService {
             normalized.put(missionTypeCode, count);
         }
         return normalized;
+    }
+
+    private String resolveGameName(String gameName) {
+        if (gameName != null && !gameName.isBlank()) {
+            return gameName.trim();
+        }
+        long nextNumber = gameRepository.count() + 1;
+        return "GAME_" + String.format(Locale.ROOT, "%03d", nextNumber);
     }
 }

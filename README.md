@@ -49,7 +49,7 @@ Each game tracks:
 
 ### Scenario Setup
 
-The default scenario is `SCN_STANDARD V7`.
+The default scenario is `SCN_STANDARD`.
 
 Initial setup:
 
@@ -247,13 +247,16 @@ This example shows three different post-mission outcomes:
 
 ## Dynamic Game Creation
 
-Games are created from the seeded `SCN_STANDARD V7` scenario template, but the current implementation also supports custom setup at creation time:
+Games are created from the seeded `SCN_STANDARD` scenario template, but the current implementation also supports custom setup at creation time:
 
+- game name
 - number of aircraft
 - number of missions per mission type (`M1`, `M2`, `M3`)
 
 The frontend exposes these options in the create-game form.
 The scenario is selected from a dropdown and currently supports `SCN_STANDARD`.
+After pressing `Create game`, the UI asks whether to use a generated default game name or provide a custom one.
+If no custom name is provided, the backend assigns a generated default such as `GAME_001`, `GAME_002`, and so on.
 The aircraft field is capped at `8`, which matches the total parking capacity in the current scenario.
 
 Mission instances are generated with runtime codes such as:
@@ -322,8 +325,10 @@ Open:
 - Aborting a game marks it as `ABORTED` in the backend, so that game cannot be continued and a new game must be created to keep playing.
 - The frontend also clears the visible event log and analysis feed when a game is aborted.
 - Persisted backend history is not deleted by abort. Analysis feed items and other game history remain stored for the aborted game.
-- The frontend includes a scenario rules panel in English with mission costs, deliveries, holding fuel cost, total capacity, and dice outcomes for `SCN_STANDARD`.
+- The frontend includes a scenario rules panel in English that is now generated from the currently selected scenario data, while keeping the same compact title/summary/point-list format.
 - The frontend now shows the round flow as `On mission`, `Awaiting dice roll`, `Holding`, and `Destroyed aircraft`, plus per-aircraft `current/max` stats and positive `Added:` diffs for fuel, weapons, and flight hours.
+- Before a game has started, the play board previews base slot layout and base resource limits from the currently selected scenario.
+- Event history entries now show both timestamp and round number when that information is available.
 - Automated mode has separate wait settings for mission preview, dice rolls, and next-round progression.
 - The frontend also includes an `Analysis feed` panel backed by `MCPClient`, where named personas comment on each round as a running feed:
   - `Captain Erik Holm (Pilot)`

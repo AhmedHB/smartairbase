@@ -31,7 +31,7 @@ PostgreSQL
 
 ### Game
 
-- `create_game(scenarioName, version, aircraftCount, missionTypeCounts)`
+- `create_game(scenarioName, version, gameName, aircraftCount, missionTypeCounts)`
 - `get_game_state(gameId)`
 - `abort_game(gameId)`
 - `list_analysis_feed(gameId)`
@@ -58,15 +58,17 @@ PostgreSQL
 
 ## Dynamic Game Creation
 
-Games are built from the seeded `SCN_STANDARD V7` scenario template.
+Games are built from the seeded `SCN_STANDARD` scenario template.
 
 At creation time the current implementation can override:
 
+- game name
 - total aircraft count
 - mission count per mission type
 
 Runtime generation rules:
 
+- game names default to `GAME_001`, `GAME_002`, ... when no explicit name is supplied
 - aircraft codes: `F1`, `F2`, `F3`, ...
 - mission codes: `M1-1`, `M1-2`, `M2-1`, ...
 
@@ -144,7 +146,7 @@ Seed data includes:
 - base types and capabilities
 - mission types
 - repair rules
-- `SCN_STANDARD V7`
+- `SCN_STANDARD`
 
 ## Running Locally
 

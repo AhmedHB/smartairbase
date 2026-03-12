@@ -1,6 +1,6 @@
 SmartAirBase – Formell Spelregel och Petri‑nät Specifikation
 
-SCN_STANDARD V7 – Med parkeringsplatser, maintenance-platser, reservdelar, bränsle- och vapenregler
+SCN_STANDARD – Med parkeringsplatser, maintenance-platser, reservdelar, bränsle- och vapenregler
 Skapad: 2026-03-09
 Uppdaterad: 2026-03-11
 
@@ -23,7 +23,7 @@ Förlust inträffar om:
 2. STARTLÄGE
 ============================================================
 
-Spelet byggs från scenariomallen SCN_STANDARD V7.
+Spelet byggs från scenariomallen SCN_STANDARD.
 
 Vid spelets start i standardupplägget finns:
 

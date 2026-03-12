@@ -26,14 +26,43 @@ public class ScenarioMission {
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder;
 
+    @Column(name = "default_count", nullable = false)
+    private Integer defaultCount;
+
+    @Column(name = "fuel_cost", nullable = false)
+    private Integer fuelCost;
+
+    @Column(name = "weapon_cost", nullable = false)
+    private Integer weaponCost;
+
+    @Column(name = "flight_time_cost", nullable = false)
+    private Integer flightTimeCost;
+
     protected ScenarioMission() {
     }
 
-    public ScenarioMission(Scenario scenario, String code, MissionType missionType, Integer sortOrder) {
+    public ScenarioMission(Scenario scenario,
+                           String code,
+                           MissionType missionType,
+                           Integer sortOrder,
+                           Integer defaultCount,
+                           Integer fuelCost,
+                           Integer weaponCost,
+                           Integer flightTimeCost) {
         this.scenario = scenario;
         this.code = code;
         this.missionType = missionType;
         this.sortOrder = sortOrder;
+        this.defaultCount = defaultCount;
+        this.fuelCost = fuelCost;
+        this.weaponCost = weaponCost;
+        this.flightTimeCost = flightTimeCost;
+    }
+
+    public void updateSetup(Integer fuelCost, Integer weaponCost, Integer flightTimeCost) {
+        this.fuelCost = fuelCost;
+        this.weaponCost = weaponCost;
+        this.flightTimeCost = flightTimeCost;
     }
 
     public Long getId() { return id; }
@@ -41,4 +70,8 @@ public class ScenarioMission {
     public String getCode() { return code; }
     public MissionType getMissionType() { return missionType; }
     public Integer getSortOrder() { return sortOrder; }
+    public Integer getDefaultCount() { return defaultCount; }
+    public Integer getFuelCost() { return fuelCost; }
+    public Integer getWeaponCost() { return weaponCost; }
+    public Integer getFlightTimeCost() { return flightTimeCost; }
 }

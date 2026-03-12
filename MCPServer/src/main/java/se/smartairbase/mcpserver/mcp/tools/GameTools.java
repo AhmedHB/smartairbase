@@ -6,6 +6,7 @@ import se.smartairbase.mcpserver.mcp.dto.AnalysisFeedItemDto;
 import se.smartairbase.mcpserver.service.AnalysisFeedPersistenceService;
 import se.smartairbase.mcpserver.service.GameService;
 import se.smartairbase.mcpserver.service.GameQueryService;
+import se.smartairbase.mcpserver.service.ScenarioService;
 
 import java.util.List;
 import java.util.Map;
@@ -16,24 +17,28 @@ public class GameTools {
     private final GameService gameService;
     private final GameQueryService gameQueryService;
     private final AnalysisFeedPersistenceService analysisFeedPersistenceService;
+    private final ScenarioService scenarioService;
 
     public GameTools(GameService gameService,
                      GameQueryService gameQueryService,
-                     AnalysisFeedPersistenceService analysisFeedPersistenceService) {
+                     AnalysisFeedPersistenceService analysisFeedPersistenceService,
+                     ScenarioService scenarioService) {
         this.gameService = gameService;
         this.gameQueryService = gameQueryService;
         this.analysisFeedPersistenceService = analysisFeedPersistenceService;
+        this.scenarioService = scenarioService;
     }
 
     @Tool(
             name = "create_game",
-            description = "Create a new game from a scenario"
+            description = "Create a new game from a scenario, optionally with a custom game name"
     )
     public Object createGame(String scenarioName,
                              String version,
+                             String gameName,
                              Integer aircraftCount,
                              Map<String, Integer> missionTypeCounts) {
-        return gameService.createGameFromScenario(scenarioName, version, null, aircraftCount, missionTypeCounts);
+        return gameService.createGameFromScenario(scenarioName, version, gameName, aircraftCount, missionTypeCounts);
     }
 
     @Tool(
@@ -42,6 +47,61 @@ public class GameTools {
     )
     public Object getGameState(Long gameId) {
         return gameQueryService.getGameState(gameId);
+    }
+
+    @Tool(
+            name = "list_scenarios",
+            description = "List available scenarios, including the protected standard scenario and any user-created copies"
+    )
+    public Object listScenarios() {
+        return scenarioService.listScenarios();
+    }
+
+    @Tool(
+            name = "get_scenario",
+            description = "Get one scenario definition with bases, aircraft, missions, deliveries and dice rules"
+    )
+    public Object getScenario(Long scenarioId) {
+        return scenarioService.getScenario(scenarioId);
+    }
+
+    @Tool(
+            name = "duplicate_scenario",
+            description = "Duplicate one existing scenario into a user-editable copy"
+    )
+    public Object duplicateScenario(Long scenarioId, String name) {
+        return scenarioService.duplicateScenario(scenarioId, name);
+    }
+
+    @Tool(
+            name = "update_scenario",
+            description = "Update one user-created scenario by changing existing base capacities, aircraft settings and mission costs"
+    )
+    public Object updateScenario(Long scenarioId,
+                                 List<Map<String, Object>> bases,
+                                 List<Map<String, Object>> aircraft,
+                                 List<Map<String, Object>> missions,
+                                 String description) {
+        return scenarioService.updateScenario(
+                scenarioId,
+                ScenarioToolMapper.toUpdateScenarioRequest(bases, aircraft, missions, description)
+        );
+    }
+
+    @Tool(
+            name = "delete_scenario",
+            description = "Delete one user-created scenario; protected system scenarios cannot be deleted"
+    )
+    public Object deleteScenario(Long scenarioId) {
+        return scenarioService.deleteScenario(scenarioId);
+    }
+
+    @Tool(
+            name = "create_game_from_scenario",
+            description = "Create a new game directly from a selected scenario"
+    )
+    public Object createGameFromScenario(Long scenarioId, String gameName) {
+        return scenarioService.createGameFromScenario(scenarioId, gameName);
     }
 
     @Tool(

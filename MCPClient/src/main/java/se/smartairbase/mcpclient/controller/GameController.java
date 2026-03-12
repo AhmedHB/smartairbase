@@ -2,9 +2,11 @@ package se.smartairbase.mcpclient.controller;
 
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -18,13 +20,20 @@ import se.smartairbase.mcpclient.controller.dto.AssignMissionRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.ActionResultDTO;
 import se.smartairbase.mcpclient.controller.dto.AircraftStateDTO;
 import se.smartairbase.mcpclient.controller.dto.CreateGameRequestDTO;
+import se.smartairbase.mcpclient.controller.dto.CreateScenarioGameRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.DiceRollRequestDTO;
+import se.smartairbase.mcpclient.controller.dto.DuplicateScenarioRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.BaseStateDTO;
 import se.smartairbase.mcpclient.controller.dto.GameStateDTO;
 import se.smartairbase.mcpclient.controller.dto.GameSummaryDTO;
 import se.smartairbase.mcpclient.controller.dto.LandAircraftRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.LandingOptionsDTO;
 import se.smartairbase.mcpclient.controller.dto.RoundExecutionResultDTO;
+import se.smartairbase.mcpclient.controller.dto.ScenarioDefinitionDTO;
+import se.smartairbase.mcpclient.controller.dto.ScenarioSummaryDTO;
+import se.smartairbase.mcpclient.controller.dto.UpdateScenarioRequestDTO;
+
+import java.util.List;
 
 /**
  * HTTP facade for the browser-based Smart Air Base client.
@@ -59,10 +68,64 @@ public class GameController {
 
     /**
      * Creates a new game from the requested scenario/version pair.
+     *
+     * <p>An optional game name may be supplied by the frontend. If it is omitted,
+     * the server assigns a generated default name.</p>
      */
     @PostMapping("/games")
     public GameSummaryDTO createGame(@Valid @RequestBody CreateGameRequestDTO request) {
         return mcpClient.createGame(request);
+    }
+
+    /**
+     * Lists available scenarios for scenario browsing and duplication.
+     */
+    @GetMapping("/scenarios")
+    public List<ScenarioSummaryDTO> listScenarios() {
+        return mcpClient.listScenarios();
+    }
+
+    /**
+     * Returns one scenario definition with its configuration details.
+     */
+    @GetMapping("/scenarios/{scenarioId}")
+    public ScenarioDefinitionDTO getScenario(@PathVariable String scenarioId) {
+        return mcpClient.getScenario(scenarioId);
+    }
+
+    /**
+     * Duplicates one scenario into a user-editable copy.
+     */
+    @PostMapping("/scenarios/{scenarioId}/duplicate")
+    public ScenarioDefinitionDTO duplicateScenario(@PathVariable String scenarioId,
+                                                   @Valid @RequestBody DuplicateScenarioRequestDTO request) {
+        return mcpClient.duplicateScenario(scenarioId, request);
+    }
+
+    /**
+     * Updates one editable user-created scenario.
+     */
+    @PutMapping("/scenarios/{scenarioId}")
+    public ScenarioDefinitionDTO updateScenario(@PathVariable String scenarioId,
+                                                @Valid @RequestBody UpdateScenarioRequestDTO request) {
+        return mcpClient.updateScenario(scenarioId, request);
+    }
+
+    /**
+     * Deletes one user-created scenario.
+     */
+    @DeleteMapping("/scenarios/{scenarioId}")
+    public ActionResultDTO deleteScenario(@PathVariable String scenarioId) {
+        return mcpClient.deleteScenario(scenarioId);
+    }
+
+    /**
+     * Creates a game directly from one selected scenario.
+     */
+    @PostMapping("/scenarios/{scenarioId}/create-game")
+    public GameSummaryDTO createGameFromScenario(@PathVariable String scenarioId,
+                                                 @RequestBody(required = false) CreateScenarioGameRequestDTO request) {
+        return mcpClient.createGameFromScenario(scenarioId, request == null ? new CreateScenarioGameRequestDTO(null) : request);
     }
 
     /**

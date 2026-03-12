@@ -85,6 +85,11 @@ public class ScenarioBase {
         this.sparePartsMax = sparePartsMax;
     }
 
+    public void updateCapacity(Integer parkingCapacity, Integer maintenanceCapacity) {
+        this.parkingCapacity = parkingCapacity;
+        this.maintenanceCapacity = maintenanceCapacity;
+    }
+
     public Long getId() { return id; }
     public Scenario getScenario() { return scenario; }
     public String getCode() { return code; }

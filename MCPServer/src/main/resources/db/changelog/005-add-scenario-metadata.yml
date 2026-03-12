@@ -1,0 +1,73 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-001-add-scenario-metadata
+      author: openai
+      changes:
+        - addColumn:
+            tableName: scenario
+            columns:
+              - column:
+                  name: source_type
+                  type: VARCHAR(20)
+                  defaultValue: SYSTEM
+              - column:
+                  name: editable
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+              - column:
+                  name: deletable
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+              - column:
+                  name: published
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+        - sql:
+            sql: |
+              UPDATE scenario
+              SET updated_at = created_at
+              WHERE updated_at IS NULL;
+
+              UPDATE scenario
+              SET source_type = 'SYSTEM',
+                  editable = FALSE,
+                  deletable = FALSE,
+                  published = TRUE
+              WHERE source_type IS NULL
+                 OR editable IS NULL
+                 OR deletable IS NULL
+                 OR published IS NULL;
+
+              ALTER TABLE scenario
+              ALTER COLUMN source_type SET NOT NULL;
+
+              ALTER TABLE scenario
+              ALTER COLUMN editable SET NOT NULL;
+
+              ALTER TABLE scenario
+              ALTER COLUMN deletable SET NOT NULL;
+
+              ALTER TABLE scenario
+              ALTER COLUMN published SET NOT NULL;
+
+              ALTER TABLE scenario
+              ALTER COLUMN updated_at SET NOT NULL;
+
+              ALTER TABLE scenario
+              ADD CONSTRAINT chk_scenario_source_type
+              CHECK (source_type IN ('SYSTEM', 'USER'));
+
+  - changeSet:
+      id: 005-002-fix-sequences-for-seeded-scenarios
+      author: openai
+      changes:
+        - sql:
+            sql: |
+              SELECT setval(pg_get_serial_sequence('scenario', 'scenario_id'), COALESCE((SELECT MAX(scenario_id) FROM scenario), 1), true);
+              SELECT setval(pg_get_serial_sequence('scenario_base', 'scenario_base_id'), COALESCE((SELECT MAX(scenario_base_id) FROM scenario_base), 1), true);
+              SELECT setval(pg_get_serial_sequence('scenario_aircraft', 'scenario_aircraft_id'), COALESCE((SELECT MAX(scenario_aircraft_id) FROM scenario_aircraft), 1), true);
+              SELECT setval(pg_get_serial_sequence('scenario_mission', 'scenario_mission_id'), COALESCE((SELECT MAX(scenario_mission_id) FROM scenario_mission), 1), true);
+              SELECT setval(pg_get_serial_sequence('scenario_supply_rule', 'scenario_supply_rule_id'), COALESCE((SELECT MAX(scenario_supply_rule_id) FROM scenario_supply_rule), 1), true);

@@ -10,6 +10,7 @@
   grid-template-areas:
     "brand brand"
     "divider divider"
+    "tabs tabs"
     "status status";
   gap: 18px;
   align-items: start;
@@ -100,6 +101,178 @@
 
 .mission-section {
   margin-top: 16px;
+}
+
+.view-switcher {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.view-switcher button {
+  min-width: 140px;
+}
+
+.mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 12px;
+  background: rgba(84, 97, 123, 0.08);
+}
+
+.mode-tab {
+  background: transparent;
+  color: #4b5668;
+  border: 1px solid transparent;
+  box-shadow: none;
+}
+
+.mode-tab:hover:not(:disabled) {
+  transform: none;
+  background: rgba(84, 97, 123, 0.08);
+}
+
+.mode-tab-active {
+  background: #55657f;
+  color: #f7f8fb;
+  border-color: rgba(84, 97, 123, 0.22);
+  box-shadow: 0 10px 24px rgba(69, 86, 119, 0.18);
+}
+
+.scenario-browser {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.5fr);
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.top-mode-tabs {
+  grid-area: tabs;
+  margin-top: 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.scenario-list {
+  display: grid;
+  gap: 10px;
+}
+
+.scenario-list-item {
+  text-align: left;
+  background: rgba(245, 247, 252, 0.9);
+  color: #1f2430;
+}
+
+.scenario-list-item strong,
+.scenario-list-item span {
+  display: block;
+}
+
+.scenario-list-item span {
+  margin-top: 4px;
+  color: #6d7583;
+}
+
+.scenario-list-item-active {
+  background: #55657f;
+  color: #f7f8fb;
+}
+
+.scenario-list-item-active span {
+  color: rgba(247, 248, 251, 0.82);
+}
+
+.scenario-detail-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.scenario-reference-section {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(84, 97, 123, 0.16);
+  border-radius: 14px;
+  background: rgba(250, 251, 253, 0.9);
+}
+
+.scenario-editor-sections {
+  display: grid;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.scenario-editor-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(84, 97, 123, 0.16);
+  border-radius: 14px;
+  background: rgba(245, 247, 252, 0.72);
+}
+
+.scenario-config-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.scenario-config-row {
+  display: grid;
+  align-items: center;
+  gap: 10px;
+}
+
+.scenario-config-grid-aircraft .scenario-config-row {
+  grid-template-columns: minmax(90px, 0.9fr) minmax(60px, 0.5fr) repeat(3, minmax(80px, 0.8fr));
+}
+
+.scenario-config-grid-missions .scenario-config-row {
+  grid-template-columns: minmax(80px, 0.8fr) minmax(120px, 1.2fr) repeat(3, minmax(90px, 0.8fr));
+}
+
+.scenario-config-grid-bases .scenario-config-row {
+  grid-template-columns: minmax(70px, 0.7fr) minmax(130px, 1.2fr) repeat(2, minmax(100px, 0.9fr));
+}
+
+.scenario-config-grid-repairs .scenario-config-row {
+  grid-template-columns: minmax(60px, 0.5fr) minmax(140px, 1.4fr) minmax(100px, 0.8fr) minmax(100px, 0.8fr);
+}
+
+.scenario-config-head {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6d7583;
+}
+
+.scenario-config-row input,
+.scenario-config-row select {
+  width: 100%;
+}
+
+.scenario-base-block {
+  display: grid;
+  gap: 6px;
+}
+
+.scenario-inline-note {
+  margin: 0;
+  color: #6d7583;
+  font-size: 0.78rem;
+}
+
+.scenario-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.scenario-summary-wide {
+  grid-column: 1 / -1;
 }
 
 .bases-section {
@@ -423,6 +596,15 @@ button:hover:not(:disabled) {
   background: #b4551c;
 }
 
+.active-button {
+  background: #d46b2c;
+  border-color: #b4551c;
+}
+
+.active-button:hover:not(:disabled) {
+  background: #b4551c;
+}
+
 button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -445,6 +627,12 @@ button:disabled {
 
 .button-row > * {
   flex: 1;
+}
+
+.button-row > .compact-button {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  min-width: 110px;
 }
 
 .status-pill {
@@ -518,6 +706,11 @@ button:disabled {
 
 .bottom-actions {
   margin-top: 4px;
+  justify-content: flex-end;
+}
+
+.bottom-actions + p {
+  margin-top: 6px;
 }
 
 .analysis-feed-panel {
@@ -609,7 +802,8 @@ button:disabled {
 @media (max-width: 1180px) {
   .topbar,
   .bases-layout,
-  .bottom-panels {
+  .bottom-panels,
+  .scenario-browser {
     grid-template-columns: 1fr;
   }
 
@@ -617,6 +811,7 @@ button:disabled {
     grid-template-areas:
       "brand"
       "divider"
+      "tabs"
       "status";
   }
 
@@ -652,5 +847,19 @@ button:disabled {
   .mission-card h2,
   .base-header {
     font-size: 1.12rem;
+  }
+
+  .scenario-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .scenario-config-grid-aircraft .scenario-config-row,
+  .scenario-config-grid-missions .scenario-config-row,
+  .scenario-config-grid-bases .scenario-config-row {
+    grid-template-columns: 1fr;
+  }
+
+  .scenario-config-head {
+    display: none;
   }
 }

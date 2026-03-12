@@ -8,14 +8,19 @@ import se.smartairbase.mcpclient.controller.dto.AnalysisFeedItemDTO;
 import se.smartairbase.mcpclient.controller.dto.AnalysisFeedResponseDTO;
 import se.smartairbase.mcpclient.domain.SmartAirBaseTool;
 import se.smartairbase.mcpclient.controller.dto.AssignMissionRequestDTO;
+import se.smartairbase.mcpclient.controller.dto.CreateScenarioGameRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.CreateGameRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.DiceRollRequestDTO;
+import se.smartairbase.mcpclient.controller.dto.DuplicateScenarioRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.BaseStateDTO;
 import se.smartairbase.mcpclient.controller.dto.GameStateDTO;
 import se.smartairbase.mcpclient.controller.dto.GameSummaryDTO;
 import se.smartairbase.mcpclient.controller.dto.LandAircraftRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.LandingOptionsDTO;
 import se.smartairbase.mcpclient.controller.dto.RoundExecutionResultDTO;
+import se.smartairbase.mcpclient.controller.dto.ScenarioDefinitionDTO;
+import se.smartairbase.mcpclient.controller.dto.ScenarioSummaryDTO;
+import se.smartairbase.mcpclient.controller.dto.UpdateScenarioRequestDTO;
 
 import java.util.Map;
 import java.util.List;
@@ -42,6 +47,45 @@ public class SmartAirBaseMcpClient {
      */
     public GameSummaryDTO createGame(CreateGameRequestDTO request) {
         return toolExecutor.execute(SmartAirBaseTool.CREATE_GAME, request, GameSummaryDTO.class);
+    }
+
+    public GameSummaryDTO createGameFromScenario(String scenarioId, CreateScenarioGameRequestDTO request) {
+        return toolExecutor.execute(SmartAirBaseTool.CREATE_GAME_FROM_SCENARIO, Map.of(
+                "scenarioId", scenarioId,
+                "gameName", request != null ? request.gameName() : null
+        ), GameSummaryDTO.class);
+    }
+
+    public List<ScenarioSummaryDTO> listScenarios() {
+        return objectMapper.convertValue(
+                toolExecutor.execute(SmartAirBaseTool.LIST_SCENARIOS, Map.of(), Object.class),
+                objectMapper.getTypeFactory().constructCollectionType(List.class, ScenarioSummaryDTO.class)
+        );
+    }
+
+    public ScenarioDefinitionDTO getScenario(String scenarioId) {
+        return toolExecutor.execute(SmartAirBaseTool.GET_SCENARIO, Map.of("scenarioId", scenarioId), ScenarioDefinitionDTO.class);
+    }
+
+    public ScenarioDefinitionDTO duplicateScenario(String scenarioId, DuplicateScenarioRequestDTO request) {
+        return toolExecutor.execute(SmartAirBaseTool.DUPLICATE_SCENARIO, Map.of(
+                "scenarioId", scenarioId,
+                "name", request.name()
+        ), ScenarioDefinitionDTO.class);
+    }
+
+    public ScenarioDefinitionDTO updateScenario(String scenarioId, UpdateScenarioRequestDTO request) {
+        return toolExecutor.execute(SmartAirBaseTool.UPDATE_SCENARIO, Map.of(
+                "scenarioId", scenarioId,
+                "description", request.description(),
+                "bases", request.bases(),
+                "aircraft", request.aircraft(),
+                "missions", request.missions()
+        ), ScenarioDefinitionDTO.class);
+    }
+
+    public ActionResultDTO deleteScenario(String scenarioId) {
+        return toolExecutor.execute(SmartAirBaseTool.DELETE_SCENARIO, Map.of("scenarioId", scenarioId), ActionResultDTO.class);
     }
 
     /**

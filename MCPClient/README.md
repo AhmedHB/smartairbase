@@ -74,7 +74,7 @@ Main endpoints:
 `POST /api/games` supports:
 
 - `scenarioName`
-- `version`
+- `gameName` (optional)
 - `aircraftCount`
 - `missionTypeCounts`
 
@@ -83,7 +83,7 @@ Example:
 ```json
 {
   "scenarioName": "SCN_STANDARD",
-  "version": "7",
+  "gameName": "GAME_001",
   "aircraftCount": 5,
   "missionTypeCounts": {
     "M1": 3,
@@ -92,6 +92,8 @@ Example:
   }
 }
 ```
+
+If `gameName` is omitted, `MCPServer` generates a default such as `GAME_001`.
 
 ## Autoplay Behavior
 
@@ -189,6 +191,14 @@ Prerequisites:
 
 - Java 21
 - `MCPServer` running on `9090`
+- Ollama installed locally if analysis narration is configured to use a local Ollama model
+- Ollama model `qwen2.5:7b` installed locally
+
+Install the required Ollama model:
+
+```bash
+ollama pull qwen2.5:7b
+```
 
 Run:
 
@@ -212,7 +222,7 @@ http://localhost:8080
 ## Notes
 
 - The client API now returns typed DTO responses, not raw MCP envelopes.
-- Scenario/version normalization accepts old `smartairbase` input as an alias for `SCN_STANDARD`, and `7` as an alias for `V7`.
+- Scenario name normalization accepts old `smartairbase` input as an alias for `SCN_STANDARD`.
 - `GameRulesReferenceService` provides the English scenario summary and key numbers shown in the frontend rules panel, including deliveries, holding fuel cost, capacity, and dice outcomes.
 - The client currently drives a UI that shows aircraft `current/max` values and positive `Added:` diffs based on successive game-state snapshots.
 - Base lookups in autoplay normalize both `A` and `BASE_A` style codes so landing logic stays aligned with runtime state and rules reference data.
@@ -225,3 +235,4 @@ http://localhost:8080
 - `MCPClient` generates narration text, but the saved analysis feed is now persisted through `MCPServer` MCP tools so the history survives client restarts.
 - When the frontend aborts a game, it clears the visible analysis feed in the browser, but persisted feed history remains stored for that game on the server side.
 - The current round-diff snapshot used to shape the next narration remains client-local and is not yet persisted.
+- The frontend create flow can now ask the operator to choose between a generated default game name and a custom game name before `POST /api/games` is sent.
