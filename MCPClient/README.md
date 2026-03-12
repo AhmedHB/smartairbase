@@ -94,6 +94,7 @@ Example:
 ```
 
 If `gameName` is omitted, `MCPServer` generates a default such as `GAME_001`.
+If `gameName` is provided, it must be unique across existing games or the API returns `400 Bad Request`.
 
 ## Autoplay Behavior
 
@@ -236,3 +237,7 @@ http://localhost:8080
 - When the frontend aborts a game, it clears the visible analysis feed in the browser, but persisted feed history remains stored for that game on the server side.
 - The current round-diff snapshot used to shape the next narration remains client-local and is not yet persisted.
 - The frontend create flow can now ask the operator to choose between a generated default game name and a custom game name before `POST /api/games` is sent.
+- Custom game names must be unique. If the operator enters an existing name, the backend returns a validation error and the frontend keeps the create dialog open.
+- The control panel shows both `Game ID` and a read-only `Current game name` field for the loaded game.
+- The frontend disables `Create game` while an active game exists, and only enables `Abort game` for that active-game state.
+- The frontend also disables the `Scenario editor` tab while an active game exists, so scenario editing only happens outside a live game session.

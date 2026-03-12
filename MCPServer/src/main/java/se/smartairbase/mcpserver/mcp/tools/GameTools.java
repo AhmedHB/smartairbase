@@ -31,7 +31,7 @@ public class GameTools {
 
     @Tool(
             name = "create_game",
-            description = "Create a new game from a scenario, optionally with a custom game name"
+            description = "Create a new game from a scenario, optionally with a unique custom game name"
     )
     public Object createGame(String scenarioName,
                              String version,

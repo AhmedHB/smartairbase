@@ -56,6 +56,7 @@ class GameControllerTest {
         validator.afterPropertiesSet();
 
         mockMvc = MockMvcBuilders.standaloneSetup(new GameController(mcpClient, autoPlayService, gameRulesReferenceService))
+                .setControllerAdvice(new ApiExceptionHandler())
                 .setValidator(validator)
                 .build();
     }
@@ -199,6 +200,18 @@ class GameControllerTest {
                                 {"scenarioName":"smartairbase","version":"7","gameName":"   "}
                                 """))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void createGameReturnsBadRequestWhenNameAlreadyExists() throws Exception {
+        CreateGameRequestDTO request = new CreateGameRequestDTO("smartairbase", "7", "GAME_001", null, null);
+        when(mcpClient.createGame(eq(request))).thenThrow(new IllegalArgumentException("The game name \"GAME_001\" is already in use. Choose a different name."));
+
+        mockMvc.perform(post("/api/games")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("The game name \"GAME_001\" is already in use. Choose a different name."));
     }
 
     @Test

@@ -9,6 +9,8 @@ import se.smartairbase.mcpclient.domain.SmartAirBaseTool;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 /**
@@ -19,6 +21,7 @@ import java.util.List;
  * request payload and parses the JSON response into a tree.</p>
  */
 public class McpToolExecutor {
+    private static final Pattern TEXT_CONTENT_MESSAGE = Pattern.compile("text=([^,\\]]+)");
 
     private final List<ToolCallbackProvider> toolCallbackProviders;
     private final ObjectMapper objectMapper;
@@ -40,8 +43,33 @@ public class McpToolExecutor {
             return objectMapper.treeToValue(unwrapped, responseType);
         }
         catch (Exception exception) {
-            throw new IllegalStateException("Failed to execute MCP tool " + tool.suffix(), exception);
+            throw new IllegalArgumentException(extractErrorMessage(tool, exception), exception);
         }
+    }
+
+    private String extractErrorMessage(SmartAirBaseTool tool, Exception exception) {
+        Throwable current = exception;
+        while (current != null) {
+            String message = current.getMessage();
+            if (message != null
+                    && !message.isBlank()
+                    && !message.startsWith("Failed to execute MCP tool ")) {
+                return normalizeErrorMessage(message);
+            }
+            current = current.getCause();
+        }
+        return "Failed to execute MCP tool " + tool.suffix();
+    }
+
+    private String normalizeErrorMessage(String message) {
+        String normalized = message.trim();
+        if (normalized.startsWith("Error calling tool:")) {
+            Matcher matcher = TEXT_CONTENT_MESSAGE.matcher(normalized);
+            if (matcher.find()) {
+                return matcher.group(1).trim();
+            }
+        }
+        return normalized;
     }
 
     private JsonNode unwrapToolResponse(String response) throws Exception {

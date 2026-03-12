@@ -15,6 +15,7 @@ import se.smartairbase.mcpserver.mcp.dto.RoundExecutionResultDto;
 import se.smartairbase.mcpserver.repository.GameRoundRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(properties = {
         "spring.liquibase.clear-checksums=true"
@@ -170,6 +171,15 @@ class RoundServiceFlowTests {
         int firstNumber = Integer.parseInt(firstGame.name().substring("GAME_".length()));
         int secondNumber = Integer.parseInt(secondGame.name().substring("GAME_".length()));
         assertThat(secondNumber).isEqualTo(firstNumber + 1);
+    }
+
+    @Test
+    void createGameRejectsDuplicateCustomGameNames() {
+        gameService.createGameFromScenario("SCN_STANDARD", "V7", "MY_GAME");
+
+        assertThatThrownBy(() -> gameService.createGameFromScenario("SCN_STANDARD", "V7", "my_game"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("The game name \"my_game\" is already in use. Choose a different name.");
     }
 
     private AircraftStateDto aircraft(GameStateDto state, String code) {

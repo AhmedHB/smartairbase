@@ -17,3 +17,6 @@ databaseChangeLog:
   - include:
       file: 006-add-scenario-editor-overrides.yml
       relativeToChangelogFile: true
+  - include:
+      file: 007-enforce-unique-game-names.yml
+      relativeToChangelogFile: true

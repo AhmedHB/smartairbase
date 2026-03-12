@@ -257,6 +257,10 @@ The frontend exposes these options in the create-game form.
 The scenario is selected from a dropdown and currently supports `SCN_STANDARD`.
 After pressing `Create game`, the UI asks whether to use a generated default game name or provide a custom one.
 If no custom name is provided, the backend assigns a generated default such as `GAME_001`, `GAME_002`, and so on.
+If a custom game name is provided, it must be unique. Reusing an existing game name returns a validation error.
+While a game is active, the `Create game` button is disabled so the operator must either finish or abort that game first.
+The control panel also shows both the current `Game ID` and a read-only `Current game name` field.
+While a game is active, the `Scenario editor` tab is also disabled so the operator cannot switch into scenario editing mid-session.
 The aircraft field is capped at `8`, which matches the total parking capacity in the current scenario.
 
 Mission instances are generated with runtime codes such as:
@@ -323,6 +327,8 @@ Open:
 - `MCPClient` unwraps MCP tool responses and returns typed DTO-based HTTP responses.
 - The frontend `Abort game` button now aborts the active game, stops automation, clears the active game from the screen, and returns the UI to its initial state.
 - Aborting a game marks it as `ABORTED` in the backend, so that game cannot be continued and a new game must be created to keep playing.
+- The `Abort game` button is disabled when no active game exists, and becomes available only for a running game.
+- The `Scenario editor` tab is disabled for the same active-game window, keeping scenario editing and live play separate in the UI.
 - The frontend also clears the visible event log and analysis feed when a game is aborted.
 - Persisted backend history is not deleted by abort. Analysis feed items and other game history remain stored for the aborted game.
 - The frontend includes a scenario rules panel in English that is now generated from the currently selected scenario data, while keeping the same compact title/summary/point-list format.

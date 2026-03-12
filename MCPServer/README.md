@@ -69,6 +69,8 @@ At creation time the current implementation can override:
 Runtime generation rules:
 
 - game names default to `GAME_001`, `GAME_002`, ... when no explicit name is supplied
+- explicit custom game names must be unique across all persisted games
+- frontend operators are expected to create at most one active game at a time from the main control panel
 - aircraft codes: `F1`, `F2`, `F3`, ...
 - mission codes: `M1-1`, `M1-2`, `M2-1`, ...
 
