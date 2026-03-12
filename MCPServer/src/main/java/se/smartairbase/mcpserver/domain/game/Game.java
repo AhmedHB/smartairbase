@@ -68,6 +68,14 @@ public class Game {
         this.endedAt = now;
     }
 
+    /**
+     * Marks the game as explicitly aborted by a client or operator action.
+     */
+    public void markAborted(LocalDateTime now) {
+        this.status = GameStatus.ABORTED;
+        this.endedAt = now;
+    }
+
     public Long getId() { return id; }
     public Scenario getScenario() { return scenario; }
     public String getName() { return name; }

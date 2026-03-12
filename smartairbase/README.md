@@ -27,14 +27,14 @@ The frontend provides a guided operator workflow:
 - in manual mode, resolve planned missions explicitly
 - submit dice rolls
 - inspect bases, aircraft, and mission progress
-- reset the UI back to its initial state
+- abort the current game and return the UI to its initial state
 
 The player does not manually assign missions or landing bases in the main flow. Those decisions are made by `MCPClient` autoplay.
 
 ## Main Files
 
 - `src/App.js`
-  Main screen, API integration, create-game form, reset behavior, and round flow.
+  Main screen, API integration, create-game form, abort-game behavior, and round flow.
 - `src/App.css`
   Dashboard styling.
 - `src/index.css`
@@ -72,9 +72,23 @@ For `SCN_STANDARD` the panel currently summarizes:
 - the fact that some rounds may be pure wait rounds
 - the current holding crash rule after fuel has already reached `0`
 
-### Reset
+### Abort Game
 
-The `Reset` button does not create a new game anymore. It resets the UI, stops automation, clears the active game from the screen, restores default control-panel settings, and writes a reset entry to event history.
+The `Abort game` button ends the currently active game instead of only clearing the screen.
+
+When the user clicks `Abort game`:
+
+- the frontend stops automation timers
+- the frontend aborts in-flight HTTP requests
+- the UI calls `POST /api/games/{gameId}/abort`
+- the backend marks the game as `ABORTED`
+- the current `Game ID` is cleared from the UI
+- control-panel state is restored to its defaults
+- the visible event history and analysis feed are cleared from the UI
+
+This means the aborted game cannot be continued from the current session. The user must create a new game to keep playing.
+
+Abort does not delete stored backend history. Persisted analysis feed entries and other game data remain attached to the aborted game.
 
 ### Manual and Automated Round Flow
 
@@ -82,6 +96,10 @@ Automated mode:
 
 - `Next turn` keeps the one-click autoplay flow
 - mission preview, dice rolls, and next-round progression each have separate wait settings
+- the dice strategy selector supports:
+  - `Random dice outcome` for `1..6`
+  - `Favor as little damage as possible` for `4`, `5`, `6`
+  - `Cause as much damage as possible` for `1`, `2`, `3`
 
 Manual mode:
 
@@ -136,6 +154,7 @@ The saved feed history is persisted by `MCPServer`, so it survives browser refre
 - `GET /api/reference/rules`
 - `POST /api/games`
 - `GET /api/games/{gameId}`
+- `POST /api/games/{gameId}/abort`
 - `POST /api/games/{gameId}/rounds/next`
 - `POST /api/games/{gameId}/rounds/plan`
 - `POST /api/games/{gameId}/missions/resolve-auto`

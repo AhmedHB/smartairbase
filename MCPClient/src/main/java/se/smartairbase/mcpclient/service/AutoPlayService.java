@@ -126,7 +126,11 @@ public class AutoPlayService {
     }
 
     /**
-     * Records the player's dice roll and lets the client resolve all landing decisions automatically.
+     * Records the player's dice roll and lets the client resolve any follow-up
+     * landing decisions automatically.
+     *
+     * <p>If the dice outcome destroys the aircraft, no landing is attempted and
+     * the client can proceed directly toward round completion.</p>
      */
     public AutoPlayResponseDTO resolveDiceRoll(String gameId, DiceRollRequestDTO request) {
         List<String> messages = new ArrayList<>();
@@ -156,6 +160,10 @@ public class AutoPlayService {
         }
 
         GameStateDTO state = mcpClient.getGameStateView(gameId);
+        if (state.aircraft().stream().anyMatch(aircraft -> request.aircraftCode().equals(aircraft.code())
+                && "DESTROYED".equals(aircraft.status()))) {
+            messages.add(request.aircraftCode() + " destroyed");
+        }
         if ("LANDING".equals(state.game().roundPhase())) {
             autoResolveLandings(gameId, state, autoLandings, messages);
         }
@@ -482,6 +490,7 @@ public class AutoPlayService {
 
     private int landingPriority(AircraftStateDTO aircraft) {
         return switch (aircraft.damage()) {
+            case "DESTROYED" -> 6;
             case "FULL_SERVICE_REQUIRED" -> 5;
             case "MAJOR_REPAIR" -> 4;
             case "COMPONENT_DAMAGE" -> 3;
@@ -492,11 +501,12 @@ public class AutoPlayService {
 
     private Map<String, DiceOutcomeReference> diceRulesByDamage() {
         Map<String, DiceOutcomeReference> byDamage = new HashMap<>();
-        byDamage.put("NONE", new DiceOutcomeReference(1, "No fault", 0, 0));
-        byDamage.put("MINOR_REPAIR", new DiceOutcomeReference(2, "Minor repair", 1, 1));
+        byDamage.put("DESTROYED", new DiceOutcomeReference(1, "Destroyed", 0, 0));
+        byDamage.put("FULL_SERVICE_REQUIRED", new DiceOutcomeReference(2, "Full service required", 4, 4));
+        byDamage.put("MAJOR_REPAIR", new DiceOutcomeReference(3, "Major repair", 3, 3));
         byDamage.put("COMPONENT_DAMAGE", new DiceOutcomeReference(4, "Component damage", 2, 2));
-        byDamage.put("MAJOR_REPAIR", new DiceOutcomeReference(5, "Major repair", 3, 3));
-        byDamage.put("FULL_SERVICE_REQUIRED", new DiceOutcomeReference(6, "Full service required", 4, 4));
+        byDamage.put("MINOR_REPAIR", new DiceOutcomeReference(5, "Minor repair", 1, 1));
+        byDamage.put("NONE", new DiceOutcomeReference(6, "No fault", 0, 0));
         return byDamage;
     }
 

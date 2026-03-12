@@ -63,9 +63,9 @@ class AutoPlayServiceTest {
 
         AutoPlayService service = new AutoPlayService(mcpClient, rules);
 
-        var response = service.resolveDiceRoll("3", new DiceRollRequestDTO("F1", 1));
+        var response = service.resolveDiceRoll("3", new DiceRollRequestDTO("F1", 6));
 
-        verify(mcpClient).recordDiceRoll("3", new DiceRollRequestDTO("F1", 1));
+        verify(mcpClient).recordDiceRoll("3", new DiceRollRequestDTO("F1", 6));
         verify(mcpClient).landAircraft("3", new LandAircraftRequestDTO("F1", "A"));
         verify(mcpClient).completeRound("3");
         assertThat(response.roundCompleted()).isTrue();
@@ -137,6 +137,35 @@ class AutoPlayServiceTest {
     }
 
     @Test
+    void resolveDiceRollDoesNotAttemptLandingForDestroyedAircraft() {
+        SmartAirBaseMcpClient mcpClient = mock(SmartAirBaseMcpClient.class);
+        GameRulesReferenceService rules = new GameRulesReferenceService();
+
+        when(mcpClient.getGameStateView("11"))
+                .thenReturn(state(activeSummary(1, "DICE_ROLL", true, false, false), awaitingDiceAircraft("F1"), completedMissions("M1")))
+                .thenReturn(state(activeSummary(1, "LANDING", true, false, true),
+                        List.of(TestStateFactory.aircraft("F1", "DESTROYED", null, 70, 4, 12, "DESTROYED")),
+                        completedMissions("M1")))
+                .thenReturn(state(activeSummary(1, "LANDING", true, false, true),
+                        List.of(TestStateFactory.aircraft("F1", "DESTROYED", null, 70, 4, 12, "DESTROYED")),
+                        completedMissions("M1")))
+                .thenReturn(state(activeSummary(1, "ROUND_COMPLETE", false, true, false),
+                        List.of(TestStateFactory.aircraft("F1", "DESTROYED", null, 70, 4, 12, "DESTROYED")),
+                        completedMissions("M1")));
+
+        AutoPlayService service = new AutoPlayService(mcpClient, rules);
+
+        var response = service.resolveDiceRoll("11", new DiceRollRequestDTO("F1", 1));
+
+        verify(mcpClient).recordDiceRoll("11", new DiceRollRequestDTO("F1", 1));
+        verify(mcpClient, never()).getLandingOptionsView("11", "F1");
+        verify(mcpClient, never()).landAircraft(eq("11"), argThat(request -> "F1".equals(request.aircraftCode())));
+        verify(mcpClient).completeRound("11");
+        assertThat(response.roundCompleted()).isTrue();
+        assertThat(response.messages()).contains("F1 destroyed");
+    }
+
+    @Test
     void resolveDiceRollNormalizesBaseCodesForLandingChoice() {
         SmartAirBaseMcpClient mcpClient = mock(SmartAirBaseMcpClient.class);
         GameRulesReferenceService rules = new GameRulesReferenceService();
@@ -167,7 +196,7 @@ class AutoPlayServiceTest {
 
         AutoPlayService service = new AutoPlayService(mcpClient, rules);
 
-        service.resolveDiceRoll("3", new DiceRollRequestDTO("F1", 1));
+        service.resolveDiceRoll("3", new DiceRollRequestDTO("F1", 6));
 
         verify(mcpClient).landAircraft(eq("3"), argThat(request -> "F1".equals(request.aircraftCode()) && "BASE_A".equals(request.baseCode())));
     }

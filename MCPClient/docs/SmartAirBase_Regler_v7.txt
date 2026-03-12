@@ -295,24 +295,24 @@ med 0 bränsle -> CRASH.
 10. TÄRNING
 ============================================================
 
-1 = inget fel
-2 = mindre reparation
-3 = mindre reparation
+1 = utslaget
+2 = full service krävs
+3 = större reparation
 4 = komponent skadad
-5 = större reparation
-6 = full service krävs
+5 = mindre reparation
+6 = inget fel
 
 ============================================================
 11. REPARATIONSTIDSREGEL
 ============================================================
 
 Reparationstid
-1 = inget fel -> 0 rundor
-2 = mindre reparation   -> 1 runda
-3 = mindre reparation   -> 1 runda
+1 = utslaget            -> 0 rundor
+2 = full service krävs  -> 4 rundor
+3 = större reparation   -> 3 rundor
 4 = komponent skadad    -> 2 rundor
-5 = större reparation   -> 3 rundor
-6 = full service krävs  -> 4 rundor
+5 = mindre reparation   -> 1 runda
+6 = inget fel           -> 0 rundor
 
 När flygtimmar når 0 måste flygplanet genomgå full service innan det
 får flyga ett nytt uppdrag.
@@ -433,7 +433,7 @@ reservdelar 10
 
 Tärning
 
-F1 = 1 (ingen skada)
+F1 = 6 (inget fel)
 F2 = 4 (komponentskada)
 
 Landning och underhåll
@@ -481,7 +481,7 @@ flygtid 20
 
 Tärning
 
-F1 = 2 (mindre reparation)
+F1 = 2 (full service krävs)
 
 Landning och underhåll
 
@@ -491,12 +491,12 @@ Bas A:
 parkering 4 (1 upptagna)
 maintenance 2 (2 upptagna)
 
-Reparation startar för F1:
-mindre reparation = 1 reservdel
-reparationstid = 1 runda
+Underhåll startar för F1:
+full service krävs = 4 reservdelar
+reparationstid = 4 rundor
 
 Bas A reservdelar:
-8 -> 7
+8 -> 4
 
 Resursuppdatering
 

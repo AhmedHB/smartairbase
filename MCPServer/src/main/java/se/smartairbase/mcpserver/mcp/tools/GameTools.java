@@ -45,6 +45,14 @@ public class GameTools {
     }
 
     @Tool(
+            name = "abort_game",
+            description = "Abort one game and make it inactive for further play"
+    )
+    public Object abortGame(Long gameId) {
+        return gameService.abortGame(gameId);
+    }
+
+    @Tool(
             name = "list_analysis_feed",
             description = "List the saved analysis feed entries for one game"
     )

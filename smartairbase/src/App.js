@@ -41,6 +41,7 @@ function App() {
   const automationInFlightRef = useRef(false);
   const nextRoundInFlightRef = useRef(false);
   const gameStateRef = useRef(null);
+  const activeRequestControllersRef = useRef(new Set());
   const [nextRoundCountdown, setNextRoundCountdown] = useState(null);
   const missionPreviewTimerRef = useRef(null);
   const autoDiceTimerRef = useRef(null);
@@ -283,21 +284,32 @@ function App() {
   }, [rules, gameState, createForm.missionTypeCounts]);
 
 async function request(path, options = {}) {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      ...options,
-    });
+    const controller = new AbortController();
+    activeRequestControllersRef.current.add(controller);
+    try {
+      const response = await fetch(`${API_BASE_URL}${path}`, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        ...options,
+        signal: controller.signal,
+      });
 
-    const text = await response.text();
-    const data = text ? JSON.parse(text) : null;
+      const text = await response.text();
+      const data = text ? JSON.parse(text) : null;
 
-    if (!response.ok) {
-      throw new Error(data?.message || text || `Request failed with ${response.status}`);
+      if (!response.ok) {
+        throw new Error(data?.message || text || `Request failed with ${response.status}`);
+      }
+
+      return data;
+    } finally {
+      activeRequestControllersRef.current.delete(controller);
     }
+  }
 
-    return data;
+  function isAbortError(error) {
+    return error?.name === 'AbortError';
   }
 
   useEffect(() => {
@@ -310,6 +322,9 @@ async function request(path, options = {}) {
           setRules(data);
         }
       } catch (error) {
+        if (isAbortError(error)) {
+          return;
+        }
         if (!ignore) {
           setStatus({ kind: 'error', message: error.message });
         }
@@ -339,7 +354,7 @@ async function request(path, options = {}) {
     const shouldGenerate = isValidGameId(gameId)
       && round > 0
       && !gameState?.game?.roundOpen
-      && (statusValue === 'ACTIVE' || statusValue === 'WON' || statusValue === 'LOST');
+      && (statusValue === 'ACTIVE' || statusValue === 'WON' || statusValue === 'LOST' || statusValue === 'ABORTED');
     if (!shouldGenerate) {
       return undefined;
     }
@@ -360,7 +375,10 @@ async function request(path, options = {}) {
         if (!ignore) {
           setAnalysisFeed(feedResponse.items || []);
         }
-      } catch (_error) {
+      } catch (error) {
+        if (isAbortError(error)) {
+          return;
+        }
         if (!ignore) {
           setAnalysisFeed((current) => current);
         }
@@ -433,20 +451,23 @@ async function request(path, options = {}) {
     clearMissionPreview();
   }
 
+  function abortActiveRequests() {
+    activeRequestControllersRef.current.forEach((controller) => controller.abort());
+    activeRequestControllersRef.current.clear();
+  }
+
   async function handleCreateGame(event) {
     event.preventDefault();
     await createNewGame('Creating game...', 'Game created');
   }
 
-  function handleResetGame() {
-    const previousGameId = isValidGameId(gameId) ? String(gameId) : null;
-    const previousGameStatus = gameState?.game?.status || null;
-
+  function resetUiToStartupState(previousGameId, previousGameStatus) {
     stopAutomation();
+    abortActiveRequests();
     setCreateForm(INITIAL_CREATE_FORM);
     setDiceAutomation(INITIAL_DICE_AUTOMATION);
     setGameId('');
-    setRules(rules);
+    setRules((current) => current);
     setShowScenarioRules(false);
     setPreviousGameState(null);
     gameStateRef.current = null;
@@ -462,21 +483,38 @@ async function request(path, options = {}) {
     lastAnalysisRequestKeyRef.current = null;
 
     if (previousGameId) {
-      pushLog('Game reset', {
+      pushLog('Game aborted', {
         messages: [
           previousGameStatus
-            ? `Game ${previousGameId} ended through reset with status ${previousGameStatus}.`
-            : `Game ${previousGameId} ended through reset.`,
+            ? `Game ${previousGameId} ended through abort with status ${previousGameStatus}.`
+            : `Game ${previousGameId} ended through abort.`,
         ],
       });
     }
   }
 
-  function handleResetView() {
+  async function handleAbortGame() {
+    const previousGameId = isValidGameId(gameId) ? String(gameId) : null;
+    if (!previousGameId) {
+      resetUiToStartupState(null, null);
+      return;
+    }
+
     stopAutomation();
-    refreshGameState()
-      .then((data) => data && pushLog('State refreshed', data))
-      .catch((error) => setStatus({ kind: 'error', message: error.message }));
+    setStatus({ kind: 'loading', message: 'Aborting game...' });
+    try {
+      await request(`/games/${previousGameId}/abort`, { method: 'POST' });
+      resetUiToStartupState(previousGameId, 'ABORTED');
+    } catch (error) {
+      if (isAbortError(error)) {
+        return;
+      }
+      setStatus({ kind: 'error', message: error.message });
+    }
+  }
+
+  function handleResetView() {
+    void handleAbortGame();
   }
 
   async function createNewGame(loadingMessage, successPrefix, options = {}) {
@@ -506,6 +544,9 @@ async function request(path, options = {}) {
       setStatus({ kind: 'success', message: `${successPrefix} ${nextGameId}.` });
       pushLog(successPrefix, data);
     } catch (error) {
+      if (isAbortError(error)) {
+        return;
+      }
       setStatus({ kind: 'error', message: error.message });
     }
   }
@@ -580,6 +621,9 @@ async function request(path, options = {}) {
       }
       pushLog(data.gameFinished ? finalGameLogTitle(data.gameState) : (automationEnabled ? 'Autoplay round start' : 'Manual round plan'), enrichGameFinishedPayload(data));
     } catch (error) {
+      if (isAbortError(error)) {
+        return;
+      }
       setStatus({ kind: 'error', message: error.message });
     } finally {
       nextRoundInFlightRef.current = false;
@@ -607,6 +651,9 @@ async function request(path, options = {}) {
       });
       pushLog(data.gameFinished ? finalGameLogTitle(data.gameState) : 'Manual mission resolution', enrichGameFinishedPayload(data));
     } catch (error) {
+      if (isAbortError(error)) {
+        return;
+      }
       setStatus({ kind: 'error', message: error.message });
     }
   }
@@ -634,6 +681,9 @@ async function request(path, options = {}) {
         try {
           await refreshGameState(gameId);
         } catch (error) {
+          if (isAbortError(error)) {
+            return;
+          }
           setStatus({ kind: 'error', message: error.message });
           return;
         }
@@ -685,6 +735,9 @@ async function request(path, options = {}) {
         },
       }));
     } catch (error) {
+      if (isAbortError(error)) {
+        return;
+      }
       if (String(error.message).includes('Round is in phase LANDING')) {
         try {
           await refreshGameState(gameId);
@@ -694,6 +747,9 @@ async function request(path, options = {}) {
           });
           return;
         } catch (refreshError) {
+          if (isAbortError(refreshError)) {
+            return;
+          }
           setStatus({ kind: 'error', message: refreshError.message });
           return;
         }
@@ -1020,7 +1076,7 @@ async function request(path, options = {}) {
               <div className="button-row">
                 <button type="button" className={nextStep === 'NEXT_TURN' ? 'next-step-button' : ''} onClick={handleNextRound} disabled={!canStartNextTurn}>Next turn</button>
                 <button type="button" className={nextStep === 'RESOLVE_MISSIONS' ? 'next-step-button' : ''} onClick={handleResolveMissions} disabled={!canResolveMissions}>Resolve missions</button>
-                <button type="button" className="ghost-button" onClick={handleResetView}>Reset</button>
+                <button type="button" className="ghost-button" onClick={handleResetView}>Abort game</button>
               </div>
               {automationEnabled && nextRoundCountdown !== null ? (
                 <p className="muted-copy">Auto next round in {nextRoundCountdown}s. You can still press Next turn manually.</p>
@@ -1106,7 +1162,7 @@ async function request(path, options = {}) {
               </label>
             ) : null}
             <div className="button-row bottom-actions">
-              <button type="button" className="ghost-button" onClick={handleResetGame}>Reset</button>
+              <button type="button" className="ghost-button" onClick={handleAbortGame}>Abort game</button>
               <button type="submit" className={nextStep === 'ROLL_DICE' ? 'next-step-button' : ''} disabled={!canRollDice || automationEnabled}>Roll dice</button>
             </div>
           </form>
@@ -1236,7 +1292,13 @@ function finalGameMessage(gameState) {
 }
 
 function finalGameLogTitle(gameState) {
-  return gameState?.game?.status === 'WON' ? 'Game won' : 'Game lost';
+  if (gameState?.game?.status === 'WON') {
+    return 'Game won';
+  }
+  if (gameState?.game?.status === 'ABORTED') {
+    return 'Game aborted';
+  }
+  return 'Game lost';
 }
 
 function enrichGameFinishedPayload(payload) {
@@ -1272,7 +1334,7 @@ function scenarioRulesFor(scenarioName) {
         'Fuel deliveries arrive every 2 rounds: A +50, B +40, C +30.',
         'Spare parts arrive every 3 rounds: A +3, B +2, C +0.',
         'Weapons arrive every 4 rounds: A +6, B +4, C +0.',
-        'Dice outcomes: 1 no fault, 2-3 minor repair, 4 component damage, 5 major repair, 6 full service required.',
+        'Dice outcomes: 1 destroyed, 2 full service required, 3 major repair, 4 component damage, 5 minor repair, 6 no fault.',
         'Some rounds may have no available actions and can be passed directly to the next round.',
       ],
     };
@@ -1336,10 +1398,10 @@ function randomDiceValue() {
 
 function automatedDiceValue(strategy) {
   if (strategy === 'MIN_DAMAGE') {
-    return 1;
+    return [4, 5, 6][Math.floor(Math.random() * 3)];
   }
   if (strategy === 'MAX_DAMAGE') {
-    return 6;
+    return [1, 2, 3][Math.floor(Math.random() * 3)];
   }
   return randomDiceValue();
 }

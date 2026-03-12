@@ -29,7 +29,14 @@ MCPServer (:9090)
 PostgreSQL (:5432)
 ```
 
-## Gameplay Model
+## Game Rules
+
+### Objective
+
+The player runs an air base under resource and capacity constraints.
+The goal is to complete all missions in as few rounds as possible without ending up in a state where no remaining mission can be flown.
+
+### Core State
 
 Each game tracks:
 
@@ -39,6 +46,41 @@ Each game tracks:
 - current round
 - active round phase
 - win/loss status
+
+### Scenario Setup
+
+The default scenario is `SCN_STANDARD V7`.
+
+Initial setup:
+
+- 3 bases: `A`, `B`, `C`
+- 3 aircraft at start: `F1`, `F2`, `F3`
+- each aircraft starts with:
+  - `Fuel 100`
+  - `Weapons 6`
+  - `Flight Hours 20`
+
+Base summary:
+
+- Base `A`: main airbase with the highest parking, maintenance, fuel, weapon, and spare-parts capacity
+- Base `B`: forward base with limited parking and maintenance, supports lighter service than `A`
+- Base `C`: fuel outpost with parking but no repair or rearm capability
+
+### Missions
+
+Mission types in the standard scenario:
+
+- `M1 Recon`: `20` fuel, `0` weapons, `4` flight hours
+- `M2 Strike`: `30` fuel, `2` weapons, `6` flight hours
+- `M3 Deep Strike`: `40` fuel, `4` weapons, `8` flight hours
+
+Mission instances are created dynamically with runtime codes such as:
+
+- `M1-1`
+- `M1-2`
+- `M2-1`
+
+### Round Flow
 
 Round phases:
 
@@ -56,12 +98,152 @@ Typical round sequence:
 5. land aircraft or send them to holding
 6. complete round
 
-Current UI flow:
+UI flow:
 
 - automated mode keeps a one-click round start and then auto-runs dice and landings
 - manual mode is split into `Next turn` and `Resolve missions` so the player can inspect the `On mission` state before dice handling starts
 
-Rounds with no available actions are also valid. If mission resolution leaves no aircraft waiting for dice or landing, the round can move directly to completion and the player simply waits for the next round.
+Dice strategy options in the frontend:
+
+- `Random dice outcome` uses the full range `1..6`
+- `Favor as little damage as possible` only uses `4`, `5`, `6`
+- `Cause as much damage as possible` only uses `1`, `2`, `3`
+
+Rounds with no available actions are valid. If mission resolution leaves no aircraft waiting for dice or landing, the round can move directly to completion.
+
+### Mission Resolution
+
+When a mission is resolved:
+
+- mission cost is applied immediately to the aircraft
+- fuel decreases
+- weapons decrease
+- remaining flight hours decrease
+- the aircraft leaves its base and moves to `AWAITING_DICE_ROLL`
+
+### Dice Outcomes
+
+After a mission, each flown aircraft receives a dice outcome:
+
+- `1` = `Destroyed`
+- `2` = `Full service required`
+- `3` = `Major repair`
+- `4` = `Component damage`
+- `5` = `Minor repair`
+- `6` = `No fault`
+
+Repair duration:
+
+- `1 Destroyed` -> `0` rounds
+- `2 Full service required` -> `4` rounds
+- `3 Major repair` -> `3` rounds
+- `4 Component damage` -> `2` rounds
+- `5 Minor repair` -> `1` round
+- `6 No fault` -> `0` rounds
+
+`Destroyed` is terminal:
+
+- the aircraft goes directly to `DESTROYED`
+- it does not land
+- it does not enter maintenance
+- it does not consume spare parts
+
+### Landing and Base Services
+
+After dice resolution, aircraft that survived must land at a base.
+
+Landing rules:
+
+- a base must have a free parking slot
+- a damaged aircraft may only land at a base that supports the required service level
+- if no base can accept the aircraft, it must go to `HOLDING`
+
+Ground service and maintenance rules:
+
+- after landing, a base may refuel and rearm the aircraft immediately if the base supports those services and has stock
+- repair and full service consume maintenance capacity and spare parts
+- aircraft with no damage become `READY` after landing
+- damaged aircraft either enter maintenance immediately or wait for maintenance capacity/resources
+
+Flight-hour rule:
+
+- flight hours are never restored on ordinary landing
+- ordinary repair does not restore flight hours
+- flight hours are restored only when actual full service completes
+
+If an aircraft reaches `0` remaining flight hours, it must undergo full service before it can be used again.
+
+### Holding
+
+Holding rule in the current implementation:
+
+- aircraft in `HOLDING` lose `5` fuel at round completion
+- when fuel first reaches `0`, the aircraft remains in holding
+- if it is still in holding at a later round completion with `0` fuel, it crashes
+
+### Deliveries and Resource Pressure
+
+The standard scenario includes recurring deliveries:
+
+- fuel deliveries every `2` rounds
+- spare-parts deliveries every `3` rounds
+- weapon deliveries every `4` rounds
+
+This means some rounds are pure waiting rounds where the correct move is to advance until resources or maintenance capacity become available again.
+
+### Win and Loss
+
+Implemented outcome rules:
+
+- `WON` when all missions are completed and all surviving aircraft are back in `READY` state at a base
+- `LOST` when no operational aircraft remain
+
+Destroyed aircraft do not block victory by themselves as long as all missions are completed and all surviving aircraft have been recovered to a stable end state.
+
+### Example Play
+
+Example start:
+
+- `F1`, `F2`, `F3` start at base `A`
+- all aircraft start with `Fuel 100`, `Weapons 6`, `Flight Hours 20`
+- missions available: `M1`, `M2`, `M3`
+
+Round 1:
+
+- assign `F1 -> M1`
+- assign `F2 -> M2`
+- `F3` waits
+- after mission resolution:
+  - `F1` becomes `Fuel 80`, `Weapons 6`, `Flight Hours 16`
+  - `F2` becomes `Fuel 70`, `Weapons 4`, `Flight Hours 14`
+- dice:
+  - `F1 = 6` -> `No fault`
+  - `F2 = 4` -> `Component damage`
+- result:
+  - `F1` lands at base `A` and becomes `READY`
+  - `F2` lands at base `A` and starts maintenance
+  - `F2` consumes `2` spare parts and needs `2` repair rounds
+
+Round 2:
+
+- only `M3` remains
+- assign `F1 -> M3`
+- `F2` continues maintenance
+- `F3` waits
+- after mission resolution:
+  - `F1` becomes `Fuel 40`, `Weapons 2`, `Flight Hours 8`
+- dice:
+  - `F1 = 2` -> `Full service required`
+- result:
+  - `F1` lands at base `A` and enters full service
+  - `F1` consumes `4` spare parts and needs `4` rounds
+  - round-end deliveries still apply normally
+
+This example shows three different post-mission outcomes:
+
+- normal return with no fault
+- ordinary repair after component damage
+- long full-service downtime after a severe dice result
 
 ## Dynamic Game Creation
 
@@ -86,32 +268,6 @@ Aircraft are generated as:
 - `F2`
 - `F3`
 - ...
-
-## Win and Loss
-
-Current implemented outcome rules:
-
-- `WON` when all missions are completed and all surviving aircraft are back in `READY` state at a base
-- `LOST` when no operational aircraft remain
-
-Aircraft may still be destroyed during play. Destroyed aircraft do not by themselves block victory as long as the remaining surviving aircraft have been recovered to a stable end state.
-
-## Service and Holding
-
-Current service rules in the implementation:
-
-- mission cost is always applied to the aircraft first
-- after landing, a base may refuel and rearm the aircraft immediately if that base supports those services and has stock available
-- repair and full service consume maintenance capacity and spare parts
-- flight hours are never restored on ordinary landing
-- ordinary repair does not restore flight hours
-- flight hours are restored only when actual full service completes, either because the dice result required full service or because the aircraft had reached `0` remaining flight hours
-
-Current holding rule in the implementation:
-
-- aircraft in `HOLDING` lose `5` fuel at round completion
-- when fuel first reaches `0`, the aircraft remains in holding
-- if it is still in holding at a later round completion with `0` fuel, it crashes
 
 ## Running Locally
 
@@ -162,7 +318,10 @@ Open:
 
 - `MCPServer` is the source of truth for rules and state transitions.
 - `MCPClient` unwraps MCP tool responses and returns typed DTO-based HTTP responses.
-- The frontend `Reset` button now resets the UI to its initial state, stops automation, clears the active game from the screen, and logs that the previous game ended through reset.
+- The frontend `Abort game` button now aborts the active game, stops automation, clears the active game from the screen, and returns the UI to its initial state.
+- Aborting a game marks it as `ABORTED` in the backend, so that game cannot be continued and a new game must be created to keep playing.
+- The frontend also clears the visible event log and analysis feed when a game is aborted.
+- Persisted backend history is not deleted by abort. Analysis feed items and other game history remain stored for the aborted game.
 - The frontend includes a scenario rules panel in English with mission costs, deliveries, holding fuel cost, total capacity, and dice outcomes for `SCN_STANDARD`.
 - The frontend now shows the round flow as `On mission`, `Awaiting dice roll`, `Holding`, and `Destroyed aircraft`, plus per-aircraft `current/max` stats and positive `Added:` diffs for fuel, weapons, and flight hours.
 - Automated mode has separate wait settings for mission preview, dice rolls, and next-round progression.

@@ -1,0 +1,101 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-001-update-repair-rule-dice-outcomes
+      author: openai
+      changes:
+        - update:
+            tableName: repair_rule
+            columns:
+              - column:
+                  name: damage
+                  value: DESTROYED
+              - column:
+                  name: spare_parts_cost
+                  valueNumeric: 0
+              - column:
+                  name: repair_rounds
+                  valueNumeric: 0
+              - column:
+                  name: requires_full_service
+                  valueBoolean: false
+            where: dice_value = 1
+        - update:
+            tableName: repair_rule
+            columns:
+              - column:
+                  name: damage
+                  value: FULL_SERVICE_REQUIRED
+              - column:
+                  name: spare_parts_cost
+                  valueNumeric: 4
+              - column:
+                  name: repair_rounds
+                  valueNumeric: 4
+              - column:
+                  name: requires_full_service
+                  valueBoolean: true
+            where: dice_value = 2
+        - update:
+            tableName: repair_rule
+            columns:
+              - column:
+                  name: damage
+                  value: MAJOR_REPAIR
+              - column:
+                  name: spare_parts_cost
+                  valueNumeric: 3
+              - column:
+                  name: repair_rounds
+                  valueNumeric: 3
+              - column:
+                  name: requires_full_service
+                  valueBoolean: false
+            where: dice_value = 3
+        - update:
+            tableName: repair_rule
+            columns:
+              - column:
+                  name: damage
+                  value: COMPONENT_DAMAGE
+              - column:
+                  name: spare_parts_cost
+                  valueNumeric: 2
+              - column:
+                  name: repair_rounds
+                  valueNumeric: 2
+              - column:
+                  name: requires_full_service
+                  valueBoolean: false
+            where: dice_value = 4
+        - update:
+            tableName: repair_rule
+            columns:
+              - column:
+                  name: damage
+                  value: MINOR_REPAIR
+              - column:
+                  name: spare_parts_cost
+                  valueNumeric: 1
+              - column:
+                  name: repair_rounds
+                  valueNumeric: 1
+              - column:
+                  name: requires_full_service
+                  valueBoolean: false
+            where: dice_value = 5
+        - update:
+            tableName: repair_rule
+            columns:
+              - column:
+                  name: damage
+                  value: NONE
+              - column:
+                  name: spare_parts_cost
+                  valueNumeric: 0
+              - column:
+                  name: repair_rounds
+                  valueNumeric: 0
+              - column:
+                  name: requires_full_service
+                  valueBoolean: false
+            where: dice_value = 6

@@ -94,6 +94,13 @@ beforeEach(() => {
       });
     }
 
+    if (String(url).endsWith('/games/11/abort') && options.method === 'POST') {
+      return jsonResponse({
+        success: true,
+        message: 'Game aborted',
+      });
+    }
+
     return jsonResponse({});
   });
 });
@@ -170,6 +177,42 @@ test('manual flow uses plan then resolve missions endpoints', async () => {
 
   expect(screen.getByText('Awaiting dice roll')).toBeInTheDocument();
   expect(screen.getByText('Mission resolution completed. Next action: Roll dice.')).toBeInTheDocument();
+});
+
+test('abort game returns the app to its startup state and invalidates the current game in the client', async () => {
+  render(<App />);
+
+  await waitFor(() => {
+    expect(global.fetch).toHaveBeenCalled();
+  });
+
+  fireEvent.click(screen.getByText('Create game'));
+
+  await waitFor(() => {
+    expect(global.fetch).toHaveBeenCalledWith(
+      'http://localhost:8080/api/games/11',
+      expect.objectContaining({ headers: { 'Content-Type': 'application/json' } })
+    );
+  });
+
+  fireEvent.change(screen.getByLabelText('Game ID'), { target: { value: '11' } });
+  fireEvent.click(screen.getAllByText('Abort game')[0]);
+
+  await waitFor(() => {
+    expect(global.fetch).toHaveBeenCalledWith(
+      'http://localhost:8080/api/games/11/abort',
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
+
+  await waitFor(() => {
+    expect(screen.getByDisplayValue('')).toBeInTheDocument();
+  });
+
+  expect(screen.getByText('Create a game to begin.')).toBeInTheDocument();
+  expect(screen.getByText('Game status')).toBeInTheDocument();
+  expect(screen.getByText('Not started')).toBeInTheDocument();
+  expect(screen.getByText('No aircraft are currently waiting for a dice roll.')).toBeInTheDocument();
 });
 
 function jsonResponse(data) {

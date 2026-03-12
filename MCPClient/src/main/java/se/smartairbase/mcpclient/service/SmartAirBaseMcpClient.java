@@ -55,6 +55,13 @@ public class SmartAirBaseMcpClient {
         return getGameState(gameId);
     }
 
+    /**
+     * Aborts one game on the MCP server and returns the resulting action status.
+     */
+    public ActionResultDTO abortGame(String gameId) {
+        return toolExecutor.execute(SmartAirBaseTool.ABORT_GAME, Map.of("gameId", gameId), ActionResultDTO.class);
+    }
+
     public AnalysisFeedResponseDTO listAnalysisFeed(String gameId) {
         return toolExecutor.execute(SmartAirBaseTool.LIST_ANALYSIS_FEED, Map.of("gameId", gameId), AnalysisFeedResponseDTO.class);
     }

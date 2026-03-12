@@ -74,6 +74,14 @@ public class GameController {
     }
 
     /**
+     * Aborts one game and makes it unavailable for further play.
+     */
+    @PostMapping("/games/{gameId}/abort")
+    public ActionResultDTO abortGame(@PathVariable String gameId) {
+        return mcpClient.abortGame(gameId);
+    }
+
+    /**
      * Starts a new round for the selected game.
      */
     @PostMapping("/games/{gameId}/rounds/start")
