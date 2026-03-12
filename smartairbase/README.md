@@ -57,7 +57,11 @@ The scenario version is kept internally and is no longer shown in the GUI.
 The scenario name is selected from a dropdown and is not free-text editable.
 Default scenario name: `SCN_STANDARD`.
 If the user does not provide a custom name, the backend generates a default game name such as `GAME_001`.
+If the user provides a custom game name, it must be unique. Duplicate names are rejected and shown as an error in the UI.
+`Create game` is disabled while an active game is loaded, so the operator cannot start a second live game from the same screen state.
 The aircraft field is capped at `8` and the UI explains that this is the maximum for the current scenario.
+Under `Game ID`, the control panel also shows a read-only `Current game name` field that always reflects the loaded game or `No active game`.
+The `Scenario editor` tab is also disabled while an active game is running, so scenario editing only happens from a non-live control state.
 
 ### Scenario Rules Panel
 
@@ -85,6 +89,8 @@ When the user clicks `Abort game`:
 - the current `Game ID` is cleared from the UI
 - control-panel state is restored to its defaults
 - the visible event history and analysis feed are cleared from the UI
+
+`Abort game` is disabled when no active game exists and becomes available only after a game has been created and loaded.
 
 This means the aborted game cannot be continued from the current session. The user must create a new game to keep playing.
 
@@ -226,4 +232,5 @@ npm test -- --watchAll=false
 
 - The frontend expects clean DTO-shaped JSON from `MCPClient`.
 - State refresh is action-driven; there is no live push from the backend.
+- `src/App.test.js` now covers the locked `Scenario editor` tab, the active/inactive `Create game` and `Abort game` buttons, and the read-only current game name field in the control panel.
 - This is still a dashboard-style UI, not a final polished game client.

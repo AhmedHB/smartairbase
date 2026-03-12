@@ -50,6 +50,25 @@ class McpToolExecutorTest {
                 .hasMessageContaining("Multiple MCP tools matched suffix");
     }
 
+    @Test
+    void extractsReadableMessageFromToolErrorWrapper() {
+        McpToolExecutor executor = new McpToolExecutor(
+                List.of(provider(new FailingToolCallback(
+                        "intelliplan_create_game",
+                        "Error calling tool: [TextContent[annotations=null, text=The game name \"B\" is already in use. Choose a different name., meta=null]]"
+                ))),
+                objectMapper
+        );
+
+        assertThatThrownBy(() -> executor.execute(
+                SmartAirBaseTool.CREATE_GAME,
+                Map.of("scenarioName", "smartairbase"),
+                CreateGameResponse.class
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The game name \"B\" is already in use. Choose a different name.");
+    }
+
     private ToolCallbackProvider provider(ToolCallback... callbacks) {
         return () -> callbacks;
     }
@@ -73,6 +92,28 @@ class McpToolExecutorTest {
         @Override
         public String call(String toolInput, ToolContext toolContext) {
             return response;
+        }
+    }
+
+    private record FailingToolCallback(String name, String message) implements ToolCallback {
+
+        @Override
+        public ToolDefinition getToolDefinition() {
+            return DefaultToolDefinition.builder()
+                    .name(name)
+                    .description("test")
+                    .inputSchema("{}")
+                    .build();
+        }
+
+        @Override
+        public String call(String toolInput) {
+            throw new IllegalStateException(message);
+        }
+
+        @Override
+        public String call(String toolInput, ToolContext toolContext) {
+            throw new IllegalStateException(message);
         }
     }
 }

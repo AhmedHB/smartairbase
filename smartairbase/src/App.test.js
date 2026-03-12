@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import App from './App';
 
 beforeEach(() => {
+  let currentGameName = 'test';
   let scenarios = [
     {
       scenarioId: 1,
@@ -184,9 +185,16 @@ beforeEach(() => {
 
     if (String(url).endsWith('/games') && options.method === 'POST') {
       const payload = JSON.parse(options.body);
+      if (payload.gameName === 'TAKEN_NAME') {
+        return Promise.resolve({
+          ok: false,
+          text: () => Promise.resolve(JSON.stringify({ message: 'The game name "TAKEN_NAME" is already in use. Choose a different name.' })),
+        });
+      }
+      currentGameName = payload.gameName || 'GAME_001';
       return jsonResponse({
         gameId: 11,
-        name: payload.gameName || 'GAME_001',
+        name: currentGameName,
         scenarioName: payload.scenarioName || 'SCN_STANDARD',
         scenarioVersion: 'V7',
         status: 'ACTIVE',
@@ -199,12 +207,26 @@ beforeEach(() => {
     }
 
     if (String(url).endsWith('/games/11') && (!options.method || options.method === 'GET')) {
-      return jsonResponse(runtimeState({
-        round: 0,
-        roundPhase: null,
-        roundOpen: false,
-        canStartRound: true,
-      }));
+      return jsonResponse({
+        ...runtimeState({
+          round: 0,
+          roundPhase: null,
+          roundOpen: false,
+          canStartRound: true,
+        }),
+        game: {
+          gameId: 11,
+          name: currentGameName,
+          scenarioName: 'SCN_STANDARD',
+          scenarioVersion: 'V7',
+          status: 'ACTIVE',
+          currentRound: 0,
+          roundPhase: null,
+          roundOpen: false,
+          canStartRound: true,
+          canCompleteRound: false,
+        },
+      });
     }
 
     if (String(url).endsWith('/games/31') && (!options.method || options.method === 'GET')) {
@@ -448,6 +470,7 @@ test('create game supports a custom game name', async () => {
     expect(screen.getByText('Game created My named game (11).')).toBeInTheDocument();
   });
   expect(screen.getByText('My named game created with Game ID 11.')).toBeInTheDocument();
+  expect(screen.getByLabelText('Current game name')).toHaveValue('My named game');
   expect(screen.getByText(/Time: .* \| Round: 0/i)).toBeInTheDocument();
   expect(screen.getByText(/Round: 0/)).toBeInTheDocument();
 });
@@ -464,6 +487,174 @@ test('custom game name cannot be empty when chosen', async () => {
 
   expect(screen.getByText(/Game name is required when you choose a custom name./i)).toBeInTheDocument();
   expect(screen.getByText('Create named game')).toBeDisabled();
+});
+
+test('create game is disabled during an ongoing game and abort game is only enabled then', async () => {
+  render(<App />);
+
+  await waitFor(() => {
+    expect(global.fetch).toHaveBeenCalled();
+  });
+
+  expect(screen.getByText('Create game')).not.toBeDisabled();
+  expect(screen.getAllByText('Abort game')[0]).toBeDisabled();
+
+  fireEvent.click(screen.getByText('Create game'));
+  fireEvent.click(screen.getByText('Use default name'));
+
+  await waitFor(() => {
+    expect(screen.getByText('Game created GAME_001 (11).')).toBeInTheDocument();
+  });
+
+  expect(screen.getByText('Create game')).toBeDisabled();
+  expect(screen.getAllByText('Abort game')[0]).not.toBeDisabled();
+});
+
+test('scenario editor tab is disabled while an active game is running', async () => {
+  render(<App />);
+
+  await waitFor(() => {
+    expect(global.fetch).toHaveBeenCalled();
+  });
+
+  const scenarioEditorTab = screen.getByRole('tab', { name: 'Scenario editor' });
+  expect(scenarioEditorTab).not.toBeDisabled();
+
+  fireEvent.click(screen.getByText('Create game'));
+  fireEvent.click(screen.getByText('Use default name'));
+
+  await waitFor(() => {
+    expect(screen.getByText('Game created GAME_001 (11).')).toBeInTheDocument();
+  });
+
+  expect(scenarioEditorTab).toBeDisabled();
+  expect(screen.queryByText('Scenario library')).not.toBeInTheDocument();
+});
+
+test('custom game name must be unique', async () => {
+  render(<App />);
+
+  await waitFor(() => {
+    expect(global.fetch).toHaveBeenCalled();
+  });
+
+  fireEvent.click(screen.getByText('Create game'));
+  fireEvent.click(screen.getByText('Enter name'));
+  fireEvent.change(screen.getByLabelText('Game name'), { target: { value: 'TAKEN_NAME' } });
+  fireEvent.click(screen.getByText('Create named game'));
+
+  await waitFor(() => {
+    expect(screen.getByText('The game name "TAKEN_NAME" is already in use. Choose a different name.')).toBeInTheDocument();
+  });
+
+  expect(screen.queryByText(/Game created TAKEN_NAME/i)).not.toBeInTheDocument();
+});
+
+test('raw tool wrapper errors are shown as readable messages', async () => {
+  global.fetch.mockImplementationOnce(() => jsonResponse({
+    initialSetup: { aircraftCount: 3 },
+    missions: [
+      { code: 'M1', name: 'Recon', flightHours: 4, fuelCost: 20, weaponCost: 0 },
+      { code: 'M2', name: 'Strike', flightHours: 6, fuelCost: 30, weaponCost: 2 },
+      { code: 'M3', name: 'Deep Strike', flightHours: 8, fuelCost: 40, weaponCost: 4 },
+    ],
+  }));
+
+  render(<App />);
+
+  await waitFor(() => {
+    expect(global.fetch).toHaveBeenCalled();
+  });
+
+  global.fetch.mockImplementation((url, options = {}) => {
+    if (String(url).includes('/reference/rules')) {
+      return jsonResponse({
+        initialSetup: { aircraftCount: 3 },
+        missions: [
+          { code: 'M1', name: 'Recon', flightHours: 4, fuelCost: 20, weaponCost: 0 },
+          { code: 'M2', name: 'Strike', flightHours: 6, fuelCost: 30, weaponCost: 2 },
+          { code: 'M3', name: 'Deep Strike', flightHours: 8, fuelCost: 40, weaponCost: 4 },
+        ],
+      });
+    }
+    if (String(url).endsWith('/scenarios') && (!options.method || options.method === 'GET')) {
+      return jsonResponse([
+        {
+          scenarioId: 1,
+          name: 'SCN_STANDARD',
+          version: 'V7',
+          sourceType: 'SYSTEM',
+          editable: false,
+          deletable: false,
+          published: true,
+        },
+      ]);
+    }
+    if (String(url).endsWith('/scenarios/1') && (!options.method || options.method === 'GET')) {
+      return jsonResponse({
+        scenarioId: 1,
+        name: 'SCN_STANDARD',
+        version: 'V7',
+        description: 'Seeded standard scenario',
+        sourceType: 'SYSTEM',
+        editable: false,
+        deletable: false,
+        published: true,
+        bases: [],
+        aircraft: [],
+        missions: [],
+        diceRules: [],
+      });
+    }
+    if (String(url).endsWith('/games') && options.method === 'POST') {
+      return Promise.resolve({
+        ok: false,
+        text: () => Promise.resolve(JSON.stringify({
+          message: 'Error calling tool: [TextContent[annotations=null, text=The game name "RAW_DUPLICATE" is already in use. Choose a different name., meta=null]]',
+        })),
+      });
+    }
+    return jsonResponse({});
+  });
+
+  fireEvent.click(screen.getByText('Create game'));
+  fireEvent.click(screen.getByText('Enter name'));
+  fireEvent.change(screen.getByLabelText('Game name'), { target: { value: 'RAW_DUPLICATE' } });
+  fireEvent.click(screen.getByText('Create named game'));
+
+  await waitFor(() => {
+    expect(screen.getByText('The game name "RAW_DUPLICATE" is already in use. Choose a different name.')).toBeInTheDocument();
+  });
+  expect(screen.queryByText(/Error calling tool:/i)).not.toBeInTheDocument();
+});
+
+test('starting a new create flow from startup clears prior status and event history', async () => {
+  render(<App />);
+
+  await waitFor(() => {
+    expect(global.fetch).toHaveBeenCalled();
+  });
+
+  fireEvent.click(screen.getByText('Create game'));
+  fireEvent.click(screen.getByText('Enter name'));
+  fireEvent.change(screen.getByLabelText('Game name'), { target: { value: 'My named game' } });
+  fireEvent.click(screen.getByText('Create named game'));
+
+  await waitFor(() => {
+    expect(screen.getByText('Game created My named game (11).')).toBeInTheDocument();
+  });
+
+  fireEvent.click(screen.getAllByText('Abort game')[0]);
+
+  await waitFor(() => {
+    expect(screen.getByText('Create a game to begin.')).toBeInTheDocument();
+  });
+
+  fireEvent.click(screen.getByText('Create game'));
+
+  expect(screen.queryByText('Game created My named game (11).')).not.toBeInTheDocument();
+  expect(screen.getByText('Create a game to begin.')).toBeInTheDocument();
+  expect(screen.getByText('Use default name')).toBeInTheDocument();
 });
 
 test('play mode previews base layout from the selected scenario', async () => {
@@ -519,6 +710,7 @@ test('abort game returns the app to its startup state and invalidates the curren
   expect(screen.getByText('Create a game to begin.')).toBeInTheDocument();
   expect(screen.getByText('Game status')).toBeInTheDocument();
   expect(screen.getByText('Not started')).toBeInTheDocument();
+  expect(screen.getByLabelText('Current game name')).toHaveValue('No active game');
   expect(screen.getByText('No aircraft are currently waiting for a dice roll.')).toBeInTheDocument();
 });
 

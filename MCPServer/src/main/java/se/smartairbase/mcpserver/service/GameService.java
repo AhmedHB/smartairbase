@@ -2,6 +2,7 @@ package se.smartairbase.mcpserver.service;
 
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DataIntegrityViolationException;
 import se.smartairbase.mcpserver.domain.game.*;
 import se.smartairbase.mcpserver.domain.game.enums.EventType;
 import se.smartairbase.mcpserver.domain.game.enums.GameStatus;
@@ -105,7 +106,11 @@ public class GameService {
 
         Game game = new Game(scenario, resolveGameName(gameName));
         game.markActive(LocalDateTime.now());
-        game = gameRepository.save(game);
+        try {
+            game = gameRepository.save(game);
+        } catch (DataIntegrityViolationException exception) {
+            throw new IllegalArgumentException("The game name \"" + game.getName() + "\" is already in use. Choose a different name.", exception);
+        }
 
         List<ScenarioBase> scenarioBases = scenarioBaseRepository.findByScenario_Id(scenario.getId());
         Map<String, GameBase> gameBaseByCode = new HashMap<>();
@@ -268,9 +273,18 @@ public class GameService {
 
     private String resolveGameName(String gameName) {
         if (gameName != null && !gameName.isBlank()) {
-            return gameName.trim();
+            String requestedName = gameName.trim();
+            if (gameRepository.existsByNameIgnoreCase(requestedName)) {
+                throw new IllegalArgumentException("The game name \"" + requestedName + "\" is already in use. Choose a different name.");
+            }
+            return requestedName;
         }
         long nextNumber = gameRepository.count() + 1;
-        return "GAME_" + String.format(Locale.ROOT, "%03d", nextNumber);
+        String generatedName;
+        do {
+            generatedName = "GAME_" + String.format(Locale.ROOT, "%03d", nextNumber);
+            nextNumber++;
+        } while (gameRepository.existsByNameIgnoreCase(generatedName));
+        return generatedName;
     }
 }

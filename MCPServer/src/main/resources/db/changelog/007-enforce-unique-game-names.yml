@@ -1,0 +1,33 @@
+databaseChangeLog:
+  - changeSet:
+      id: 007-001-normalize-existing-duplicate-game-names
+      author: openai
+      changes:
+        - sql:
+            sql: |
+              WITH ranked_games AS (
+                SELECT
+                  game_id,
+                  name,
+                  ROW_NUMBER() OVER (
+                    PARTITION BY lower(btrim(name))
+                    ORDER BY game_id
+                  ) AS duplicate_rank
+                FROM game
+                WHERE name IS NOT NULL
+                  AND btrim(name) <> ''
+              )
+              UPDATE game g
+              SET name = btrim(g.name) || '_' || g.game_id
+              FROM ranked_games rg
+              WHERE g.game_id = rg.game_id
+                AND rg.duplicate_rank > 1;
+
+  - changeSet:
+      id: 007-002-enforce-unique-game-names
+      author: openai
+      changes:
+        - sql:
+            sql: |
+              CREATE UNIQUE INDEX IF NOT EXISTS uk_game_name_normalized
+              ON game (lower(btrim(name)));

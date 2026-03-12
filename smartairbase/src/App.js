@@ -27,6 +27,7 @@ const BASE_TYPE_LABELS = {
   B: 'Forward Base',
   C: 'Fuel Outpost',
 };
+const TOOL_WRAPPER_MESSAGE_PATTERN = /text=([^,\]]+)/;
 
 function App() {
   const [currentView, setCurrentView] = useState('PLAY');
@@ -138,6 +139,9 @@ function App() {
   const canStartNextTurn = nextStep === 'NEXT_TURN';
   const canResolveMissions = nextStep === 'RESOLVE_MISSIONS';
   const canRollDice = nextStep === 'ROLL_DICE';
+  // The control panel allows exactly one active game at a time. Create is locked
+  // while a live game is running, and abort only becomes available for that state.
+  const hasOngoingGame = isValidGameId(gameId) && gameState?.game?.status === 'ACTIVE';
   const selectedScenarioRules = useMemo(
     () => scenarioRulesFor(selectedScenario, createForm.scenarioName),
     [selectedScenario, createForm.scenarioName]
@@ -356,13 +360,24 @@ async function request(path, options = {}) {
       const data = text ? JSON.parse(text) : null;
 
       if (!response.ok) {
-        throw new Error(data?.message || text || `Request failed with ${response.status}`);
+        throw new Error(normalizeApiErrorMessage(data?.message || text || `Request failed with ${response.status}`));
       }
 
       return data;
     } finally {
       activeRequestControllersRef.current.delete(controller);
     }
+  }
+
+  function normalizeApiErrorMessage(message) {
+    const normalized = String(message || '').trim();
+    if (normalized.startsWith('Error calling tool:')) {
+      const match = normalized.match(TOOL_WRAPPER_MESSAGE_PATTERN);
+      if (match?.[1]) {
+        return match[1].trim();
+      }
+    }
+    return normalized;
   }
 
   function isAbortError(error) {
@@ -569,8 +584,32 @@ async function request(path, options = {}) {
     activeRequestControllersRef.current.clear();
   }
 
+  function prepareForNewGameCreation() {
+    stopAutomation();
+    abortActiveRequests();
+    setGameId('');
+    setShowScenarioRules(false);
+    setShowCreateGamePrompt(false);
+    setUseCustomGameName(false);
+    setPreviousGameState(null);
+    gameStateRef.current = null;
+    setGameState(null);
+    setLastAutoResponse(null);
+    setSelectedAircraft('');
+    setDiceValue(1);
+    setUseRandomDice(true);
+    setStatus({ kind: 'idle', message: 'Create a game to begin.' });
+    setEventLog([]);
+    setAnalysisFeed([]);
+    setAnalysisPending(false);
+    lastAnalysisRequestKeyRef.current = null;
+  }
+
   async function handleCreateGame(event) {
     event.preventDefault();
+    // Starting a fresh create flow should clear prior transient UI state so the
+    // naming prompt and event feed always begin from the startup baseline.
+    prepareForNewGameCreation();
     setShowCreateGamePrompt(true);
     setUseCustomGameName(false);
     setCreateForm((current) => ({ ...current, gameName: '' }));
@@ -1046,6 +1085,9 @@ async function request(path, options = {}) {
               role="tab"
               aria-selected={currentView === 'SCENARIOS'}
               className={`mode-tab ${currentView === 'SCENARIOS' ? 'mode-tab-active' : ''}`}
+              // Keep live play isolated from scenario editing until the game is
+              // finished or aborted, so the control panel stays single-purpose.
+              disabled={hasOngoingGame}
               onClick={() => setCurrentView('SCENARIOS')}
             >
               Scenario editor
@@ -1655,7 +1697,7 @@ async function request(path, options = {}) {
                     />
                   </label>
                 ))}
-                <button type="submit" className={nextStep === 'CREATE_GAME' ? 'next-step-button' : ''}>Create game</button>
+                <button type="submit" className={nextStep === 'CREATE_GAME' ? 'next-step-button' : ''} disabled={hasOngoingGame}>Create game</button>
                 {showCreateGamePrompt ? (
                   <article className="scenario-rules-panel">
                     <h4>Name game</h4>
@@ -1708,10 +1750,21 @@ async function request(path, options = {}) {
                 Game ID
                 <input value={gameId} onChange={(event) => setGameId(event.target.value)} placeholder="Game id" />
               </label>
+              <label>
+                Current game name
+                <input value={gameState?.game?.name || 'No active game'} readOnly aria-label="Current game name" />
+              </label>
               <div className="button-row">
                 <button type="button" className={nextStep === 'NEXT_TURN' ? 'next-step-button' : ''} onClick={handleNextRound} disabled={!canStartNextTurn}>Next turn</button>
                 <button type="button" className={nextStep === 'RESOLVE_MISSIONS' ? 'next-step-button' : ''} onClick={handleResolveMissions} disabled={!canResolveMissions}>Resolve missions</button>
-                <button type="button" className="ghost-button" onClick={handleResetView}>Abort game</button>
+                <button
+                  type="button"
+                  className={hasOngoingGame ? 'active-button' : ''}
+                  onClick={handleResetView}
+                  disabled={!hasOngoingGame}
+                >
+                  Abort game
+                </button>
               </div>
               {automationEnabled && nextRoundCountdown !== null ? (
                 <p className="muted-copy">Auto next round in {nextRoundCountdown}s. You can still press Next turn manually.</p>
@@ -1931,7 +1984,9 @@ function totalConfiguredMissionCount(missionTypeCounts) {
 
 function finalGameMessage(gameState) {
   const summary = summarizeGameOutcome(gameState);
-  return `Game finished with status ${gameState?.game?.status}. ${summary}`;
+  const gameName = gameState?.game?.name;
+  const prefix = gameName ? `Game ${gameName}` : 'Game';
+  return `${prefix} finished with status ${gameState?.game?.status}. ${summary}`;
 }
 
 function defaultDuplicateScenarioName(name) {

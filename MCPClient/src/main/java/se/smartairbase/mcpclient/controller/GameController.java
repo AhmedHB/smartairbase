@@ -70,7 +70,7 @@ public class GameController {
      * Creates a new game from the requested scenario/version pair.
      *
      * <p>An optional game name may be supplied by the frontend. If it is omitted,
-     * the server assigns a generated default name.</p>
+     * the server assigns a generated default name. Custom names must be unique.</p>
      */
     @PostMapping("/games")
     public GameSummaryDTO createGame(@Valid @RequestBody CreateGameRequestDTO request) {
