@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
+import se.smartairbase.mcpserver.domain.game.GameRound;
 import se.smartairbase.mcpserver.mcp.dto.ActionResultDto;
 import se.smartairbase.mcpserver.mcp.dto.AircraftStateDto;
 import se.smartairbase.mcpserver.mcp.dto.GameStateDto;
@@ -11,6 +12,7 @@ import se.smartairbase.mcpserver.mcp.dto.GameSummaryDto;
 import se.smartairbase.mcpserver.mcp.dto.LandingOptionsDto;
 import se.smartairbase.mcpserver.mcp.dto.MissionStateDto;
 import se.smartairbase.mcpserver.mcp.dto.RoundExecutionResultDto;
+import se.smartairbase.mcpserver.repository.GameRoundRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -28,6 +30,9 @@ class RoundServiceFlowTests {
 
     @Autowired
     private GameQueryService gameQueryService;
+
+    @Autowired
+    private GameRoundRepository gameRoundRepository;
 
     @Test
     void startRoundOpensPlanningPhase() {
@@ -94,7 +99,7 @@ class RoundServiceFlowTests {
         roundService.assignMission(gameId, "F1", "M1-1");
         roundService.resolveMissions(gameId);
 
-        ActionResultDto diceResult = roundService.recordDiceRoll(gameId, "F1", 1);
+        ActionResultDto diceResult = roundService.recordDiceRoll(gameId, "F1", 6);
         LandingOptionsDto options = roundService.listAvailableLandingBases(gameId, "F1");
         ActionResultDto landingResult = roundService.landAircraft(gameId, "F1", "BASE_A");
         RoundExecutionResultDto completeResult = roundService.completeRound(gameId);
@@ -110,9 +115,48 @@ class RoundServiceFlowTests {
         assertThat(completeResult.roundOpen()).isFalse();
         assertThat(f1.status()).isEqualTo("READY");
         assertThat(f1.currentBase()).isEqualTo("BASE_A");
-        assertThat(f1.lastDiceValue()).isEqualTo(1);
+        assertThat(f1.lastDiceValue()).isEqualTo(6);
         assertThat(state.game().roundOpen()).isFalse();
         assertThat(state.game().canStartRound()).isTrue();
+    }
+
+    @Test
+    void destroyedDiceOutcomeSkipsLandingAndMarksAircraftDestroyed() {
+        Long gameId = gameService.createGameFromScenario("SCN_STANDARD", "V7").gameId();
+        roundService.startRound(gameId);
+        roundService.assignMission(gameId, "F1", "M1-1");
+        roundService.resolveMissions(gameId);
+
+        ActionResultDto diceResult = roundService.recordDiceRoll(gameId, "F1", 1);
+        RoundExecutionResultDto completeResult = roundService.completeRound(gameId);
+        GameStateDto state = gameQueryService.getGameState(gameId);
+        AircraftStateDto f1 = aircraft(state, "F1");
+
+        assertThat(diceResult.success()).isTrue();
+        assertThat(f1.status()).isEqualTo("DESTROYED");
+        assertThat(f1.damage()).isEqualTo("DESTROYED");
+        assertThat(f1.currentBase()).isNull();
+        assertThat(f1.lastDiceValue()).isEqualTo(1);
+        assertThat(completeResult.phase()).isEqualTo("ROUND_COMPLETE");
+        assertThat(state.game().roundOpen()).isFalse();
+    }
+
+    @Test
+    void abortGameMarksGameAbortedAndClosesOpenRound() {
+        Long gameId = gameService.createGameFromScenario("SCN_STANDARD", "V7").gameId();
+        roundService.startRound(gameId);
+
+        ActionResultDto abortResult = gameService.abortGame(gameId);
+        GameStateDto state = gameQueryService.getGameState(gameId);
+        GameRound round = gameRoundRepository.findByGame_IdOrderByRoundNumber(gameId).getFirst();
+
+        assertThat(abortResult.success()).isTrue();
+        assertThat(abortResult.message()).isEqualTo("Game aborted");
+        assertThat(state.game().status()).isEqualTo("ABORTED");
+        assertThat(state.game().roundOpen()).isFalse();
+        assertThat(state.game().canStartRound()).isFalse();
+        assertThat(round.getPhase().name()).isEqualTo("ROUND_COMPLETE");
+        assertThat(round.getEndedAt()).isNotNull();
     }
 
     private AircraftStateDto aircraft(GameStateDto state, String code) {

@@ -85,6 +85,20 @@ class SmartAirBaseMcpClientTest {
     }
 
     @Test
+    void abortGameBuildsExpectedPayload() {
+        McpToolExecutor executor = mock(McpToolExecutor.class);
+        when(executor.execute(eq(SmartAirBaseTool.ABORT_GAME), eq(Map.of("gameId", "9")), eq(ActionResultDTO.class)))
+                .thenReturn(new ActionResultDTO(true, "Game aborted"));
+
+        SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor, objectMapper);
+
+        ActionResultDTO result = client.abortGame("9");
+
+        assertThat(result.success()).isTrue();
+        verify(executor).execute(eq(SmartAirBaseTool.ABORT_GAME), eq(Map.of("gameId", "9")), eq(ActionResultDTO.class));
+    }
+
+    @Test
     void landAircraftBuildsExpectedPayload() {
         McpToolExecutor executor = mock(McpToolExecutor.class);
         when(executor.execute(eq(SmartAirBaseTool.LAND_AIRCRAFT), anyMap(), eq(ActionResultDTO.class)))

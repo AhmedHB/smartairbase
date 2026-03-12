@@ -51,6 +51,7 @@ Main endpoints:
 - `GET /api/reference/rules`
 - `POST /api/games`
 - `GET /api/games/{gameId}`
+- `POST /api/games/{gameId}/abort`
 - `GET /api/games/{gameId}/analysis-feed`
 - `POST /api/games/{gameId}/analysis/generate`
 - `POST /api/games/{gameId}/rounds/next`
@@ -122,6 +123,13 @@ Example:
 - returns current state instead of failing the UI if a late dice request arrives after the round already moved to `LANDING`
 
 The returned game state reflects the post-landing or post-round server state, which means aircraft may already have been refueled or rearmed by the time the browser renders the response.
+
+`POST /api/games/{gameId}/abort`:
+
+- aborts the active game
+- marks the game as `ABORTED` in `MCPServer`
+- makes the game unavailable for continued play
+- allows the frontend to clear its active state and require a new game creation
 
 Flight hours are different from fuel and weapons:
 
@@ -215,4 +223,5 @@ http://localhost:8080
   - `Colonel Anna Sjöberg (Command / Operations)`
 - Each analysis feed item exposes a narration source so the frontend can label it as `LLM` or `Rule-based`.
 - `MCPClient` generates narration text, but the saved analysis feed is now persisted through `MCPServer` MCP tools so the history survives client restarts.
+- When the frontend aborts a game, it clears the visible analysis feed in the browser, but persisted feed history remains stored for that game on the server side.
 - The current round-diff snapshot used to shape the next narration remains client-local and is not yet persisted.

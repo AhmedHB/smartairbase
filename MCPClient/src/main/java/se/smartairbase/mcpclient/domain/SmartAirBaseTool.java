@@ -3,6 +3,7 @@ package se.smartairbase.mcpclient.domain;
 public enum SmartAirBaseTool {
     CREATE_GAME("create_game"),
     GET_GAME_STATE("get_game_state"),
+    ABORT_GAME("abort_game"),
     LIST_ANALYSIS_FEED("list_analysis_feed"),
     APPEND_ANALYSIS_FEED_ITEMS("append_analysis_feed_items"),
     ASSIGN_MISSION("assign_mission"),

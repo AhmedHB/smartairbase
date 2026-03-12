@@ -10,6 +10,7 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import se.smartairbase.mcpclient.controller.dto.GameSummaryDTO;
 import se.smartairbase.mcpclient.controller.dto.RoundExecutionResultDTO;
 import se.smartairbase.mcpclient.controller.dto.AutoPlayResponseDTO;
+import se.smartairbase.mcpclient.controller.dto.ActionResultDTO;
 import se.smartairbase.mcpclient.domain.GameRulesReference;
 import se.smartairbase.mcpclient.service.AutoPlayService;
 import se.smartairbase.mcpclient.service.GameRulesReferenceService;
@@ -113,6 +114,19 @@ class GameControllerTest {
                 .andExpect(status().isOk());
 
         verify(mcpClient).startRound("13");
+    }
+
+    @Test
+    void abortGameDelegatesUsingPathVariable() throws Exception {
+        ActionResultDTO response = new ActionResultDTO(true, "Game aborted");
+        when(mcpClient.abortGame("13")).thenReturn(response);
+
+        mockMvc.perform(post("/api/games/13/abort"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Game aborted"));
+
+        verify(mcpClient).abortGame("13");
     }
 
     @Test

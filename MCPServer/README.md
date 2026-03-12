@@ -33,6 +33,7 @@ PostgreSQL
 
 - `create_game(scenarioName, version, aircraftCount, missionTypeCounts)`
 - `get_game_state(gameId)`
+- `abort_game(gameId)`
 - `list_analysis_feed(gameId)`
 - `append_analysis_feed_items(gameId, items)`
 
@@ -110,6 +111,7 @@ Implemented outcome rules:
 
 - `WON` when all missions are completed and all surviving aircraft are back in `READY` state at a base
 - `LOST` when no operational aircraft remain
+- `ABORTED` when a client explicitly aborts the current game
 
 Holding behavior:
 
@@ -187,3 +189,4 @@ If Liquibase checksums got out of sync in a reused local database:
 - The latest stepwise round implementation notes are in `docs/CHANGELOG_2026-03-10_stepwise_round.md`.
 - Round analysis narration is not generated in `MCPServer`; that feed is built in `MCPClient` on top of server state and event transitions.
 - `MCPServer` now persists analysis feed entries in PostgreSQL via `game_analysis_entry`, keyed by game, round, and role so the history belongs to the game and survives client restarts.
+- Aborting a game does not delete its persisted history. The game becomes inactive, but stored analysis feed entries and other saved state remain in PostgreSQL for audit and debugging.

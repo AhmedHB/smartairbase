@@ -237,9 +237,9 @@ public class RoundService {
     /**
      * Records the player's dice result for one aircraft.
      *
-     * <p>This is the transition from the dice phase to landing preparation.
-     * The selected repair rule is persisted so later maintenance decisions are
-     * deterministic and auditable.</p>
+     * <p>This is the transition from the dice phase into either landing
+     * preparation or immediate aircraft loss. The selected outcome rule is
+     * persisted so later maintenance and audit decisions remain deterministic.</p>
      */
     public ActionResultDto recordDiceRoll(Long gameId, String aircraftCode, Integer diceValue) {
         Game game = loadGame(gameId);
@@ -259,7 +259,9 @@ public class RoundService {
         }
 
         RepairRule repairRule = repairRuleRepository.findByDiceValue(diceValue).orElseThrow();
-        if (state.getRemainingFlightHours() == 0 && !repairRule.isRequiresFullService()) {
+        if (repairRule.getDamage() != DamageType.DESTROYED
+                && state.getRemainingFlightHours() == 0
+                && !repairRule.isRequiresFullService()) {
             repairRule = repairRuleRepository.findByRequiresFullServiceTrue()
                     .orElseThrow(() -> new IllegalStateException("Full service rule not configured"));
         }
@@ -267,7 +269,14 @@ public class RoundService {
         state.setLastDiceValue(diceValue);
         state.setDamage(repairRule.getDamage());
         state.setRepairRoundsRemaining(repairRule.getRepairRounds());
-        aircraft.setStatus(AircraftStatus.AWAITING_LANDING);
+        state.setInHolding(false);
+        if (repairRule.getDamage() == DamageType.DESTROYED) {
+            state.setCurrentBase(null);
+            aircraft.setStatus(AircraftStatus.DESTROYED);
+        }
+        else {
+            aircraft.setStatus(AircraftStatus.AWAITING_LANDING);
+        }
 
         diceRollRepository.save(new DiceRoll(round, aircraft, diceValue, repairRule, LocalDateTime.now()));
         logEvent(game, round, aircraft, null, null, EventType.DICE_ROLLED,
@@ -286,7 +295,8 @@ public class RoundService {
      * damage outcome.
      *
      * <p>The result is intended for the MCP client so it can guide the player
-     * without reimplementing capacity and service rules on the client side.</p>
+     * without reimplementing capacity and service rules on the client side.
+     * Aircraft destroyed by the dice outcome never reach this step.</p>
      */
     public LandingOptionsDto listAvailableLandingBases(Long gameId, String aircraftCode) {
         requireActiveRound(gameId, RoundPhase.LANDING);
@@ -312,7 +322,8 @@ public class RoundService {
      *
      * <p>Landing consumes a parking slot and may immediately transition the
      * aircraft to maintenance if the base has matching capability, spare parts
-     * and a free maintenance slot.</p>
+     * and a free maintenance slot. Destroyed aircraft are excluded earlier in
+     * the flow and cannot be landed.</p>
      */
     public ActionResultDto landAircraft(Long gameId, String aircraftCode, String baseCode) {
         Game game = loadGame(gameId);
@@ -513,10 +524,13 @@ public class RoundService {
      *
      * <p>Aircraft with no damage become ready immediately. Damaged aircraft
      * either enter maintenance or wait for maintenance, depending on base capacity
-     * and resources.</p>
+     * and resources. Destroyed aircraft never enter this method in normal flow.</p>
      */
     private AircraftStatus resolvePostLandingStatus(Game game, GameRound round, GameAircraft aircraft,
                                                     AircraftState state, GameBase base, BaseState baseState) {
+        if (state.getDamage() == DamageType.DESTROYED) {
+            return AircraftStatus.DESTROYED;
+        }
         if (state.getDamage() == DamageType.NONE) {
             return AircraftStatus.READY;
         }
@@ -587,7 +601,7 @@ public class RoundService {
     }
 
     private boolean baseSupportsDamage(GameBase base, DamageType damageType) {
-        if (damageType == DamageType.NONE) {
+        if (damageType == DamageType.DESTROYED || damageType == DamageType.NONE) {
             return true;
         }
         if (damageType == DamageType.FULL_SERVICE_REQUIRED) {
@@ -597,7 +611,7 @@ public class RoundService {
     }
 
     private boolean canStartMaintenance(GameBase base, BaseState baseState, AircraftState state) {
-        if (state.getDamage() == DamageType.NONE) {
+        if (state.getDamage() == DamageType.DESTROYED || state.getDamage() == DamageType.NONE) {
             return false;
         }
         if (!baseSupportsDamage(base, state.getDamage())) {

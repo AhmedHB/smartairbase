@@ -67,12 +67,12 @@ public class GameRulesReferenceService {
                                 List.of("refuel"))
                 ),
                 List.of(
-                        new DiceOutcomeReference(1, "No fault", 0, 0),
-                        new DiceOutcomeReference(2, "Minor repair", 1, 1),
-                        new DiceOutcomeReference(3, "Minor repair", 1, 1),
+                        new DiceOutcomeReference(1, "Destroyed", 0, 0),
+                        new DiceOutcomeReference(2, "Full service required", 4, 4),
+                        new DiceOutcomeReference(3, "Major repair", 3, 3),
                         new DiceOutcomeReference(4, "Component damage", 2, 2),
-                        new DiceOutcomeReference(5, "Major repair", 3, 3),
-                        new DiceOutcomeReference(6, "Full service required", 4, 4)
+                        new DiceOutcomeReference(5, "Minor repair", 1, 1),
+                        new DiceOutcomeReference(6, "No fault", 0, 0)
                 ),
                 new ResourceRulesReference(
                         5,

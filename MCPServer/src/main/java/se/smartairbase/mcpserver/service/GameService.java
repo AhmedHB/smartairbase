@@ -3,7 +3,11 @@ package se.smartairbase.mcpserver.service;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 import se.smartairbase.mcpserver.domain.game.*;
+import se.smartairbase.mcpserver.domain.game.enums.EventType;
+import se.smartairbase.mcpserver.domain.game.enums.GameStatus;
+import se.smartairbase.mcpserver.domain.game.enums.RoundPhase;
 import se.smartairbase.mcpserver.domain.rule.*;
+import se.smartairbase.mcpserver.mcp.dto.ActionResultDto;
 import se.smartairbase.mcpserver.mcp.dto.GameSummaryDto;
 import se.smartairbase.mcpserver.repository.*;
 
@@ -33,6 +37,7 @@ public class GameService {
     private final BaseStateRepository baseStateRepository;
     private final AircraftStateRepository aircraftStateRepository;
     private final GameEventRepository gameEventRepository;
+    private final GameRoundRepository gameRoundRepository;
 
     public GameService(ScenarioRepository scenarioRepository,
                        ScenarioBaseRepository scenarioBaseRepository,
@@ -44,7 +49,8 @@ public class GameService {
                        GameMissionRepository gameMissionRepository,
                        BaseStateRepository baseStateRepository,
                        AircraftStateRepository aircraftStateRepository,
-                       GameEventRepository gameEventRepository) {
+                       GameEventRepository gameEventRepository,
+                       GameRoundRepository gameRoundRepository) {
         this.scenarioRepository = scenarioRepository;
         this.scenarioBaseRepository = scenarioBaseRepository;
         this.scenarioAircraftRepository = scenarioAircraftRepository;
@@ -56,6 +62,7 @@ public class GameService {
         this.baseStateRepository = baseStateRepository;
         this.aircraftStateRepository = aircraftStateRepository;
         this.gameEventRepository = gameEventRepository;
+        this.gameRoundRepository = gameRoundRepository;
     }
 
     @Transactional
@@ -145,6 +152,32 @@ public class GameService {
 
         return new GameSummaryDto(game.getId(), game.getName(), scenario.getName(), scenario.getVersion(),
                 game.getStatus().name(), game.getCurrentRound(), null, false, true, false);
+    }
+
+    @Transactional
+    /**
+     * Aborts one game and marks it as inactive for any further play.
+     *
+     * <p>If a round is currently open, it is closed immediately so the game has
+     * a stable terminal state. The game history is retained for audit,
+     * troubleshooting and analysis-feed lookup.</p>
+     */
+    public ActionResultDto abortGame(Long gameId) {
+        Game game = gameRepository.findById(gameId).orElseThrow(() -> new IllegalArgumentException("Game not found: " + gameId));
+        if (game.getStatus() == GameStatus.ABORTED) {
+            return new ActionResultDto(true, "Game already aborted");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        gameRoundRepository.findFirstByGame_IdAndEndedAtIsNullOrderByRoundNumberDesc(gameId)
+                .ifPresent(round -> {
+                    round.setPhase(RoundPhase.ROUND_COMPLETE);
+                    round.end(now);
+                });
+        game.markAborted(now);
+        gameEventRepository.save(new GameEvent(game, null, null, null, null,
+                EventType.MISSION_ASSIGNED, "Game aborted", now));
+        return new ActionResultDto(true, "Game aborted");
     }
 
     private String normalizeScenarioName(String scenarioName) {

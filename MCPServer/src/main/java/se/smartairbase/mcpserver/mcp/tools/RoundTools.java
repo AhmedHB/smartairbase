@@ -31,7 +31,7 @@ public class RoundTools {
 
     @Tool(
             name = "record_dice_roll",
-            description = "Record a player-provided dice roll for an aircraft awaiting damage resolution"
+            description = "Record a player-provided dice roll for an aircraft awaiting damage resolution, including outcomes that can destroy the aircraft immediately"
     )
     public Object recordDiceRoll(Long gameId, String aircraftCode, Integer diceValue) {
         return roundService.recordDiceRoll(gameId, aircraftCode, diceValue);
@@ -39,7 +39,7 @@ public class RoundTools {
 
     @Tool(
             name = "list_available_landing_bases",
-            description = "List landing bases available for an aircraft after its dice roll is resolved"
+            description = "List landing bases available for an aircraft after its dice roll is resolved; destroyed aircraft are excluded before this step"
     )
     public Object listAvailableLandingBases(Long gameId, String aircraftCode) {
         return roundService.listAvailableLandingBases(gameId, aircraftCode);

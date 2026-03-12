@@ -91,11 +91,12 @@ NY RUNDA
 4. TÄRNING EFTER UPPDRAG
 - slå 1–6 för varje flygplan som flugit
 - avgör skadenivå:
-  1 = inget fel
-  2-3 = mindre reparation
+  1 = utslaget
+  2 = full service krävs
+  3 = större reparation
   4 = komponentskada
-  5 = större reparation
-  6 = full service
+  5 = mindre reparation
+  6 = inget fel
    |
    v
 5. LANDNING
