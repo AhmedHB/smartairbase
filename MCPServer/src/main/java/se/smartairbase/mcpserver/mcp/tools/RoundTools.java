@@ -33,8 +33,8 @@ public class RoundTools {
             name = "record_dice_roll",
             description = "Record a player-provided dice roll for an aircraft awaiting damage resolution, including outcomes that can destroy the aircraft immediately"
     )
-    public Object recordDiceRoll(Long gameId, String aircraftCode, Integer diceValue) {
-        return roundService.recordDiceRoll(gameId, aircraftCode, diceValue);
+    public Object recordDiceRoll(Long gameId, String aircraftCode, Integer diceValue, String diceSelectionMode) {
+        return roundService.recordDiceRoll(gameId, aircraftCode, diceValue, diceSelectionMode);
     }
 
     @Tool(

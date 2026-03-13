@@ -20,3 +20,6 @@ databaseChangeLog:
   - include:
       file: 007-enforce-unique-game-names.yml
       relativeToChangelogFile: true
+  - include:
+      file: 008-add-dice-selection-metadata.yml
+      relativeToChangelogFile: true

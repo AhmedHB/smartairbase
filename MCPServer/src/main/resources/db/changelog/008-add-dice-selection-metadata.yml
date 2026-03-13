@@ -1,0 +1,25 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008-001-add-dice-selection-profile-to-game
+      author: openai
+      changes:
+        - addColumn:
+            tableName: game
+            columns:
+              - column:
+                  name: dice_selection_profile
+                  type: VARCHAR(40)
+
+  - changeSet:
+      id: 008-002-add-dice-selection-mode-to-dice-roll
+      author: openai
+      changes:
+        - addColumn:
+            tableName: dice_roll
+            columns:
+              - column:
+                  name: dice_selection_mode
+                  type: VARCHAR(40)
+                  constraints:
+                    nullable: false
+                    defaultValue: MANUAL_DIRECT_SELECTION

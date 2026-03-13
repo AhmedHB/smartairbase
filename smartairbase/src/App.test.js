@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import App from './App';
+import App, { automatedDiceSelectionMode, manualDiceSelectionMode } from './App';
 
 beforeEach(() => {
   let currentGameName = 'test';
@@ -84,7 +84,41 @@ beforeEach(() => {
         deletable: true,
         published: false,
         bases: [
-          { code: 'A', name: 'Base A', baseTypeCode: 'MAIN', parkingCapacity: 6, maintenanceCapacity: 3, fuelStart: 150, fuelMax: 220, weaponsStart: 12, weaponsMax: 18, sparePartsStart: 5, sparePartsMax: 9 },
+          {
+            code: 'A',
+            name: 'Base A',
+            baseTypeCode: 'MAIN',
+            parkingCapacity: 6,
+            maintenanceCapacity: 3,
+            fuelStart: 150,
+            fuelMax: 220,
+            weaponsStart: 12,
+            weaponsMax: 18,
+            sparePartsStart: 5,
+            sparePartsMax: 9,
+            supplyRules: [
+              { resource: 'FUEL', frequencyRounds: 2, deliveryAmount: 40 },
+              { resource: 'SPARE_PARTS', frequencyRounds: 3, deliveryAmount: 2 },
+            ],
+          },
+          {
+            code: 'C',
+            name: 'Base C',
+            baseTypeCode: 'FUEL',
+            parkingCapacity: 2,
+            maintenanceCapacity: 0,
+            fuelStart: 60,
+            fuelMax: 120,
+            weaponsStart: 0,
+            weaponsMax: 0,
+            sparePartsStart: 0,
+            sparePartsMax: 0,
+            supplyRules: [
+              { resource: 'FUEL', frequencyRounds: 2, deliveryAmount: 35 },
+              { resource: 'WEAPONS', frequencyRounds: 2, deliveryAmount: 0 },
+              { resource: 'SPARE_PARTS', frequencyRounds: 3, deliveryAmount: 0 },
+            ],
+          },
         ],
         aircraft: [{ code: 'F1', aircraftTypeCode: 'JAS39', startBaseCode: 'A', fuelStart: 100, weaponsStart: 6, flightHoursStart: 20 }],
         missions: [{ code: 'M1', missionTypeCode: 'M1', missionTypeName: 'Recon', sortOrder: 1, defaultCount: 1, fuelCost: 20, weaponCost: 0, flightTimeCost: 4 }],
@@ -226,6 +260,27 @@ beforeEach(() => {
           canStartRound: true,
           canCompleteRound: false,
         },
+      });
+    }
+
+    if (String(url).endsWith('/games/11/dice-rolls/auto') && options.method === 'POST') {
+      return jsonResponse({
+        gameState: runtimeState({
+          round: 1,
+          roundPhase: 'LANDING',
+          roundOpen: true,
+          canStartRound: false,
+          aircraft: [
+            { code: 'F1', status: 'AWAITING_LANDING', currentBase: null, fuel: 70, weapons: 4, remainingFlightHours: 12, damage: 'COMPONENT_DAMAGE', lastDiceValue: 4, allowedActions: ['LAND', 'SEND_TO_HOLDING'] },
+          ],
+        }),
+        roundCompleted: false,
+        autoAssignments: [],
+        autoLandings: [],
+        pendingDiceAircraft: [],
+        nextAction: 'LAND_AIRCRAFT',
+        messages: ['Dice roll recorded for F1'],
+        gameFinished: false,
       });
     }
 
@@ -440,7 +495,7 @@ test('show scenario rules reflects the selected scenario data', async () => {
   });
 
   expect(screen.getByText('Custom scenario')).toBeInTheDocument();
-  expect(screen.getByText(/Total base capacity in this scenario is 6 parking slots and 3 maintenance slots./i)).toBeInTheDocument();
+  expect(screen.getByText(/Total base capacity in this scenario is 8 parking slots and 3 maintenance slots./i)).toBeInTheDocument();
   expect(screen.getByText(/Dice outcomes: 1 Destroyed./i)).toBeInTheDocument();
 });
 
@@ -810,6 +865,31 @@ test('base c does not expose repair slots in scenario editor', async () => {
   expect(screen.getAllByDisplayValue('0').length).toBeGreaterThan(0);
 });
 
+test('base c only allows fuel values to be changed in scenario editor', async () => {
+  render(<App />);
+
+  await waitFor(() => {
+    expect(global.fetch).toHaveBeenCalled();
+  });
+
+  fireEvent.click(screen.getByText('Scenario editor'));
+  fireEvent.click(screen.getByText('WINTER_OPS'));
+
+  await waitFor(() => {
+    expect(screen.getByText('Base settings')).toBeInTheDocument();
+  });
+
+  expect(screen.getByText(/Weapons and spare-parts stocks are fixed at 0 for Base C because this base type is refuel-only./i)).toBeInTheDocument();
+  expect(screen.getByText(/Weapons and spare-parts deliveries do not apply to Base C in any scenario. This base remains fuel-only./i)).toBeInTheDocument();
+
+  const baseCFuelStart = screen.getByDisplayValue('60');
+  const baseCFuelMax = screen.getByDisplayValue('120');
+  expect(baseCFuelStart).not.toBeDisabled();
+  expect(baseCFuelMax).not.toBeDisabled();
+
+  expect(screen.getAllByDisplayValue('0').length).toBeGreaterThan(4);
+});
+
 test('scenario overview shows base resource settings', async () => {
   render(<App />);
 
@@ -872,6 +952,9 @@ test('scenario editor can save changes for a custom scenario', async () => {
   });
 
   fireEvent.change(screen.getByDisplayValue('100'), { target: { value: '88' } });
+  fireEvent.change(screen.getByDisplayValue('150'), { target: { value: '160' } });
+  fireEvent.change(screen.getByDisplayValue('220'), { target: { value: '240' } });
+  fireEvent.change(screen.getByDisplayValue('40'), { target: { value: '55' } });
   fireEvent.change(screen.getAllByDisplayValue('20')[1], { target: { value: '24' } });
   fireEvent.change(screen.getByDisplayValue('4'), { target: { value: '6' } });
 
@@ -891,6 +974,20 @@ test('scenario editor can save changes for a custom scenario', async () => {
     'http://localhost:8080/api/scenarios/2',
     expect.objectContaining({
       method: 'PUT',
+      body: expect.stringContaining('"fuelMax":240'),
+    })
+  );
+  expect(global.fetch).toHaveBeenCalledWith(
+    'http://localhost:8080/api/scenarios/2',
+    expect.objectContaining({
+      method: 'PUT',
+      body: expect.stringContaining('"deliveryAmount":55'),
+    })
+  );
+  expect(global.fetch).toHaveBeenCalledWith(
+    'http://localhost:8080/api/scenarios/2',
+    expect.objectContaining({
+      method: 'PUT',
       body: expect.stringContaining('"fuelCost":24'),
     })
   );
@@ -898,6 +995,62 @@ test('scenario editor can save changes for a custom scenario', async () => {
   await waitFor(() => {
     expect(screen.getByText('Scenario saved.')).toBeInTheDocument();
   });
+});
+
+test('scenario editor can change initial aircraft count within total parking capacity', async () => {
+  render(<App />);
+
+  await waitFor(() => {
+    expect(global.fetch).toHaveBeenCalled();
+  });
+
+  fireEvent.click(screen.getByText('Scenario editor'));
+  fireEvent.click(screen.getByText('WINTER_OPS'));
+
+  await waitFor(() => {
+    expect(screen.getByText('Aircraft settings')).toBeInTheDocument();
+  });
+
+  fireEvent.change(screen.getByDisplayValue('1'), { target: { value: '3' } });
+  fireEvent.click(screen.getByText('Save scenario'));
+
+  await waitFor(() => {
+    expect(global.fetch).toHaveBeenCalledWith(
+      'http://localhost:8080/api/scenarios/2',
+      expect.objectContaining({
+        method: 'PUT',
+        body: expect.stringContaining('"code":"F3"'),
+      })
+    );
+  });
+});
+
+test('scenario editor keeps initial aircraft count at minimum 1', async () => {
+  render(<App />);
+
+  await waitFor(() => {
+    expect(global.fetch).toHaveBeenCalled();
+  });
+
+  fireEvent.click(screen.getByText('Scenario editor'));
+  fireEvent.click(screen.getByText('WINTER_OPS'));
+
+  await waitFor(() => {
+    expect(screen.getByText('Aircraft settings')).toBeInTheDocument();
+  });
+
+  const countInput = screen.getByDisplayValue('1');
+  fireEvent.change(countInput, { target: { value: '0' } });
+
+  expect(screen.getByDisplayValue('1')).toBeInTheDocument();
+});
+
+test('frontend dice selection helpers map manual and automated choices to analytics modes', () => {
+  expect(manualDiceSelectionMode(false)).toBe('MANUAL_DIRECT_SELECTION');
+  expect(manualDiceSelectionMode(true)).toBe('MANUAL_RANDOM_SELECTION');
+  expect(automatedDiceSelectionMode('RANDOM')).toBe('AUTO_RANDOM');
+  expect(automatedDiceSelectionMode('MIN_DAMAGE')).toBe('AUTO_MIN_DAMAGE');
+  expect(automatedDiceSelectionMode('MAX_DAMAGE')).toBe('AUTO_MAX_DAMAGE');
 });
 
 function jsonResponse(data) {

@@ -10,5 +10,7 @@ public interface DiceRollRepository extends JpaRepository<DiceRoll, Long> {
 
     List<DiceRoll> findByGameRound_Id(Long gameRoundId);
 
+    List<DiceRoll> findByGameRound_Game_IdOrderByRolledAtAsc(Long gameId);
+
     Optional<DiceRoll> findByGameRound_IdAndGameAircraft_Id(Long gameRoundId, Long gameAircraftId);
 }

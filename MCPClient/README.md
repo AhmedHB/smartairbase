@@ -96,6 +96,8 @@ Example:
 If `gameName` is omitted, `MCPServer` generates a default such as `GAME_001`.
 If `gameName` is provided, it must be unique across existing games or the API returns `400 Bad Request`.
 
+Scenario-editor saves are consumed at game-creation time. If a custom scenario changes base capacities, start/max resource values, delivery amounts, or the scenario aircraft list, those values are what `POST /api/games` will use when the frontend creates a game from that scenario.
+
 ## Autoplay Behavior
 
 `POST /api/games/{gameId}/rounds/next`:
@@ -124,6 +126,14 @@ If `gameName` is provided, it must be unique across existing games or the API re
 - resolves all landing choices automatically when the round enters `LANDING`
 - completes the round automatically when legal
 - returns current state instead of failing the UI if a late dice request arrives after the round already moved to `LANDING`
+
+Dice roll requests now also carry `diceSelectionMode`, so `MCPServer` can persist whether the roll came from:
+
+- manual direct choice
+- manual random choice
+- automated random
+- automated min-damage
+- automated max-damage
 
 The returned game state reflects the post-landing or post-round server state, which means aircraft may already have been refueled or rearmed by the time the browser renders the response.
 
@@ -241,3 +251,4 @@ http://localhost:8080
 - The control panel shows both `Game ID` and a read-only `Current game name` field for the loaded game.
 - The frontend disables `Create game` while an active game exists, and only enables `Abort game` for that active-game state.
 - The frontend also disables the `Scenario editor` tab while an active game exists, so scenario editing only happens outside a live game session.
+- Scenario updates now include editable base start/max inventories and delivery amounts for existing supply rules on custom scenarios, while delivery frequency and system scenarios remain locked.

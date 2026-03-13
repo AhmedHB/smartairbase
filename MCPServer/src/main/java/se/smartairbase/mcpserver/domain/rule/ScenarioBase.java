@@ -90,6 +90,20 @@ public class ScenarioBase {
         this.maintenanceCapacity = maintenanceCapacity;
     }
 
+    public void updateResources(Integer fuelStart,
+                                Integer fuelMax,
+                                Integer weaponsStart,
+                                Integer weaponsMax,
+                                Integer sparePartsStart,
+                                Integer sparePartsMax) {
+        this.fuelStart = fuelStart;
+        this.fuelMax = fuelMax;
+        this.weaponsStart = weaponsStart;
+        this.weaponsMax = weaponsMax;
+        this.sparePartsStart = sparePartsStart;
+        this.sparePartsMax = sparePartsMax;
+    }
+
     public Long getId() { return id; }
     public Scenario getScenario() { return scenario; }
     public String getCode() { return code; }

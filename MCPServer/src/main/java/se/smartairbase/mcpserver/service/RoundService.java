@@ -13,6 +13,8 @@ import se.smartairbase.mcpserver.domain.game.GameMission;
 import se.smartairbase.mcpserver.domain.game.GameRound;
 import se.smartairbase.mcpserver.domain.game.ResourceTransaction;
 import se.smartairbase.mcpserver.domain.game.enums.AircraftStatus;
+import se.smartairbase.mcpserver.domain.game.enums.DiceSelectionMode;
+import se.smartairbase.mcpserver.domain.game.enums.DiceSelectionProfile;
 import se.smartairbase.mcpserver.domain.game.enums.EventType;
 import se.smartairbase.mcpserver.domain.game.enums.GameStatus;
 import se.smartairbase.mcpserver.domain.game.enums.MissionStatus;
@@ -238,14 +240,17 @@ public class RoundService {
      *
      * <p>This is the transition from the dice phase into either landing
      * preparation or immediate aircraft loss. The selected outcome rule is
-     * persisted so later maintenance and audit decisions remain deterministic.</p>
+     * persisted so later maintenance and audit decisions remain deterministic.
+     * The method also stores how the roll was chosen and refreshes the
+     * aggregated game-level dice selection profile.</p>
      */
-    public ActionResultDto recordDiceRoll(Long gameId, String aircraftCode, Integer diceValue) {
+    public ActionResultDto recordDiceRoll(Long gameId, String aircraftCode, Integer diceValue, String diceSelectionModeValue) {
         Game game = loadGame(gameId);
         GameRound round = requireActiveRound(gameId, RoundPhase.DICE_ROLL);
         GameAircraft aircraft = gameAircraftRepository.findByGame_IdAndCode(gameId, aircraftCode)
                 .orElseThrow(() -> new IllegalArgumentException("Aircraft not found: " + aircraftCode));
         AircraftState state = aircraftStateRepository.findByGameAircraft_Id(aircraft.getId()).orElseThrow();
+        DiceSelectionMode diceSelectionMode = parseDiceSelectionMode(diceSelectionModeValue);
 
         if (aircraft.getStatus() != AircraftStatus.AWAITING_DICE_ROLL) {
             return new ActionResultDto(false, "Aircraft is not waiting for a dice roll");
@@ -277,7 +282,8 @@ public class RoundService {
             aircraft.setStatus(AircraftStatus.AWAITING_LANDING);
         }
 
-        diceRollRepository.save(new DiceRoll(round, aircraft, diceValue, repairRule, LocalDateTime.now()));
+        diceRollRepository.save(new DiceRoll(round, aircraft, diceValue, repairRule, diceSelectionMode, LocalDateTime.now()));
+        updateGameDiceSelectionProfile(game);
         logEvent(game, round, aircraft, null, null, EventType.DICE_ROLLED,
                 aircraft.getCode() + " rolled " + diceValue + " -> " + repairRule.getDamage().name());
 
@@ -286,6 +292,43 @@ public class RoundService {
         }
 
         return new ActionResultDto(true, aircraftCode + " dice roll recorded");
+    }
+
+    private DiceSelectionMode parseDiceSelectionMode(String value) {
+        try {
+            return DiceSelectionMode.valueOf(value == null ? "" : value.trim().toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("Unknown dice selection mode: " + value);
+        }
+    }
+
+    private void updateGameDiceSelectionProfile(Game game) {
+        List<DiceSelectionMode> modes = diceRollRepository.findByGameRound_Game_IdOrderByRolledAtAsc(game.getId()).stream()
+                .map(DiceRoll::getDiceSelectionMode)
+                .toList();
+        if (modes.isEmpty()) {
+            game.setDiceSelectionProfile(null);
+            return;
+        }
+
+        boolean allManual = modes.stream().allMatch(mode -> mode == DiceSelectionMode.MANUAL_DIRECT_SELECTION || mode == DiceSelectionMode.MANUAL_RANDOM_SELECTION);
+        boolean allAuto = modes.stream().allMatch(mode -> mode == DiceSelectionMode.AUTO_RANDOM || mode == DiceSelectionMode.AUTO_MIN_DAMAGE || mode == DiceSelectionMode.AUTO_MAX_DAMAGE);
+        long distinctModeCount = modes.stream().distinct().count();
+
+        if (allManual) {
+            if (distinctModeCount == 1) {
+                game.setDiceSelectionProfile(DiceSelectionProfile.valueOf(modes.getFirst().name()));
+            }
+            else {
+                game.setDiceSelectionProfile(DiceSelectionProfile.MANUAL_MIXED);
+            }
+            return;
+        }
+        if (allAuto && distinctModeCount == 1) {
+            game.setDiceSelectionProfile(DiceSelectionProfile.valueOf(modes.getFirst().name()));
+            return;
+        }
+        game.setDiceSelectionProfile(DiceSelectionProfile.MIXED);
     }
 
     @Transactional

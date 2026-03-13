@@ -56,6 +56,13 @@ PostgreSQL
 - `get_aircraft_state(gameId, aircraftCode)`
 - `get_base_state(gameId, baseCode)`
 
+Dice analytics metadata:
+
+- each persisted `dice_roll` row now stores `diceSelectionMode`
+- each `game` row stores a derived `diceSelectionProfile`
+
+This allows later statistics to distinguish exact roll-selection behavior per throw while still classifying the overall game as, for example, `AUTO_MIN_DAMAGE`, `MANUAL_MIXED`, or `MIXED`.
+
 ## Dynamic Game Creation
 
 Games are built from the seeded `SCN_STANDARD` scenario template.
@@ -75,6 +82,22 @@ Runtime generation rules:
 - mission codes: `M1-1`, `M1-2`, `M2-1`, ...
 
 The server still uses seeded base types, repair rules, and resource settings from the scenario.
+
+For editable custom scenarios, game creation now also materializes:
+
+- edited base parking and maintenance capacity
+- edited base start/max stocks
+- edited delivery amounts for existing scenario supply rules
+- the edited scenario aircraft list, including changed initial aircraft count
+
+Invariant rules still apply:
+
+- system scenarios remain read-only
+- Base `C` remains fuel-only
+- Base `C` repair capacity is always `0`
+- Base `C` weapons and spare-parts stocks are always `0`
+- Base `C` weapons and spare-parts delivery amounts are always `0`
+- scenario aircraft count must stay between `1` and the total parking capacity across all scenario bases
 
 ## Round Model
 
