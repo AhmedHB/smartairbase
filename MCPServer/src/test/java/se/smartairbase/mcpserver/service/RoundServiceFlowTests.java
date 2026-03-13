@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
+import se.smartairbase.mcpserver.domain.game.DiceRoll;
+import se.smartairbase.mcpserver.domain.game.Game;
 import se.smartairbase.mcpserver.domain.game.GameRound;
 import se.smartairbase.mcpserver.mcp.dto.ActionResultDto;
 import se.smartairbase.mcpserver.mcp.dto.AircraftStateDto;
@@ -12,6 +14,7 @@ import se.smartairbase.mcpserver.mcp.dto.GameSummaryDto;
 import se.smartairbase.mcpserver.mcp.dto.LandingOptionsDto;
 import se.smartairbase.mcpserver.mcp.dto.MissionStateDto;
 import se.smartairbase.mcpserver.mcp.dto.RoundExecutionResultDto;
+import se.smartairbase.mcpserver.repository.DiceRollRepository;
 import se.smartairbase.mcpserver.repository.GameRoundRepository;
 import se.smartairbase.mcpserver.repository.GameRepository;
 
@@ -38,6 +41,9 @@ class RoundServiceFlowTests {
 
     @Autowired
     private GameRepository gameRepository;
+
+    @Autowired
+    private DiceRollRepository diceRollRepository;
 
     @Test
     void startRoundOpensPlanningPhase() {
