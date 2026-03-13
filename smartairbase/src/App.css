@@ -63,7 +63,10 @@
   font-family: Georgia, 'Times New Roman', serif;
   font-size: clamp(1.7rem, 3vw, 2.4rem);
   font-weight: 700;
-  background: rgba(255, 252, 246, 0.95);
+  background: #55657f;
+  color: #f7f8fb;
+  border-color: rgba(69, 86, 119, 0.28);
+  box-shadow: 0 20px 45px rgba(69, 86, 119, 0.18);
 }
 
 .brand-card-wide {
