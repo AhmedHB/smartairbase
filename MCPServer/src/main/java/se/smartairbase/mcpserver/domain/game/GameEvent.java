@@ -7,6 +7,9 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "game_event")
+/**
+ * Audit-style event row describing one important game transition.
+ */
 public class GameEvent {
 
     @Id

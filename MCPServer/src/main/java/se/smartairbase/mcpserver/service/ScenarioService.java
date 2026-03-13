@@ -38,6 +38,9 @@ import java.util.Map;
 import java.util.Set;
 
 @Service
+/**
+ * Lists, duplicates, updates, and materializes editable scenarios.
+ */
 public class ScenarioService {
 
     private static final String SCENARIO_NAME_PATTERN = "^[A-Z0-9_]+$";

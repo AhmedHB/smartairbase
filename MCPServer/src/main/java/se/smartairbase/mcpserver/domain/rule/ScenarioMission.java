@@ -5,6 +5,9 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "scenario_mission",
         uniqueConstraints = @UniqueConstraint(name = "uk_scenario_mission_code", columnNames = {"scenario_id", "code"}))
+/**
+ * Scenario mission template that controls mission mix and per-mission costs.
+ */
 public class ScenarioMission {
 
     @Id

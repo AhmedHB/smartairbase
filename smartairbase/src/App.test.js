@@ -4,6 +4,46 @@ import App, { automatedDiceSelectionMode, manualDiceSelectionMode } from './App'
 
 beforeEach(() => {
   let currentGameName = 'test';
+  let analyticsRows = [
+    {
+      gameAnalyticsSnapshotId: 2,
+      gameId: 12,
+      gameName: 'GAME_002',
+      scenarioName: 'WINTER_OPS',
+      gameStatus: 'LOST',
+      isWin: false,
+      roundsToOutcome: 4,
+      diceSelectionProfile: 'AUTO_MAX_DAMAGE',
+      aircraftCount: 2,
+      survivingAircraftCount: 1,
+      destroyedAircraftCount: 1,
+      missionCount: 2,
+      completedMissionCount: 1,
+      m1Count: 1,
+      m2Count: 0,
+      m3Count: 1,
+      createdAt: '2026-03-13T10:00:00',
+    },
+    {
+      gameAnalyticsSnapshotId: 1,
+      gameId: 11,
+      gameName: 'GAME_001',
+      scenarioName: 'SCN_STANDARD',
+      gameStatus: 'WON',
+      isWin: true,
+      roundsToOutcome: 2,
+      diceSelectionProfile: 'AUTO_RANDOM',
+      aircraftCount: 3,
+      survivingAircraftCount: 3,
+      destroyedAircraftCount: 0,
+      missionCount: 3,
+      completedMissionCount: 3,
+      m1Count: 1,
+      m2Count: 1,
+      m3Count: 1,
+      createdAt: '2026-03-13T09:00:00',
+    },
+  ];
   let simulationBatchStatus = {
     simulationBatchId: 41,
     name: 'SIM_BATCH',
@@ -268,6 +308,38 @@ beforeEach(() => {
         currentGameName: null,
       };
       return jsonResponse(simulationBatchStatus);
+    }
+
+    if (String(url).includes('/analytics/games') && (!options.method || options.method === 'GET')) {
+      const parsedUrl = new URL(String(url));
+      const filtered = analyticsRows.filter((row) => {
+        const scenarioName = parsedUrl.searchParams.get('scenarioName');
+        const createdDate = parsedUrl.searchParams.get('createdDate');
+        const aircraftCount = parsedUrl.searchParams.get('aircraftCount');
+        const m1Count = parsedUrl.searchParams.get('m1Count');
+        const m2Count = parsedUrl.searchParams.get('m2Count');
+        const m3Count = parsedUrl.searchParams.get('m3Count');
+        if (scenarioName && row.scenarioName !== scenarioName) {
+          return false;
+        }
+        if (createdDate && !String(row.createdAt).startsWith(createdDate)) {
+          return false;
+        }
+        if (aircraftCount && Number(row.aircraftCount) !== Number(aircraftCount)) {
+          return false;
+        }
+        if (m1Count && Number(row.m1Count) !== Number(m1Count)) {
+          return false;
+        }
+        if (m2Count && Number(row.m2Count) !== Number(m2Count)) {
+          return false;
+        }
+        if (m3Count && Number(row.m3Count) !== Number(m3Count)) {
+          return false;
+        }
+        return true;
+      });
+      return jsonResponse(filtered);
     }
 
     if (String(url).endsWith('/games') && options.method === 'POST') {
@@ -721,6 +793,68 @@ test('simulator locks play and scenario editor while a batch is running', async 
   expect(String(simulatorCreateCall[1]?.body || '')).toContain('"maxRounds":1000');
   expect(screen.getByRole('tab', { name: 'Play' })).not.toBeDisabled();
   expect(screen.getByRole('tab', { name: 'Scenario editor' })).not.toBeDisabled();
+});
+
+test('dashboard shows latest analytics rows first and filters by scenario', async () => {
+  render(<App />);
+
+  await waitFor(() => {
+    expect(global.fetch).toHaveBeenCalled();
+  });
+
+  fireEvent.click(screen.getByRole('tab', { name: 'Dashboard' }));
+
+  await waitFor(() => {
+    expect(screen.getByText('GAME_002')).toBeInTheDocument();
+    expect(screen.getByText('GAME_001')).toBeInTheDocument();
+  });
+
+  expect(screen.getByText('Page 1 of 1 · 2 total rows')).toBeInTheDocument();
+
+  const bodyRows = document.querySelectorAll('.dashboard-table tbody tr');
+  expect(bodyRows[0].textContent).toContain('GAME_002');
+
+  fireEvent.change(screen.getByLabelText('Scenario'), { target: { value: 'SCN_STANDARD' } });
+
+  await waitFor(() => {
+    expect(screen.getByText('GAME_001')).toBeInTheDocument();
+    expect(screen.queryByText('GAME_002')).not.toBeInTheDocument();
+  });
+});
+
+test('dashboard can export filtered analytics rows as csv', async () => {
+  const originalShowSaveFilePicker = window.showSaveFilePicker;
+  const write = jest.fn().mockResolvedValue(undefined);
+  const close = jest.fn().mockResolvedValue(undefined);
+  const createWritable = jest.fn().mockResolvedValue({ write, close });
+  window.showSaveFilePicker = jest.fn().mockResolvedValue({ createWritable });
+
+  render(<App />);
+
+  await waitFor(() => {
+    expect(global.fetch).toHaveBeenCalled();
+  });
+
+  fireEvent.click(screen.getByRole('tab', { name: 'Dashboard' }));
+
+  await waitFor(() => {
+    expect(screen.getByText('GAME_002')).toBeInTheDocument();
+  });
+
+  fireEvent.change(screen.getByLabelText('CSV file name'), { target: { value: 'analytics_export' } });
+  fireEvent.click(screen.getByText('Export CSV'));
+
+  await waitFor(() => {
+    expect(window.showSaveFilePicker).toHaveBeenCalledWith(expect.objectContaining({
+      suggestedName: 'analytics_export.csv',
+    }));
+    expect(createWritable).toHaveBeenCalled();
+    expect(write).toHaveBeenCalled();
+    expect(close).toHaveBeenCalled();
+    expect(screen.getByText('Exported 2 rows to analytics_export.csv.')).toBeInTheDocument();
+  });
+
+  window.showSaveFilePicker = originalShowSaveFilePicker;
 });
 
 test('custom game name must be unique', async () => {

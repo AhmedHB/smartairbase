@@ -19,6 +19,9 @@ import java.util.List;
 import java.util.stream.Stream;
 
 @Configuration
+/**
+ * Collects tool beans and exposes them as MCP tool specifications for Spring AI.
+ */
 public class ToolConfig {
 
     @Bean

@@ -13,6 +13,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
+/**
+ * Stores and reloads the persisted analysis feed for a game.
+ */
 public class AnalysisFeedPersistenceService {
 
     private static final String LIST_SEPARATOR = "|";

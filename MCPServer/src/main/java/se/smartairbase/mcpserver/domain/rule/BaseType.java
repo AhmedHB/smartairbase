@@ -6,6 +6,9 @@ import java.util.Set;
 
 @Entity
 @Table(name = "base_type")
+/**
+ * Seeded base category that defines service capabilities shared by many bases.
+ */
 public class BaseType {
 
     @Id

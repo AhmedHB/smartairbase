@@ -11,6 +11,9 @@ import se.smartairbase.mcpclient.service.AnalysisFeedService;
 
 @RestController
 @RequestMapping(path = "/api", produces = MediaType.APPLICATION_JSON_VALUE)
+/**
+ * Exposes analysis-feed endpoints to the browser frontend.
+ */
 public class AnalysisController {
 
     private final AnalysisFeedService analysisFeedService;

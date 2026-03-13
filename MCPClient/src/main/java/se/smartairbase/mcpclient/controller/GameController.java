@@ -27,6 +27,7 @@ import se.smartairbase.mcpclient.controller.dto.DuplicateScenarioRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.BaseStateDTO;
 import se.smartairbase.mcpclient.controller.dto.GameStateDTO;
 import se.smartairbase.mcpclient.controller.dto.GameSummaryDTO;
+import se.smartairbase.mcpclient.controller.dto.GameAnalyticsSnapshotDTO;
 import se.smartairbase.mcpclient.controller.dto.LandAircraftRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.LandingOptionsDTO;
 import se.smartairbase.mcpclient.controller.dto.RoundExecutionResultDTO;
@@ -93,6 +94,19 @@ public class GameController {
     @GetMapping("/simulations/{simulationBatchId}")
     public SimulationBatchDTO getSimulationBatch(@PathVariable String simulationBatchId) {
         return mcpClient.getSimulationBatch(simulationBatchId);
+    }
+
+    /**
+     * Returns finished-game analytics rows, newest first, with optional filters.
+     */
+    @GetMapping("/analytics/games")
+    public List<GameAnalyticsSnapshotDTO> listGameAnalyticsSnapshots(@RequestParam(required = false) String scenarioName,
+                                                                     @RequestParam(required = false) String createdDate,
+                                                                     @RequestParam(required = false) Integer aircraftCount,
+                                                                     @RequestParam(required = false) Integer m1Count,
+                                                                     @RequestParam(required = false) Integer m2Count,
+                                                                     @RequestParam(required = false) Integer m3Count) {
+        return mcpClient.listGameAnalyticsSnapshots(scenarioName, createdDate, aircraftCount, m1Count, m2Count, m3Count);
     }
 
     /**

@@ -2,6 +2,9 @@ package se.smartairbase.mcpclient.service.analysis;
 
 import java.util.List;
 
+/**
+ * Structured facts used as the input contract for narration generation.
+ */
 public record AnalysisRoundFacts(
         Long gameId,
         Integer round,

@@ -2,6 +2,9 @@ package se.smartairbase.mcpclient.controller.dto;
 
 import java.util.List;
 
+/**
+ * Browser-facing DTO carrying the full editable scenario definition.
+ */
 public record ScenarioDefinitionDTO(Long scenarioId,
                                     String name,
                                     String version,

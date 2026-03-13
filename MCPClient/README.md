@@ -52,6 +52,7 @@ Main endpoints:
 - `POST /api/games`
 - `POST /api/simulations`
 - `GET /api/simulations/{batchId}`
+- `GET /api/analytics/games`
 - `GET /api/games/{gameId}`
 - `POST /api/games/{gameId}/abort`
 - `GET /api/games/{gameId}/analysis-feed`
@@ -125,6 +126,26 @@ The batch name must be unique. Each run is saved as a normal game whose name is 
 - current batch status
 - current game name, when a run is active
 - aggregate win/loss/failed totals for the batch
+
+## Analytics Dashboard Reads
+
+`GET /api/analytics/games` exposes the persisted `game_analytics_snapshot` dataset to the frontend.
+
+Supported query parameters:
+
+- `scenarioName`
+- `createdDate`
+- `aircraftCount`
+- `m1Count`
+- `m2Count`
+- `m3Count`
+
+The frontend currently uses this endpoint to:
+
+- show the latest finished runs first in the `Dashboard` tab
+- build `All` filter options from the returned dataset
+- paginate the visible rows in the browser
+- export the current filtered result set as semicolon-separated CSV
 
 ## Autoplay Behavior
 

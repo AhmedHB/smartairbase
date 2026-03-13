@@ -19,6 +19,9 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
+/**
+ * Coordinates persisted analysis-feed loading and per-round narration generation.
+ */
 public class AnalysisFeedService {
 
     private final SmartAirBaseMcpClient mcpClient;

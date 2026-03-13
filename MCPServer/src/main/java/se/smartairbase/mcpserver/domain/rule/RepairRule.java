@@ -5,6 +5,9 @@ import se.smartairbase.mcpserver.domain.rule.enums.DamageType;
 
 @Entity
 @Table(name = "repair_rule")
+/**
+ * Dice-to-damage mapping rule used during post-mission damage resolution.
+ */
 public class RepairRule {
 
     @Id

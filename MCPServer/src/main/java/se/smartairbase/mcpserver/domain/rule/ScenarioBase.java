@@ -7,6 +7,9 @@ import java.util.List;
 @Entity
 @Table(name = "scenario_base",
         uniqueConstraints = @UniqueConstraint(name = "uk_scenario_base_code", columnNames = {"scenario_id", "code"}))
+/**
+ * Scenario-level base definition including capacities, start stock, and delivery rules.
+ */
 public class ScenarioBase {
 
     @Id

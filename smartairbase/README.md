@@ -29,6 +29,7 @@ The frontend provides a guided operator workflow:
 - inspect bases, aircraft, and mission progress
 - abort the current game and return the UI to its initial state
 - run non-visualized simulator batches and inspect aggregate results
+- inspect finished-game analytics in a dashboard and export filtered rows to CSV
 
 The player does not manually assign missions or landing bases in the main flow. Those decisions are made by `MCPClient` autoplay.
 
@@ -130,6 +131,33 @@ While a batch is running:
 
 Simulator results are aggregated from the server-side analytics snapshot rows created by each finished run.
 
+### Dashboard
+
+The `Dashboard` tab is a browser view over the persisted `game_analytics_snapshot` dataset.
+
+It currently supports:
+
+- newest runs first
+- filters with explicit `All` values for:
+  - scenario
+  - run date
+  - aircraft count
+  - `M1`
+  - `M2`
+  - `M3`
+- paging with `20` rows per page
+- `Page X of Y` status text
+- total filtered row count
+- separate `Run date` and `Run time` columns
+- CSV export of all currently filtered rows
+
+The export flow uses:
+
+- an operator-provided file name
+- semicolon-separated values (`;`)
+- the browser save dialog where `showSaveFilePicker` is supported
+- a normal download fallback otherwise
+
 ### Abort Game
 
 The `Abort game` button ends the currently active game instead of only clearing the screen.
@@ -222,6 +250,8 @@ Every finished game also writes one analytics row on the server with setup featu
 - destroyed aircraft count
 - aggregate base and delivery values
 
+Those persisted rows are what both the `Dashboard` tab and the simulator result summaries read from.
+
 ### Analysis Feed
 
 The UI includes an `Analysis feed` panel that behaves like a running commentary stream.
@@ -241,6 +271,7 @@ The saved feed history is persisted by `MCPServer`, so it survives browser refre
 ## API Endpoints Used
 
 - `GET /api/reference/rules`
+- `GET /api/analytics/games`
 - `POST /api/games`
 - `GET /api/games/{gameId}`
 - `POST /api/games/{gameId}/abort`

@@ -1,5 +1,8 @@
 package se.smartairbase.mcpclient.domain;
 
+/**
+ * Identifies the narrative voices used in the analysis feed.
+ */
 public enum AnalysisRole {
     PILOT("Captain Erik Holm (Pilot)"),
     GROUND_CREW("Sara Lind (Ground Crew Chief)"),

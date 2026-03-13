@@ -6,6 +6,9 @@ import se.smartairbase.mcpserver.domain.game.DiceRoll;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Stores dice roll outcomes recorded during games.
+ */
 public interface DiceRollRepository extends JpaRepository<DiceRoll, Long> {
 
     List<DiceRoll> findByGameRound_Id(Long gameRoundId);

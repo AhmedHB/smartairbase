@@ -5,6 +5,9 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "scenario_aircraft",
         uniqueConstraints = @UniqueConstraint(name = "uk_scenario_aircraft_code", columnNames = {"scenario_id", "code"}))
+/**
+ * Scenario-level aircraft definition used when materializing new games.
+ */
 public class ScenarioAircraft {
 
     @Id

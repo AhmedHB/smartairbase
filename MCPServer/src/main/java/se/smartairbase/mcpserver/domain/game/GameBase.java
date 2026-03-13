@@ -5,6 +5,9 @@ import se.smartairbase.mcpserver.domain.rule.BaseType;
 
 @Entity
 @Table(name = "game_base", uniqueConstraints = @UniqueConstraint(name = "uk_game_base_code", columnNames = {"game_id", "code"}))
+/**
+ * Runtime base definition materialized from a scenario into a live game.
+ */
 public class GameBase {
 
     @Id

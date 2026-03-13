@@ -11,12 +11,16 @@ The repository contains three applications:
 - `smartairbase`
   A React frontend that talks to `MCPClient`.
 
-The repository now supports two runtime styles:
+The repository now supports four operator workspaces:
 
 - `Play`
   Run and visualize one live game in the browser.
 - `Simulator`
   Queue and execute many non-visualized runs of the same setup for later analysis.
+- `Scenario editor`
+  Duplicate the protected standard scenario and edit the allowed setup values on user-created copies.
+- `Dashboard`
+  Review finished-game analytics, filter the saved dataset, page through it, and export filtered rows to CSV.
 
 For dice-related analytics the system now distinguishes:
 
@@ -287,6 +291,27 @@ That snapshot is intended as a stable dataset row for later statistics and machi
 - aggregate base capacities
 - aggregate resource start/max values
 - aggregate delivery amounts
+
+### Dashboard
+
+The `Dashboard` tab reads directly from `game_analytics_snapshot`.
+
+It currently supports:
+
+- newest runs first
+- filtering by:
+  - scenario
+  - run date
+  - aircraft count
+  - `M1`
+  - `M2`
+  - `M3`
+- paging with `20` rows per page
+- a page indicator in the format `Page X of Y`
+- total filtered row count
+- CSV export of all currently filtered rows
+
+The CSV export uses semicolon-separated values (`;`). The operator provides the file name, and supported browsers can open a save dialog so the operator can choose where to store the file.
 
 ### Example Play
 

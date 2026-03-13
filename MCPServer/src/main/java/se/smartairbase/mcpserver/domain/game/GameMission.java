@@ -6,6 +6,9 @@ import se.smartairbase.mcpserver.domain.rule.MissionType;
 
 @Entity
 @Table(name = "game_mission", uniqueConstraints = @UniqueConstraint(name = "uk_game_mission_code", columnNames = {"game_id", "code"}))
+/**
+ * One mission instance that belongs to a live game.
+ */
 public class GameMission {
 
     @Id

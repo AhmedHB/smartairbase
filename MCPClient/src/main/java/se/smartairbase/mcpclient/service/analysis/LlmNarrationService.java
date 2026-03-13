@@ -7,6 +7,9 @@ import org.springframework.stereotype.Service;
 import se.smartairbase.mcpclient.domain.AnalysisRole;
 
 @Service
+/**
+ * Generates optional LLM-based round narration for one analysis role.
+ */
 public class LlmNarrationService {
 
     private final ObjectProvider<ChatClient.Builder> chatClientBuilderProvider;

@@ -5,6 +5,9 @@ import org.springframework.stereotype.Component;
 import se.smartairbase.mcpserver.service.MissionAssignmentService;
 
 @Component
+/**
+ * Exposes mission assignment operations as MCP tools.
+ */
 public class MissionTools {
 
     private final MissionAssignmentService missionAssignmentService;

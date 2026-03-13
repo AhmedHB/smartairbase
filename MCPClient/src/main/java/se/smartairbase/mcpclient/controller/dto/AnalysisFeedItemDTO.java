@@ -2,6 +2,9 @@ package se.smartairbase.mcpclient.controller.dto;
 
 import java.util.List;
 
+/**
+ * Browser-facing DTO for one persisted analysis feed entry.
+ */
 public record AnalysisFeedItemDTO(
         String id,
         Long gameId,

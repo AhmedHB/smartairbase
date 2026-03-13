@@ -37,6 +37,17 @@ const INITIAL_SIMULATION_FORM = {
   diceStrategy: 'RANDOM',
 };
 
+const INITIAL_DASHBOARD_FILTERS = {
+  scenarioName: '',
+  createdDate: '',
+  aircraftCount: '',
+  m1Count: '',
+  m2Count: '',
+  m3Count: '',
+};
+const DASHBOARD_PAGE_SIZE = 20;
+const INITIAL_DASHBOARD_EXPORT_FILE_NAME = 'dashboard_export';
+
 const BASE_TYPE_LABELS = {
   A: 'Main Airbase',
   B: 'Forward Base',
@@ -78,6 +89,8 @@ function App() {
   const [currentView, setCurrentView] = useState('PLAY');
   const [createForm, setCreateForm] = useState(INITIAL_CREATE_FORM);
   const [simulationForm, setSimulationForm] = useState(INITIAL_SIMULATION_FORM);
+  const [dashboardFilters, setDashboardFilters] = useState(INITIAL_DASHBOARD_FILTERS);
+  const [dashboardAllRows, setDashboardAllRows] = useState([]);
   const [diceAutomation, setDiceAutomation] = useState(INITIAL_DICE_AUTOMATION);
   const [gameId, setGameId] = useState('');
   const [rules, setRules] = useState(null);
@@ -114,6 +127,11 @@ function App() {
     message: 'Configure a simulation batch to run saved games without visual playback.',
   });
   const [simulationElapsedSeconds, setSimulationElapsedSeconds] = useState(0);
+  const [dashboardRows, setDashboardRows] = useState([]);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardPage, setDashboardPage] = useState(1);
+  const [dashboardExportFileName, setDashboardExportFileName] = useState(INITIAL_DASHBOARD_EXPORT_FILE_NAME);
+  const [dashboardExportStatus, setDashboardExportStatus] = useState({ kind: 'idle', message: '' });
   const hasValidDuplicateScenarioName = duplicateScenarioName.trim().length > 0;
   const [showCreateGamePrompt, setShowCreateGamePrompt] = useState(false);
   const [useCustomGameName, setUseCustomGameName] = useState(false);
@@ -565,6 +583,141 @@ async function request(path, options = {}) {
       ignore = true;
     };
   }, [selectedScenarioId]);
+
+  useEffect(() => {
+    if (currentView !== 'DASHBOARD') {
+      return;
+    }
+
+    let ignore = false;
+
+    async function loadDashboardRows() {
+      setDashboardLoading(true);
+      try {
+        const data = await request('/analytics/games');
+        if (!ignore) {
+          setDashboardAllRows(data || []);
+        }
+      } catch (error) {
+        if (isAbortError(error)) {
+          return;
+        }
+        if (!ignore) {
+          setStatus({ kind: 'error', message: error.message });
+        }
+      } finally {
+        if (!ignore) {
+          setDashboardLoading(false);
+        }
+      }
+    }
+
+    loadDashboardRows();
+    return () => {
+      ignore = true;
+    };
+  }, [currentView]);
+
+  const dashboardFilterOptions = useMemo(() => ({
+    scenarios: Array.from(new Set((dashboardAllRows || []).map((row) => row.scenarioName).filter(Boolean))),
+    dates: Array.from(new Set((dashboardAllRows || []).map((row) => String(row.createdAt || '').slice(0, 10)).filter(Boolean))),
+    aircraftCounts: Array.from(new Set((dashboardAllRows || []).map((row) => row.aircraftCount).filter((value) => value !== null && value !== undefined))).sort((a, b) => a - b),
+    m1Counts: Array.from(new Set((dashboardAllRows || []).map((row) => row.m1Count).filter((value) => value !== null && value !== undefined))).sort((a, b) => a - b),
+    m2Counts: Array.from(new Set((dashboardAllRows || []).map((row) => row.m2Count).filter((value) => value !== null && value !== undefined))).sort((a, b) => a - b),
+    m3Counts: Array.from(new Set((dashboardAllRows || []).map((row) => row.m3Count).filter((value) => value !== null && value !== undefined))).sort((a, b) => a - b),
+  }), [dashboardAllRows]);
+
+  const dashboardVisibleRows = useMemo(
+    () => (dashboardAllRows || []).filter((row) => {
+      if (dashboardFilters.scenarioName && row.scenarioName !== dashboardFilters.scenarioName) {
+        return false;
+      }
+      if (dashboardFilters.createdDate && String(row.createdAt || '').slice(0, 10) !== dashboardFilters.createdDate) {
+        return false;
+      }
+      if (dashboardFilters.aircraftCount !== '' && Number(row.aircraftCount) !== Number(dashboardFilters.aircraftCount)) {
+        return false;
+      }
+      if (dashboardFilters.m1Count !== '' && Number(row.m1Count) !== Number(dashboardFilters.m1Count)) {
+        return false;
+      }
+      if (dashboardFilters.m2Count !== '' && Number(row.m2Count) !== Number(dashboardFilters.m2Count)) {
+        return false;
+      }
+      if (dashboardFilters.m3Count !== '' && Number(row.m3Count) !== Number(dashboardFilters.m3Count)) {
+        return false;
+      }
+      return true;
+    }),
+    [dashboardAllRows, dashboardFilters]
+  );
+
+  const dashboardTotalRows = dashboardVisibleRows.length;
+  const dashboardTotalPages = Math.max(1, Math.ceil(dashboardTotalRows / DASHBOARD_PAGE_SIZE));
+  const dashboardPagedRows = useMemo(() => {
+    const startIndex = (dashboardPage - 1) * DASHBOARD_PAGE_SIZE;
+    return dashboardVisibleRows.slice(startIndex, startIndex + DASHBOARD_PAGE_SIZE);
+  }, [dashboardPage, dashboardVisibleRows]);
+
+  useEffect(() => {
+    setDashboardPage(1);
+  }, [dashboardFilters, dashboardAllRows]);
+
+  useEffect(() => {
+    if (dashboardPage > dashboardTotalPages) {
+      setDashboardPage(dashboardTotalPages);
+    }
+  }, [dashboardPage, dashboardTotalPages]);
+
+  async function handleExportDashboardCsv() {
+    const normalizedFileName = normalizeDashboardExportFileName(dashboardExportFileName);
+    if (!normalizedFileName) {
+      setDashboardExportStatus({ kind: 'error', message: 'Enter a file name before exporting.' });
+      return;
+    }
+    if (!dashboardVisibleRows.length) {
+      setDashboardExportStatus({ kind: 'error', message: 'There are no rows to export.' });
+      return;
+    }
+
+    const csvContent = buildDashboardCsv(dashboardVisibleRows);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const finalFileName = `${normalizedFileName}.csv`;
+
+    try {
+      if (typeof window.showSaveFilePicker === 'function') {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: finalFileName,
+          types: [
+            {
+              description: 'CSV file',
+              accept: { 'text/csv': ['.csv'] },
+            },
+          ],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+      } else {
+        const objectUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = finalFileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(objectUrl);
+      }
+      setDashboardExportStatus({ kind: 'success', message: `Exported ${dashboardVisibleRows.length} rows to ${finalFileName}.` });
+      setDashboardExportFileName(normalizedFileName);
+    } catch (error) {
+      if (error?.name === 'AbortError') {
+        setDashboardExportStatus({ kind: 'idle', message: '' });
+        return;
+      }
+      setDashboardExportStatus({ kind: 'error', message: error?.message || 'Failed to export dashboard rows.' });
+    }
+  }
 
   useEffect(() => {
     return () => {
@@ -1460,13 +1613,24 @@ async function request(path, options = {}) {
             >
               Scenario editor
             </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={currentView === 'DASHBOARD'}
+              className={`mode-tab ${currentView === 'DASHBOARD' ? 'mode-tab-active' : ''}`}
+              onClick={() => setCurrentView('DASHBOARD')}
+            >
+              Dashboard
+            </button>
           </div>
           <p className="workspace-intro">
             {currentView === 'PLAY'
               ? 'Play a single game, progress rounds, choose dice handling, and follow the live result.'
               : currentView === 'SIMULATOR'
                 ? 'Run multiple games without visual playback to compare outcomes for a chosen setup and dice strategy.'
-                : 'Duplicate and tune your own scenario settings while keeping the standard template locked.'}
+                : currentView === 'SCENARIOS'
+                  ? 'Duplicate and tune your own scenario settings while keeping the standard template locked.'
+                  : 'Inspect finished-game analytics rows and filter them by setup so recent runs are easy to compare.'}
           </p>
         </div>
         {currentView === 'PLAY' ? (
@@ -2159,6 +2323,188 @@ async function request(path, options = {}) {
             )}
           </article>
         </section>
+      ) : currentView === 'DASHBOARD' ? (
+        <section className="dashboard-layout">
+          <article className="info-panel dashboard-panel">
+            <h3>Dashboard</h3>
+            <div className="dashboard-filters">
+              <label>
+                Scenario
+                <select
+                  value={dashboardFilters.scenarioName}
+                  onChange={(event) => setDashboardFilters((current) => ({ ...current, scenarioName: event.target.value }))}
+                >
+                  <option value="">All</option>
+                  {dashboardFilterOptions.scenarios.map((scenarioName) => (
+                    <option key={`dashboard-scenario-${scenarioName}`} value={scenarioName}>{scenarioName}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Run date
+                <select
+                  value={dashboardFilters.createdDate}
+                  onChange={(event) => setDashboardFilters((current) => ({ ...current, createdDate: event.target.value }))}
+                >
+                  <option value="">All</option>
+                  {dashboardFilterOptions.dates.map((createdDate) => (
+                    <option key={`dashboard-date-${createdDate}`} value={createdDate}>{createdDate}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Aircraft
+                <select
+                  value={dashboardFilters.aircraftCount}
+                  onChange={(event) => setDashboardFilters((current) => ({ ...current, aircraftCount: event.target.value }))}
+                >
+                  <option value="">All</option>
+                  {dashboardFilterOptions.aircraftCounts.map((value) => (
+                    <option key={`dashboard-aircraft-${value}`} value={value}>{value}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                M1
+                <select
+                  value={dashboardFilters.m1Count}
+                  onChange={(event) => setDashboardFilters((current) => ({ ...current, m1Count: event.target.value }))}
+                >
+                  <option value="">All</option>
+                  {dashboardFilterOptions.m1Counts.map((value) => (
+                    <option key={`dashboard-m1-${value}`} value={value}>{value}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                M2
+                <select
+                  value={dashboardFilters.m2Count}
+                  onChange={(event) => setDashboardFilters((current) => ({ ...current, m2Count: event.target.value }))}
+                >
+                  <option value="">All</option>
+                  {dashboardFilterOptions.m2Counts.map((value) => (
+                    <option key={`dashboard-m2-${value}`} value={value}>{value}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                M3
+                <select
+                  value={dashboardFilters.m3Count}
+                  onChange={(event) => setDashboardFilters((current) => ({ ...current, m3Count: event.target.value }))}
+                >
+                  <option value="">All</option>
+                  {dashboardFilterOptions.m3Counts.map((value) => (
+                    <option key={`dashboard-m3-${value}`} value={value}>{value}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="button-row">
+              <button type="button" className="ghost-button" onClick={() => setDashboardFilters(INITIAL_DASHBOARD_FILTERS)}>
+                Clear filters
+              </button>
+            </div>
+            <div className="dashboard-export-row">
+              <label className="dashboard-export-field">
+                CSV file name
+                <input
+                  type="text"
+                  value={dashboardExportFileName}
+                  onChange={(event) => {
+                    setDashboardExportFileName(event.target.value);
+                    if (dashboardExportStatus.message) {
+                      setDashboardExportStatus({ kind: 'idle', message: '' });
+                    }
+                  }}
+                  placeholder="dashboard_export"
+                />
+              </label>
+              <button type="button" className="primary-button" onClick={handleExportDashboardCsv}>
+                Export CSV
+              </button>
+            </div>
+            <p className="dashboard-export-note">
+              Export all currently filtered rows as a semicolon-separated CSV file. Supported browsers let you choose where to save it.
+            </p>
+            {dashboardExportStatus.message ? (
+              <p className={dashboardExportStatus.kind === 'error' ? 'error-copy' : 'status-copy'}>
+                {dashboardExportStatus.message}
+              </p>
+            ) : null}
+            <div className="dashboard-pagination">
+              <span className="dashboard-pagination-summary">
+                {`Page ${dashboardPage} of ${dashboardTotalPages} · ${dashboardTotalRows} total rows`}
+              </span>
+              <div className="dashboard-pagination-actions">
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => setDashboardPage((current) => Math.max(1, current - 1))}
+                  disabled={dashboardPage <= 1}
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => setDashboardPage((current) => Math.min(dashboardTotalPages, current + 1))}
+                  disabled={dashboardPage >= dashboardTotalPages}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+            <div className="dashboard-table-wrap">
+              <table className="dashboard-table">
+                <thead>
+                  <tr>
+                    <th>Run date</th>
+                    <th>Run time</th>
+                    <th>Game</th>
+                    <th>Scenario</th>
+                    <th>Status</th>
+                    <th>Rounds</th>
+                    <th>Aircraft</th>
+                    <th>Completed missions</th>
+                    <th>M1</th>
+                    <th>M2</th>
+                    <th>M3</th>
+                    <th>Survived</th>
+                    <th>Destroyed</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dashboardPagedRows.map((row) => (
+                    <tr key={row.gameAnalyticsSnapshotId}>
+                      <td>{formatDateOnly(row.createdAt)}</td>
+                      <td>{formatDateTime(row.createdAt)}</td>
+                      <td>{row.gameName || `Game ${row.gameId}`}</td>
+                      <td>{row.scenarioName}</td>
+                      <td>{humanizeStatus(row.gameStatus)}</td>
+                      <td>{row.roundsToOutcome}</td>
+                      <td>{row.aircraftCount}</td>
+                      <td>{row.completedMissionCount}/{row.missionCount}</td>
+                      <td>{row.m1Count}</td>
+                      <td>{row.m2Count}</td>
+                      <td>{row.m3Count}</td>
+                      <td>{row.survivingAircraftCount}</td>
+                      <td>{row.destroyedAircraftCount}</td>
+                    </tr>
+                  ))}
+                  {!dashboardVisibleRows.length ? (
+                    <tr>
+                      <td colSpan="13" className="dashboard-empty">
+                        {dashboardLoading ? 'Loading analytics rows...' : 'No analytics rows match the current filter.'}
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </section>
       ) : currentView === 'PLAY' ? (
         <>
 
@@ -2693,6 +3039,94 @@ function formatElapsedTime(totalSeconds) {
     return `${hours}:${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
   }
   return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+}
+
+function formatDateTime(value) {
+  if (!value) {
+    return 'N/A';
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+  return date.toLocaleString('sv-SE', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
+function formatDateOnly(value) {
+  if (!value) {
+    return 'N/A';
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+  return date.toLocaleDateString('sv-SE', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+}
+
+function normalizeDashboardExportFileName(value) {
+  return String(value || '')
+    .trim()
+    .replace(/\.csv$/i, '')
+    .replace(/[\\/:*?"<>|]/g, '_');
+}
+
+function buildDashboardCsv(rows) {
+  const headers = [
+    'run_date',
+    'run_time',
+    'game_name',
+    'scenario_name',
+    'status',
+    'rounds',
+    'aircraft_count',
+    'completed_missions',
+    'mission_count',
+    'm1_count',
+    'm2_count',
+    'm3_count',
+    'surviving_aircraft_count',
+    'destroyed_aircraft_count',
+    'dice_selection_profile',
+  ];
+
+  const lines = rows.map((row) => ([
+    formatDateOnly(row.createdAt),
+    formatDateTime(row.createdAt),
+    row.gameName || `Game ${row.gameId}`,
+    row.scenarioName,
+    row.gameStatus,
+    row.roundsToOutcome,
+    row.aircraftCount,
+    row.completedMissionCount,
+    row.missionCount,
+    row.m1Count,
+    row.m2Count,
+    row.m3Count,
+    row.survivingAircraftCount,
+    row.destroyedAircraftCount,
+    row.diceSelectionProfile || '',
+  ]).map(csvEscape).join(';'));
+
+  return `${headers.join(';')}\n${lines.join('\n')}`;
+}
+
+function csvEscape(value) {
+  const text = String(value ?? '');
+  if (!/[;"\n]/.test(text)) {
+    return text;
+  }
+  return `"${text.replace(/"/g, '""')}"`;
 }
 
 function MetricCard({ label, value }) {

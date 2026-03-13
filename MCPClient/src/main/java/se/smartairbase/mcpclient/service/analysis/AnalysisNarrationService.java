@@ -6,6 +6,9 @@ import org.springframework.stereotype.Service;
 import se.smartairbase.mcpclient.domain.AnalysisRole;
 
 @Service
+/**
+ * Selects between LLM-backed and rule-based narration generation.
+ */
 public class AnalysisNarrationService {
 
     private static final Logger log = LoggerFactory.getLogger(AnalysisNarrationService.class);

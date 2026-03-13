@@ -5,6 +5,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
+/**
+ * Loads aircraft type rule definitions.
+ */
 public interface AircraftTypeRepository extends JpaRepository<AircraftType, Long> {
 
     Optional<AircraftType> findByCode(String code);

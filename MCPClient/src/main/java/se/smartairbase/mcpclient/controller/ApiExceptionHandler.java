@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.Map;
 
 @RestControllerAdvice
+/**
+ * Maps common server-side exceptions to consistent JSON error payloads.
+ */
 public class ApiExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
