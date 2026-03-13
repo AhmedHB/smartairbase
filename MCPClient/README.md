@@ -233,6 +233,16 @@ Main config files:
 - `src/main/resources/application.yml`
 - `src/main/resources/application-local.yml`
 - `src/main/resources/application-cloud.yml`
+- `src/main/resources/application-cloud-gemini.yml`
+
+Supported Spring Boot run profiles:
+
+- `local`
+  Local Ollama chat model.
+- `cloud`
+  Cloud OpenAI chat model.
+- `cloud-gemini`
+  Cloud Gemini chat model through Spring AI Google GenAI.
 
 Analysis narration mode:
 
@@ -255,11 +265,43 @@ Prerequisites:
 - `MCPServer` running on `9090`
 - Ollama installed locally if analysis narration is configured to use a local Ollama model
 - Ollama model `qwen2.5:7b` installed locally
+- a valid `GEMINI_API_KEY` if you want to run the Gemini cloud profile
 
 Install the required Ollama model:
 
 ```bash
 ollama pull qwen2.5:7b
+```
+
+Run with the default local profile:
+
+```bash
+mvn spring-boot:run
+```
+
+Run with the Gemini cloud profile:
+
+```bash
+mvn spring-boot:run -Pcloud-gemini
+```
+
+Run with the Gemini cloud profile and remote debugging enabled:
+
+```bash
+mvn spring-boot:run -Pcloud-gemini \
+  -Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+```
+
+The Gemini profile reads optional local overrides from:
+
+```text
+MCPClient/env/cloud-gemini.env.properties
+```
+
+That file is intended for secrets such as:
+
+```properties
+GEMINI_API_KEY=...
 ```
 
 Run:

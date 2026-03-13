@@ -56,6 +56,21 @@
                 </dependency>
             </dependencies>
         </profile>
+
+        <profile>
+            <id>cloud-gemini</id>
+            <properties>
+                <!-- Activates application-cloud-gemini.yml when running through the Spring Boot Maven plugin. -->
+                <spring-boot.run.profiles>cloud-gemini</spring-boot.run.profiles>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>org.springframework.ai</groupId>
+                    <!-- Gemini chat model used by the analysis feed when the cloud-gemini profile is selected. -->
+                    <artifactId>spring-ai-starter-model-google-genai</artifactId>
+                </dependency>
+            </dependencies>
+        </profile>
     </profiles>
 
     <properties>

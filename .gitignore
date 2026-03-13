@@ -40,3 +40,4 @@ build/
 
 # Cloud secrets
 MCPClient/env/cloud.env.properties
+MCPClient/env/cloud-gemini.env.properties

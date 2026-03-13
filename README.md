@@ -11,6 +11,15 @@ The repository contains three applications:
 - `smartairbase`
   A React frontend that talks to `MCPClient`.
 
+`MCPClient` currently supports multiple chat-model runtime profiles:
+
+- `local`
+  Uses Ollama locally.
+- `cloud`
+  Uses the OpenAI-backed cloud profile.
+- `cloud-gemini`
+  Uses Google Gemini through Spring AI Google GenAI.
+
 The repository now supports four operator workspaces:
 
 - `Play`
