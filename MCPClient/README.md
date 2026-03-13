@@ -102,7 +102,37 @@ If `gameName` is omitted, `MCPServer` generates a default such as `GAME_001`.
 If `gameName` is provided, it must be unique across existing games or the API returns `400 Bad Request`.
 If `maxRounds` is provided, `MCPServer` treats it as a hard upper bound on how many rounds the game may take before failing as a loss.
 
-Scenario-editor saves are consumed at game-creation time. If a custom scenario changes base capacities, start/max resource values, delivery amounts, or the scenario aircraft list, those values are what `POST /api/games` will use when the frontend creates a game from that scenario.
+For seeded or name-driven creation flows, `POST /api/games` still creates a game by `scenarioName`.
+
+## Create Game From Scenario
+
+`POST /api/scenarios/{scenarioId}/create-game` is the frontend path used when the user creates a game from the currently selected scenario in the UI.
+
+Supported input:
+
+- `gameName` (optional)
+- `aircraftCount`
+- `missionTypeCounts`
+- `maxRounds`
+
+Example:
+
+```json
+{
+  "gameName": "GAME_001",
+  "aircraftCount": 5,
+  "missionTypeCounts": {
+    "M1": 3,
+    "M2": 2,
+    "M3": 1
+  },
+  "maxRounds": 1000
+}
+```
+
+This route is important for editable custom scenarios because it creates the game from the exact selected `scenarioId`, rather than re-resolving a scenario by name.
+Scenario-editor saves are therefore consumed directly at game-creation time. If a custom scenario changes base capacities, start/max resource values, delivery amounts, or the scenario aircraft list, those values are what `POST /api/scenarios/{scenarioId}/create-game` will materialize into the new game.
+When an edited scenario replaces its aircraft rows, the backend flushes the deleted rows before reinserting the updated list so reused scenario aircraft codes remain valid.
 
 ## Simulation Batches
 

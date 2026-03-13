@@ -202,7 +202,7 @@ class SmartAirBaseMcpClientTest {
     @Test
     void createGameFromScenarioBuildsExpectedPayload() {
         McpToolExecutor executor = mock(McpToolExecutor.class);
-        CreateScenarioGameRequestDTO request = new CreateScenarioGameRequestDTO("Scenario test");
+        CreateScenarioGameRequestDTO request = new CreateScenarioGameRequestDTO("Scenario test", 4, Map.of("M1", 2), 250);
         when(executor.execute(eq(SmartAirBaseTool.CREATE_GAME_FROM_SCENARIO), anyMap(), eq(GameSummaryDTO.class)))
                 .thenReturn(new GameSummaryDTO(11L, "Scenario test", "SCN_STANDARD", "V7", "ACTIVE", 0, null, false, true, false, 1000));
 
@@ -215,7 +215,10 @@ class SmartAirBaseMcpClientTest {
         verify(executor).execute(eq(SmartAirBaseTool.CREATE_GAME_FROM_SCENARIO), payloadCaptor.capture(), eq(GameSummaryDTO.class));
         assertThat(payloadCaptor.getValue()).containsExactlyInAnyOrderEntriesOf(Map.of(
                 "scenarioId", "5",
-                "gameName", "Scenario test"
+                "gameName", "Scenario test",
+                "aircraftCount", 4,
+                "missionTypeCounts", Map.of("M1", 2),
+                "maxRounds", 250
         ));
     }
 

@@ -83,7 +83,7 @@ class ScenarioServiceTests {
                 .scenarioId();
 
         ScenarioDefinitionDto duplicate = scenarioService.duplicateScenario(standardScenarioId, "SCENARIO_TEST_COPY");
-        GameSummaryDto game = scenarioService.createGameFromScenario(duplicate.scenarioId(), "Scenario test game");
+        GameSummaryDto game = scenarioService.createGameFromScenario(duplicate.scenarioId(), "Scenario test game", null, null, null);
 
         assertThat(game.name()).isEqualTo("Scenario test game");
         assertThat(game.scenarioName()).isEqualTo("SCENARIO_TEST_COPY");
@@ -147,7 +147,7 @@ class ScenarioServiceTests {
         );
 
         ScenarioDefinitionDto updated = scenarioService.updateScenario(duplicate.scenarioId(), request);
-        GameSummaryDto game = scenarioService.createGameFromScenario(updated.scenarioId(), "Edited scenario game");
+        GameSummaryDto game = scenarioService.createGameFromScenario(updated.scenarioId(), "Edited scenario game", null, null, null);
         var gameState = gameQueryService.getGameState(game.gameId());
 
         assertThat(updated.bases()).anyMatch(base -> "BASE_A".equals(base.code()) && base.parkingCapacity() == 6 && base.maintenanceCapacity() == 3);

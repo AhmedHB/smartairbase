@@ -105,6 +105,19 @@ public class GameService {
                         ? new IllegalArgumentException("Scenario not found: " + scenarioName)
                         : new IllegalArgumentException("Scenario not found: " + scenarioName + " v" + version));
 
+        return createGameFromScenario(scenario, gameName, aircraftCount, missionTypeCounts, maxRounds);
+    }
+
+    @Transactional
+    public GameSummaryDto createGameFromScenario(Scenario scenario,
+                                                 String gameName,
+                                                 Integer aircraftCount,
+                                                 Map<String, Integer> missionTypeCounts,
+                                                 Integer maxRounds) {
+        if (scenario == null) {
+            throw new IllegalArgumentException("Scenario not found");
+        }
+
         Game game = new Game(scenario, resolveGameName(gameName), maxRounds);
         game.markActive(LocalDateTime.now());
         try {

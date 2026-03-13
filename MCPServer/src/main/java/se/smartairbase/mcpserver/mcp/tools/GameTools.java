@@ -112,8 +112,12 @@ public class GameTools {
             name = "create_game_from_scenario",
             description = "Create a new game directly from a selected scenario"
     )
-    public Object createGameFromScenario(Long scenarioId, String gameName) {
-        return scenarioService.createGameFromScenario(scenarioId, gameName);
+    public Object createGameFromScenario(Long scenarioId,
+                                         String gameName,
+                                         Integer aircraftCount,
+                                         Map<String, Integer> missionTypeCounts,
+                                         Integer maxRounds) {
+        return scenarioService.createGameFromScenario(scenarioId, gameName, aircraftCount, missionTypeCounts, maxRounds);
     }
 
     @Tool(

@@ -109,6 +109,9 @@ Saved custom-scenario values are not only cosmetic. When a new game is created f
 - the edited delivery amounts
 - the edited scenario aircraft list
 
+The frontend now creates those games from the selected `scenarioId`, not just by scenario name, so the exact custom scenario copy currently shown in the editor is the one materialized into live game state.
+When an edited scenario replaces its aircraft rows, the backend flushes the old rows before inserting the updated list so reused aircraft codes such as `F1` remain valid.
+
 ### Simulator
 
 The `Simulator` tab starts a backend batch instead of playing a visible match.
