@@ -1,6 +1,6 @@
 spring:
   config:
-    import: optional:file:./env/cloud.env.properties
+    import: optional:file:./env/cloud-openapi.env.properties
   ai:
     openai:
       embedding:

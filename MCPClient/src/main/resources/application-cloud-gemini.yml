@@ -1,0 +1,22 @@
+spring:
+  config:
+    # Local, ignored secrets file for Gemini-specific credentials.
+    import: optional:file:./env/cloud-gemini.env.properties
+  ai:
+    model:
+      # Directs Spring AI to autoconfigure the Google GenAI chat client.
+      chat: google-genai
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY}
+        chat:
+          options:
+            # Analysis narration uses this model whenever narration-mode enables LLM output.
+            model: gemini-2.0-flash
+            temperature: 0
+
+app:
+  model:
+    chat:
+      options:
+        top_k : 10

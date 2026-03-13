@@ -6,6 +6,16 @@ spring:
     #web-application-type: none
 
   ai:
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY}
+        chat:
+          options:
+            model: gemini-2.0-flash
+            temperature: 0
+            max-tokens: 5000
+            #top-k: 10
+
     openai:
       base-url: https://api.openai.com
       api-key: ${OPENAI_API_KEY}

@@ -28,6 +28,12 @@ mvn spring-boot:run -Pcloud
 mvn spring-boot:run -Pcloud \
 -Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
 
+mvn spring-boot:run -Pcloud-gemini
+
+mvn spring-boot:run -Pcloud-gemini \
+-Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+
+
 
 //-----------------------------------------------------
 
