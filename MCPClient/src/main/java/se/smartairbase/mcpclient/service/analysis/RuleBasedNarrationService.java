@@ -4,6 +4,9 @@ import org.springframework.stereotype.Service;
 import se.smartairbase.mcpclient.domain.AnalysisRole;
 
 @Service
+/**
+ * Generates deterministic fallback narration from structured round facts.
+ */
 public class RuleBasedNarrationService {
 
     public AnalysisNarration narrate(AnalysisRole role, AnalysisRoundFacts facts) {

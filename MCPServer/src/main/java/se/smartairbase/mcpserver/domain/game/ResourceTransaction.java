@@ -7,6 +7,9 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "resource_transaction")
+/**
+ * Immutable resource movement row used for audit and debugging of stock changes.
+ */
 public class ResourceTransaction {
 
     @Id

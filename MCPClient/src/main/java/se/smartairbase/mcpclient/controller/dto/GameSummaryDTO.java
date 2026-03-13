@@ -1,5 +1,8 @@
 package se.smartairbase.mcpclient.controller.dto;
 
+/**
+ * Browser-facing DTO for top-level game status and control flags.
+ */
 public record GameSummaryDTO(
         Long gameId,
         String name,

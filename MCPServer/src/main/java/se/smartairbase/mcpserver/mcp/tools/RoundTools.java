@@ -5,6 +5,9 @@ import org.springframework.stereotype.Component;
 import se.smartairbase.mcpserver.service.RoundService;
 
 @Component
+/**
+ * Exposes round progression operations as MCP tools.
+ */
 public class RoundTools {
 
     private final RoundService roundService;

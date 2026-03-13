@@ -13,6 +13,7 @@ It owns:
 - win/loss evaluation
 - simulator batch execution
 - analytics snapshot persistence for finished games
+- analytics dataset queries for the dashboard
 
 ## Architecture
 
@@ -43,6 +44,10 @@ PostgreSQL
 
 - `create_simulation_batch(batchName, scenarioName, aircraftCount, missionTypeCounts, diceStrategy, runCount, maxRounds)`
 - `get_simulation_batch(simulationBatchId)`
+
+### Analytics
+
+- `list_game_analytics_snapshots(scenarioName, createdDate, aircraftCount, m1Count, m2Count, m3Count)`
 
 ### Mission
 
@@ -192,6 +197,8 @@ Seed data includes:
 - `SCN_STANDARD`
 - simulator batches in `simulation_batch` and `simulation_batch_game`
 - one analytics dataset row per finished game in `game_analytics_snapshot`
+
+`game_analytics_snapshot` is also the source for the dashboard view in the frontend. The dashboard does not rebuild analytics from event history; it reads these persisted rows directly through `MCPClient`.
 
 ## Running Locally
 

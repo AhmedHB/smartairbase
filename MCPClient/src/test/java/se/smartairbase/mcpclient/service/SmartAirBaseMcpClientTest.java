@@ -13,6 +13,7 @@ import se.smartairbase.mcpclient.controller.dto.CreateSimulationBatchRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.DiceRollRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.DuplicateScenarioRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.GameSummaryDTO;
+import se.smartairbase.mcpclient.controller.dto.GameAnalyticsSnapshotDTO;
 import se.smartairbase.mcpclient.controller.dto.LandAircraftRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.ScenarioAircraftDTO;
 import se.smartairbase.mcpclient.controller.dto.ScenarioBaseDTO;
@@ -93,6 +94,50 @@ class SmartAirBaseMcpClientTest {
 
         assertThat(result.status()).isEqualTo("RUNNING");
         verify(executor).execute(eq(SmartAirBaseTool.GET_SIMULATION_BATCH), eq(Map.of("simulationBatchId", "41")), eq(SimulationBatchDTO.class));
+    }
+
+    @Test
+    void listGameAnalyticsSnapshotsUsesExpectedToolPayload() {
+        McpToolExecutor executor = mock(McpToolExecutor.class);
+        when(executor.execute(eq(SmartAirBaseTool.LIST_GAME_ANALYTICS_SNAPSHOTS), anyMap(), eq(Object.class)))
+                .thenReturn(List.of(Map.ofEntries(
+                        Map.entry("gameAnalyticsSnapshotId", 7),
+                        Map.entry("gameId", 11),
+                        Map.entry("gameName", "GAME_001"),
+                        Map.entry("scenarioName", "SCN_STANDARD"),
+                        Map.entry("gameStatus", "WON"),
+                        Map.entry("isWin", true),
+                        Map.entry("roundsToOutcome", 2),
+                        Map.entry("diceSelectionProfile", "AUTO_RANDOM"),
+                        Map.entry("aircraftCount", 3),
+                        Map.entry("survivingAircraftCount", 3),
+                        Map.entry("destroyedAircraftCount", 0),
+                        Map.entry("missionCount", 3),
+                        Map.entry("completedMissionCount", 3),
+                        Map.entry("m1Count", 1),
+                        Map.entry("m2Count", 1),
+                        Map.entry("m3Count", 1),
+                        Map.entry("createdAt", "2026-03-13T10:00:00")
+                )));
+
+        SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor, objectMapper);
+
+        List<GameAnalyticsSnapshotDTO> result = client.listGameAnalyticsSnapshots("SCN_STANDARD", "2026-03-13", 3, 1, 1, 1);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().gameName()).isEqualTo("GAME_001");
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(executor).execute(eq(SmartAirBaseTool.LIST_GAME_ANALYTICS_SNAPSHOTS), payloadCaptor.capture(), eq(Object.class));
+        assertThat(payloadCaptor.getValue()).containsExactlyInAnyOrderEntriesOf(Map.of(
+                "scenarioName", "SCN_STANDARD",
+                "createdDate", "2026-03-13",
+                "aircraftCount", 3,
+                "m1Count", 1,
+                "m2Count", 1,
+                "m3Count", 1
+        ));
     }
 
     @Test

@@ -6,6 +6,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+/**
+ * Wires Liquibase into the server so schema and seed data are applied at startup.
+ */
 public class LiquibaseConfig {
 
     @Bean

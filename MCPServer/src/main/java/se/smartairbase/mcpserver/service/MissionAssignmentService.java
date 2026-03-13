@@ -4,6 +4,9 @@ import org.springframework.stereotype.Service;
 import se.smartairbase.mcpserver.mcp.dto.ActionResultDto;
 
 @Service
+/**
+ * Provides a focused mission-assignment facade for MCP tools.
+ */
 public class MissionAssignmentService {
 
     private final RoundService roundService;

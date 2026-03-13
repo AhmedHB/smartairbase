@@ -6,6 +6,9 @@ import se.smartairbase.mcpserver.domain.rule.AircraftType;
 
 @Entity
 @Table(name = "game_aircraft", uniqueConstraints = @UniqueConstraint(name = "uk_game_aircraft_code", columnNames = {"game_id", "code"}))
+/**
+ * Persistent aircraft instance inside one live game.
+ */
 public class GameAircraft {
 
     @Id

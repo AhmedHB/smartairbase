@@ -5,6 +5,9 @@ import org.springframework.stereotype.Component;
 import se.smartairbase.mcpserver.service.AircraftService;
 
 @Component
+/**
+ * Exposes aircraft lookup operations as MCP tools.
+ */
 public class AircraftTools {
 
     private final AircraftService aircraftService;

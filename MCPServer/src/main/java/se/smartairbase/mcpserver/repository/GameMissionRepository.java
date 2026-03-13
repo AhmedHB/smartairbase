@@ -6,6 +6,9 @@ import se.smartairbase.mcpserver.domain.game.GameMission;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Persists mission rows that belong to concrete games.
+ */
 public interface GameMissionRepository extends JpaRepository<GameMission, Long> {
 
     List<GameMission> findByGame_IdOrderBySortOrder(Long gameId);

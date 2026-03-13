@@ -7,6 +7,9 @@ import java.io.Serializable;
 import java.util.Objects;
 
 @Embeddable
+/**
+ * Composite identifier for the base-type-to-service mapping.
+ */
 public class BaseTypeServiceId implements Serializable {
 
     @Column(name = "base_type_id")

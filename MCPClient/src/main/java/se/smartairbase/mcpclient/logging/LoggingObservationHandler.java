@@ -7,6 +7,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 @Component
+/**
+ * Logs observation lifecycle events for easier local tracing.
+ */
 public class LoggingObservationHandler implements ObservationHandler<Observation.Context>{
     private static final Logger LOG =
             LoggerFactory.getLogger(LoggingObservationHandler.class);

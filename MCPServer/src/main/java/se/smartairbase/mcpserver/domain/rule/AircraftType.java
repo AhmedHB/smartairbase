@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "aircraft_type")
+/**
+ * Seeded aircraft template used by scenarios and live-game materialization.
+ */
 public class AircraftType {
 
     @Id

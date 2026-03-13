@@ -2,6 +2,9 @@ package se.smartairbase.mcpserver.mcp.dto;
 
 import java.util.List;
 
+/**
+ * Serialized analysis-feed entry passed between MCPClient and MCPServer.
+ */
 public record AnalysisFeedItemDto(
         String id,
         Long gameId,

@@ -4,6 +4,7 @@ import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.stereotype.Component;
 import se.smartairbase.mcpserver.mcp.dto.AnalysisFeedItemDto;
 import se.smartairbase.mcpserver.service.AnalysisFeedPersistenceService;
+import se.smartairbase.mcpserver.service.GameAnalyticsQueryService;
 import se.smartairbase.mcpserver.service.GameService;
 import se.smartairbase.mcpserver.service.GameQueryService;
 import se.smartairbase.mcpserver.service.ScenarioService;
@@ -13,22 +14,28 @@ import java.util.List;
 import java.util.Map;
 
 @Component
+/**
+ * Exposes game lifecycle, analytics, scenario, and simulation operations as MCP tools.
+ */
 public class GameTools {
 
     private final GameService gameService;
     private final GameQueryService gameQueryService;
     private final AnalysisFeedPersistenceService analysisFeedPersistenceService;
+    private final GameAnalyticsQueryService gameAnalyticsQueryService;
     private final ScenarioService scenarioService;
     private final SimulationBatchService simulationBatchService;
 
     public GameTools(GameService gameService,
                      GameQueryService gameQueryService,
                      AnalysisFeedPersistenceService analysisFeedPersistenceService,
+                     GameAnalyticsQueryService gameAnalyticsQueryService,
                      ScenarioService scenarioService,
                      SimulationBatchService simulationBatchService) {
         this.gameService = gameService;
         this.gameQueryService = gameQueryService;
         this.analysisFeedPersistenceService = analysisFeedPersistenceService;
+        this.gameAnalyticsQueryService = gameAnalyticsQueryService;
         this.scenarioService = scenarioService;
         this.simulationBatchService = simulationBatchService;
     }
@@ -137,6 +144,19 @@ public class GameTools {
     )
     public Object getSimulationBatch(Long simulationBatchId) {
         return simulationBatchService.getBatch(simulationBatchId);
+    }
+
+    @Tool(
+            name = "list_game_analytics_snapshots",
+            description = "List finished-game analytics rows, newest first, optionally filtered by scenario, date, aircraft count, and mission counts"
+    )
+    public Object listGameAnalyticsSnapshots(String scenarioName,
+                                             String createdDate,
+                                             Integer aircraftCount,
+                                             Integer m1Count,
+                                             Integer m2Count,
+                                             Integer m3Count) {
+        return gameAnalyticsQueryService.listSnapshots(scenarioName, createdDate, aircraftCount, m1Count, m2Count, m3Count);
     }
 
     @Tool(

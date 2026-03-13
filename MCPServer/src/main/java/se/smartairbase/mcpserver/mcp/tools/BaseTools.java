@@ -5,6 +5,9 @@ import org.springframework.stereotype.Component;
 import se.smartairbase.mcpserver.service.BaseService;
 
 @Component
+/**
+ * Exposes base lookup operations as MCP tools.
+ */
 public class BaseTools {
 
     private final BaseService baseService;

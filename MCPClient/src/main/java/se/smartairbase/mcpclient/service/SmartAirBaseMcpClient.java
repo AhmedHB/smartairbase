@@ -16,6 +16,7 @@ import se.smartairbase.mcpclient.controller.dto.DuplicateScenarioRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.BaseStateDTO;
 import se.smartairbase.mcpclient.controller.dto.GameStateDTO;
 import se.smartairbase.mcpclient.controller.dto.GameSummaryDTO;
+import se.smartairbase.mcpclient.controller.dto.GameAnalyticsSnapshotDTO;
 import se.smartairbase.mcpclient.controller.dto.LandAircraftRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.LandingOptionsDTO;
 import se.smartairbase.mcpclient.controller.dto.RoundExecutionResultDTO;
@@ -26,6 +27,7 @@ import se.smartairbase.mcpclient.controller.dto.UpdateScenarioRequestDTO;
 
 import java.util.Map;
 import java.util.List;
+import java.util.HashMap;
 
 /**
  * Typed facade over the Smart Air Base MCP tool set.
@@ -67,6 +69,41 @@ public class SmartAirBaseMcpClient {
                 SmartAirBaseTool.GET_SIMULATION_BATCH,
                 Map.of("simulationBatchId", simulationBatchId),
                 SimulationBatchDTO.class
+        );
+    }
+
+    public List<GameAnalyticsSnapshotDTO> listGameAnalyticsSnapshots(String scenarioName,
+                                                                     String createdDate,
+                                                                     Integer aircraftCount,
+                                                                     Integer m1Count,
+                                                                     Integer m2Count,
+                                                                     Integer m3Count) {
+        Map<String, Object> payload = new HashMap<>();
+        if (scenarioName != null) {
+            payload.put("scenarioName", scenarioName);
+        }
+        if (createdDate != null) {
+            payload.put("createdDate", createdDate);
+        }
+        if (aircraftCount != null) {
+            payload.put("aircraftCount", aircraftCount);
+        }
+        if (m1Count != null) {
+            payload.put("m1Count", m1Count);
+        }
+        if (m2Count != null) {
+            payload.put("m2Count", m2Count);
+        }
+        if (m3Count != null) {
+            payload.put("m3Count", m3Count);
+        }
+        return objectMapper.convertValue(
+                toolExecutor.execute(
+                        SmartAirBaseTool.LIST_GAME_ANALYTICS_SNAPSHOTS,
+                        payload,
+                        Object.class
+                ),
+                objectMapper.getTypeFactory().constructCollectionType(List.class, GameAnalyticsSnapshotDTO.class)
         );
     }
 

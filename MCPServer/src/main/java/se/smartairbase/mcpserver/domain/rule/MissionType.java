@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "mission_type")
+/**
+ * Seeded mission template that defines standard mission costs and labels.
+ */
 public class MissionType {
 
     @Id

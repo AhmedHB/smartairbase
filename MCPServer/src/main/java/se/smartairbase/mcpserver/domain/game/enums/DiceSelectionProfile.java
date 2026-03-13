@@ -1,5 +1,8 @@
 package se.smartairbase.mcpserver.domain.game.enums;
 
+/**
+ * Derived game-level summary of the dice selection styles used across all rolls.
+ */
 public enum DiceSelectionProfile {
     MANUAL_DIRECT_SELECTION,
     MANUAL_RANDOM_SELECTION,

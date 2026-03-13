@@ -8,6 +8,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import se.smartairbase.mcpclient.controller.dto.GameSummaryDTO;
+import se.smartairbase.mcpclient.controller.dto.GameAnalyticsSnapshotDTO;
 import se.smartairbase.mcpclient.controller.dto.RoundExecutionResultDTO;
 import se.smartairbase.mcpclient.controller.dto.AutoPlayResponseDTO;
 import se.smartairbase.mcpclient.controller.dto.ActionResultDTO;
@@ -134,6 +135,26 @@ class GameControllerTest {
                 .andExpect(jsonPath("$.currentGameName").value("SIM_BATCH_007"));
 
         verify(mcpClient).getSimulationBatch("41");
+    }
+
+    @Test
+    void listGameAnalyticsSnapshotsDelegatesToClient() throws Exception {
+        when(mcpClient.listGameAnalyticsSnapshots("SCN_STANDARD", "2026-03-13", 3, 1, 1, 1))
+                .thenReturn(java.util.List.of(
+                        new GameAnalyticsSnapshotDTO(7L, 11L, "GAME_001", "SCN_STANDARD", "WON", true, 2, "AUTO_RANDOM", 3, 3, 0, 3, 3, 1, 1, 1, "2026-03-13T10:00:00")
+                ));
+
+        mockMvc.perform(get("/api/analytics/games")
+                        .param("scenarioName", "SCN_STANDARD")
+                        .param("createdDate", "2026-03-13")
+                        .param("aircraftCount", "3")
+                        .param("m1Count", "1")
+                        .param("m2Count", "1")
+                        .param("m3Count", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].gameName").value("GAME_001"));
+
+        verify(mcpClient).listGameAnalyticsSnapshots("SCN_STANDARD", "2026-03-13", 3, 1, 1, 1);
     }
 
     @Test

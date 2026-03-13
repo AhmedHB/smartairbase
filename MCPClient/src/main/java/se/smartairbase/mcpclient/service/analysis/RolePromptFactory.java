@@ -4,6 +4,9 @@ import org.springframework.stereotype.Service;
 import se.smartairbase.mcpclient.domain.AnalysisRole;
 
 @Service
+/**
+ * Builds system prompts for each analysis narration role.
+ */
 public class RolePromptFactory {
 
     public String systemPrompt(AnalysisRole role) {

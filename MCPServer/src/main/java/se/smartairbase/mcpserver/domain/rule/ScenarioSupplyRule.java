@@ -6,6 +6,9 @@ import se.smartairbase.mcpserver.domain.rule.enums.ResourceType;
 @Entity
 @Table(name = "scenario_supply_rule",
         uniqueConstraints = @UniqueConstraint(name = "uk_supply_rule_base_resource", columnNames = {"scenario_base_id", "resource"}))
+/**
+ * Scenario-level recurring delivery rule for one base/resource combination.
+ */
 public class ScenarioSupplyRule {
 
     @Id

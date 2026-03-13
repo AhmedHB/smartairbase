@@ -5,6 +5,9 @@ import se.smartairbase.mcpserver.domain.rule.enums.BaseServiceType;
 
 @Entity
 @Table(name = "base_type_service")
+/**
+ * Join entity that grants one service capability to one base type.
+ */
 public class BaseTypeService {
 
     @EmbeddedId

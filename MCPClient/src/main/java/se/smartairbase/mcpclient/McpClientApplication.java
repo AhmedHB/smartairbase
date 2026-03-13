@@ -6,6 +6,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
+/**
+ * Boots the HTTP client facade that sits in front of the MCP server.
+ */
 public class McpClientApplication {
     private static final Logger LOG =
             LoggerFactory.getLogger(McpClientApplication.class);

@@ -13,6 +13,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
+/**
+ * Builds structured round facts from successive game-state snapshots.
+ */
 public class AnalysisFactService {
 
     public AnalysisRoundFacts buildFacts(GameStateDTO currentState, Snapshot previousSnapshot) {

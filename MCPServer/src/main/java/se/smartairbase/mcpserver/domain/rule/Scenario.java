@@ -8,6 +8,9 @@ import java.util.List;
 
 @Entity
 @Table(name = "scenario")
+/**
+ * Root scenario aggregate that owns editable bases, aircraft, and mission templates.
+ */
 public class Scenario {
 
     @Id

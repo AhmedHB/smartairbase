@@ -1,5 +1,8 @@
 package se.smartairbase.mcpserver.domain.game.enums;
 
+/**
+ * Event categories written to the game event log.
+ */
 public enum EventType {
     MISSION_ASSIGNED,
     TAKEOFF,

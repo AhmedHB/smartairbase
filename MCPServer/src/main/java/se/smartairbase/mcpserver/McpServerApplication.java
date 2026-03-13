@@ -8,6 +8,9 @@ import org.springframework.scheduling.annotation.EnableAsync;
 
 @SpringBootApplication
 @EnableAsync
+/**
+ * Spring Boot entry point for the authoritative Smart Air Base MCP server.
+ */
 public class McpServerApplication {
     private static final Logger LOG =
             LoggerFactory.getLogger(McpServerApplication.class);

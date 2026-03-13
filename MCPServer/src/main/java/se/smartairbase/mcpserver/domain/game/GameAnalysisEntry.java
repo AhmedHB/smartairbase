@@ -14,6 +14,9 @@ import java.time.LocalDateTime;
                 )
         }
 )
+/**
+ * Persisted analysis-feed entry attached to one game, round, and narrative role.
+ */
 public class GameAnalysisEntry {
 
     @Id

@@ -6,6 +6,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Loads aircraft entries that belong to scenario templates.
+ */
 public interface ScenarioAircraftRepository extends JpaRepository<ScenarioAircraft, Long> {
 
     List<ScenarioAircraft> findByScenario_Id(Long scenarioId);

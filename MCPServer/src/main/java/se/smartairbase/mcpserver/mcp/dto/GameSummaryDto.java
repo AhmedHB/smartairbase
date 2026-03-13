@@ -1,5 +1,8 @@
 package se.smartairbase.mcpserver.mcp.dto;
 
+/**
+ * Compact game header used in create, read, and round responses.
+ */
 public record GameSummaryDto(Long gameId, String name, String scenarioName, String scenarioVersion, String status,
                              Integer currentRound, String roundPhase, boolean roundOpen,
                              boolean canStartRound, boolean canCompleteRound, Integer maxRounds) {

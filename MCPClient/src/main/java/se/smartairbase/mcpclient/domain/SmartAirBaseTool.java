@@ -1,10 +1,14 @@
 package se.smartairbase.mcpclient.domain;
 
+/**
+ * Enumerates MCP tool names used by the client facade.
+ */
 public enum SmartAirBaseTool {
     CREATE_GAME("create_game"),
     CREATE_GAME_FROM_SCENARIO("create_game_from_scenario"),
     CREATE_SIMULATION_BATCH("create_simulation_batch"),
     GET_SIMULATION_BATCH("get_simulation_batch"),
+    LIST_GAME_ANALYTICS_SNAPSHOTS("list_game_analytics_snapshots"),
     GET_GAME_STATE("get_game_state"),
     LIST_SCENARIOS("list_scenarios"),
     GET_SCENARIO("get_scenario"),

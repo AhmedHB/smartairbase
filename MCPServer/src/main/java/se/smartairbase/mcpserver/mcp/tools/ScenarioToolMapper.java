@@ -8,6 +8,9 @@ import se.smartairbase.mcpserver.mcp.dto.UpdateScenarioRequestDto;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Converts loosely typed MCP tool inputs into strongly typed scenario DTOs.
+ */
 final class ScenarioToolMapper {
 
     private ScenarioToolMapper() {
