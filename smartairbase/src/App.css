@@ -233,10 +233,6 @@
   grid-template-columns: minmax(80px, 0.8fr) minmax(120px, 1.2fr) repeat(3, minmax(90px, 0.8fr));
 }
 
-.scenario-config-grid-bases .scenario-config-row {
-  grid-template-columns: minmax(70px, 0.7fr) minmax(130px, 1.2fr) repeat(2, minmax(100px, 0.9fr));
-}
-
 .scenario-config-grid-repairs .scenario-config-row {
   grid-template-columns: minmax(60px, 0.5fr) minmax(140px, 1.4fr) minmax(100px, 0.8fr) minmax(100px, 0.8fr);
 }
@@ -254,15 +250,86 @@
   width: 100%;
 }
 
-.scenario-base-block {
+.scenario-subsection {
   display: grid;
-  gap: 6px;
+  gap: 12px;
+}
+
+.scenario-subsection + .scenario-subsection {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 2px solid rgba(84, 97, 123, 0.22);
+}
+
+.scenario-subsection-title {
+  margin: 0;
+  font-size: 0.88rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: #6d7583;
+}
+
+.scenario-base-capacity-row {
+  grid-template-columns: minmax(70px, 0.5fr) minmax(130px, 1.1fr) repeat(2, minmax(120px, 1fr));
+}
+
+.scenario-base-resource-row {
+  grid-template-columns: minmax(70px, 0.5fr) minmax(120px, 1fr) repeat(2, minmax(120px, 1fr));
+}
+
+.scenario-base-delivery-row {
+  grid-template-columns: minmax(70px, 0.5fr) minmax(120px, 1fr) minmax(120px, 1fr) minmax(150px, 1.2fr);
+}
+
+.scenario-base-separator {
+  border-top: 1px solid rgba(84, 97, 123, 0.14);
+  padding-top: 12px;
+  margin-top: 2px;
+}
+
+.scenario-base-rule-note {
+  margin: -2px 0 2px;
+  padding-left: 80px;
+  color: #6d7583;
+  font-size: 0.78rem;
+}
+
+.scenario-base-rule-note-critical {
+  color: #b14c36;
+  font-weight: 600;
+}
+
+.scenario-base-rule-group {
+  display: grid;
+  gap: 4px;
+}
+
+.scenario-base-rule-row {
+  align-items: center;
 }
 
 .scenario-inline-note {
   margin: 0;
   color: #6d7583;
   font-size: 0.78rem;
+}
+
+.scenario-row-label {
+  font-weight: 400;
+}
+
+.scenario-constant-zero {
+  color: #b14c36;
+  border-color: rgba(177, 76, 54, 0.35);
+  background: rgba(177, 76, 54, 0.08);
+  font-weight: 600;
+}
+
+.scenario-constant-zero:disabled {
+  color: #b14c36;
+  opacity: 1;
+  -webkit-text-fill-color: #b14c36;
 }
 
 .scenario-summary-grid {

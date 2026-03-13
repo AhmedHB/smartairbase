@@ -11,6 +11,25 @@ The repository contains three applications:
 - `smartairbase`
   A React frontend that talks to `MCPClient`.
 
+For dice-related analytics the system now distinguishes:
+
+- `diceSelectionMode` on each saved dice roll
+- `diceSelectionProfile` as a derived summary on the whole game
+
+Typical saved roll modes are:
+
+- `MANUAL_DIRECT_SELECTION`
+- `MANUAL_RANDOM_SELECTION`
+- `AUTO_RANDOM`
+- `AUTO_MIN_DAMAGE`
+- `AUTO_MAX_DAMAGE`
+
+Typical derived game profiles are:
+
+- one of the same exact modes when every recorded roll used that same method
+- `MANUAL_MIXED` when a manual game mixes direct choice and random choice
+- `MIXED` when multiple broader selection styles are used across one game
+
 ## Current Architecture
 
 ```text
@@ -65,6 +84,23 @@ Base summary:
 - Base `A`: main airbase with the highest parking, maintenance, fuel, weapon, and spare-parts capacity
 - Base `B`: forward base with limited parking and maintenance, supports lighter service than `A`
 - Base `C`: fuel outpost with parking but no repair or rearm capability
+
+Custom scenario copies can change:
+
+- base parking capacity
+- base maintenance capacity where the base type allows it
+- base start/max stocks for fuel, weapons, and spare parts
+- delivery amounts for the delivery rules already defined on the scenario
+- initial aircraft count, as long as it stays between `1` and the total parking capacity across all bases
+
+Fixed rules remain fixed:
+
+- `SCN_STANDARD` cannot be edited
+- Base `C` remains fuel-only in every scenario
+- Base `C` always keeps `0` repair slots
+- Base `C` weapons and spare-parts stocks stay `0`
+- Base `C` weapons and spare-parts deliveries stay `0`
+- delivery frequency is reference data and is not editable
 
 ### Missions
 
@@ -191,6 +227,8 @@ The standard scenario includes recurring deliveries:
 
 This means some rounds are pure waiting rounds where the correct move is to advance until resources or maintenance capacity become available again.
 
+When a custom scenario changes delivery amounts and is then used to create a new game, those edited delivery amounts are the values that the game engine uses for later deliveries.
+
 ### Win and Loss
 
 Implemented outcome rules:
@@ -262,6 +300,14 @@ While a game is active, the `Create game` button is disabled so the operator mus
 The control panel also shows both the current `Game ID` and a read-only `Current game name` field.
 While a game is active, the `Scenario editor` tab is also disabled so the operator cannot switch into scenario editing mid-session.
 The aircraft field is capped at `8`, which matches the total parking capacity in the current scenario.
+
+For duplicated/custom scenarios, the scenario editor can now modify:
+
+- base parking and repair capacity
+- base `fuel`, `weapons`, and `spare parts` start/max values
+- delivery amounts for existing base supply rules
+
+Delivery frequency remains fixed by the scenario rules, and `SCN_STANDARD` remains read-only.
 
 Mission instances are generated with runtime codes such as:
 

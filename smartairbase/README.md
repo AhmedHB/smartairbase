@@ -76,6 +76,35 @@ The panel now summarizes the currently selected scenario from real scenario data
 - dice outcome meanings
 - the fact that some rounds may be pure wait rounds
 
+### Scenario Editor
+
+For editable custom scenarios, the scenario editor can now change:
+
+- base parking and repair capacity
+- base `fuel`, `weapons`, and `spare parts` start/max values
+- delivery amounts for existing supply rules
+- initial aircraft count per aircraft type by changing the actual scenario aircraft list
+
+The scenario editor does not add new bases or delivery rules, and delivery frequency remains read-only reference data.
+`SCN_STANDARD` remains read-only and cannot be edited directly.
+
+Additional fixed rules in the editor:
+
+- `Base C` stays a fuel outpost in every custom scenario
+- only `Fuel` values are editable for `Base C`
+- `Base C` repair slots remain locked to `0`
+- `Base C` weapons and spare-parts stocks remain locked to `0`
+- `Base C` weapons and spare-parts delivery amounts remain locked to `0`
+- initial aircraft count cannot go below `1`
+- initial aircraft count cannot exceed the sum of all base parking slots in the scenario
+
+Saved custom-scenario values are not only cosmetic. When a new game is created from that scenario, the game uses:
+
+- the edited base capacities
+- the edited base start/max inventories
+- the edited delivery amounts
+- the edited scenario aircraft list
+
 ### Abort Game
 
 The `Abort game` button ends the currently active game instead of only clearing the screen.
@@ -147,6 +176,18 @@ The event history panel now shows:
 - timestamp
 - round number when available
 - event-specific details such as dice outcome meaning and create-game messages
+
+### Dice Selection Analytics
+
+The frontend now tags each dice-roll request with a `diceSelectionMode` so later statistics can distinguish:
+
+- manual direct dice choice
+- manual random dice choice
+- automated random dice choice
+- automated min-damage dice choice
+- automated max-damage dice choice
+
+`MCPServer` persists the exact mode on each roll and derives a game-level `diceSelectionProfile` from the full set of recorded rolls.
 
 ### Analysis Feed
 

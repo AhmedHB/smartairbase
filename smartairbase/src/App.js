@@ -29,6 +29,29 @@ const BASE_TYPE_LABELS = {
 };
 const TOOL_WRAPPER_MESSAGE_PATTERN = /text=([^,\]]+)/;
 
+function isFuelOutpostScenarioBase(base) {
+  const normalizedBaseCode = String(base?.code || '').trim().toUpperCase();
+  const normalizedBaseTypeCode = String(base?.baseTypeCode || '').trim().toUpperCase();
+  return normalizedBaseCode === 'C'
+    || normalizedBaseCode === 'BASE_C'
+    || normalizedBaseTypeCode === 'FUEL'
+    || normalizedBaseTypeCode === 'C';
+}
+
+export function automatedDiceSelectionMode(strategy) {
+  if (strategy === 'MIN_DAMAGE') {
+    return 'AUTO_MIN_DAMAGE';
+  }
+  if (strategy === 'MAX_DAMAGE') {
+    return 'AUTO_MAX_DAMAGE';
+  }
+  return 'AUTO_RANDOM';
+}
+
+export function manualDiceSelectionMode(useRandomDice) {
+  return useRandomDice ? 'MANUAL_RANDOM_SELECTION' : 'MANUAL_DIRECT_SELECTION';
+}
+
 function App() {
   const [currentView, setCurrentView] = useState('PLAY');
   const [createForm, setCreateForm] = useState(INITIAL_CREATE_FORM);
@@ -183,7 +206,12 @@ function App() {
         if (!aircraftCode) {
           return;
         }
-        await submitDiceRoll(aircraftCode, automatedDiceValue(diceAutomation.strategy), true);
+        await submitDiceRoll(
+          aircraftCode,
+          automatedDiceValue(diceAutomation.strategy),
+          true,
+          automatedDiceSelectionMode(diceAutomation.strategy)
+        );
       } finally {
         automationInFlightRef.current = false;
       }
@@ -343,6 +371,11 @@ function App() {
       representative: aircraft[0],
     }));
   }, [selectedScenario]);
+
+  const totalScenarioParkingCapacity = useMemo(
+    () => (selectedScenario?.bases || []).reduce((total, base) => total + Number(base.parkingCapacity || 0), 0),
+    [selectedScenario]
+  );
 
 async function request(path, options = {}) {
     const controller = new AbortController();
@@ -809,6 +842,27 @@ async function request(path, options = {}) {
     updateSelectedScenarioCollection(section, itemCode, { [field]: value });
   }
 
+  function updateScenarioSupplyRuleNumberField(baseCode, resource, value) {
+    const parsedValue = Number(value);
+    const numericValue = Number.isFinite(parsedValue) ? Math.max(0, parsedValue) : 0;
+    setSelectedScenario((current) => {
+      if (!current) {
+        return current;
+      }
+      return {
+        ...current,
+        bases: (current.bases || []).map((base) => (
+          base.code !== baseCode ? base : {
+            ...base,
+            supplyRules: (base.supplyRules || []).map((rule) => (
+              rule.resource === resource ? { ...rule, deliveryAmount: numericValue } : rule
+            )),
+          }
+        )),
+      };
+    });
+  }
+
   function updateScenarioAircraftGroupField(typeCode, field, value) {
     setSelectedScenario((current) => {
       if (!current) {
@@ -825,6 +879,71 @@ async function request(path, options = {}) {
 
   function updateScenarioAircraftGroupNumberField(typeCode, field, value) {
     updateScenarioAircraftGroupField(typeCode, field, Math.max(0, Number(value || 0)));
+  }
+
+  function nextScenarioAircraftCode(aircraft) {
+    const maxSequence = (aircraft || []).reduce((max, entry) => {
+      const match = String(entry.code || '').match(/^F(\d+)$/i);
+      return match ? Math.max(max, Number(match[1])) : max;
+    }, 0);
+    return `F${maxSequence + 1}`;
+  }
+
+  function updateScenarioAircraftGroupCount(typeCode, value) {
+    setSelectedScenario((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const aircraft = current.aircraft || [];
+      const groupAircraft = aircraft.filter((entry) => entry.aircraftTypeCode === typeCode);
+      if (!groupAircraft.length) {
+        return current;
+      }
+
+      const parsedValue = Number(value);
+      const otherAircraftCount = aircraft.length - groupAircraft.length;
+      const maxAllowedCount = Math.max(1, totalScenarioParkingCapacity - otherAircraftCount);
+      const desiredCount = Math.max(1, Math.min(maxAllowedCount, Number.isFinite(parsedValue) ? parsedValue : groupAircraft.length));
+
+      if (desiredCount === groupAircraft.length) {
+        return current;
+      }
+
+      // The editor persists one scenario-aircraft row per starting aircraft.
+      // Reducing the count therefore removes the highest-numbered rows for that type.
+      if (desiredCount < groupAircraft.length) {
+        const removableCodes = new Set(
+          [...groupAircraft]
+            .sort((left, right) => String(right.code || '').localeCompare(String(left.code || '')))
+            .slice(0, groupAircraft.length - desiredCount)
+            .map((entry) => entry.code)
+        );
+        return {
+          ...current,
+          aircraft: aircraft.filter((entry) => !removableCodes.has(entry.code)),
+        };
+      }
+
+      // Increasing the count clones the representative setup for the type and
+      // assigns the next available F-number in the scenario.
+      const additions = [];
+      let aircraftWithAdditions = [...aircraft];
+      while (groupAircraft.length + additions.length < desiredCount) {
+        const template = groupAircraft[0];
+        const newAircraft = {
+          ...template,
+          code: nextScenarioAircraftCode(aircraftWithAdditions),
+        };
+        additions.push(newAircraft);
+        aircraftWithAdditions = [...aircraftWithAdditions, newAircraft];
+      }
+
+      return {
+        ...current,
+        aircraft: [...aircraft, ...additions],
+      };
+    });
   }
 
   async function handleSaveScenario() {
@@ -845,6 +964,10 @@ async function request(path, options = {}) {
         }),
       });
       setSelectedScenario(updatedScenario);
+      setCreateForm((current) => ({
+        ...current,
+        aircraftCount: (updatedScenario?.aircraft || []).length || current.aircraftCount,
+      }));
       setDuplicateScenarioName(defaultDuplicateScenarioName(updatedScenario?.name));
       setStatus({ kind: 'success', message: 'Scenario saved.' });
     } catch (error) {
@@ -974,10 +1097,15 @@ async function request(path, options = {}) {
       setStatus({ kind: 'error', message: 'Game ID is invalid. Create a new game first.' });
       return;
     }
-    await submitDiceRoll(selectedAircraft, useRandomDice ? randomDiceValue() : Number(diceValue), false);
+    await submitDiceRoll(
+      selectedAircraft,
+      useRandomDice ? randomDiceValue() : Number(diceValue),
+      false,
+      manualDiceSelectionMode(useRandomDice)
+    );
   }
 
-  async function submitDiceRoll(aircraftCode, resolvedDiceValue, automated) {
+  async function submitDiceRoll(aircraftCode, resolvedDiceValue, automated, diceSelectionMode) {
     const latestState = gameStateRef.current;
     const stillPending = (latestState?.aircraft || []).some(
       (aircraft) => aircraft.code === aircraftCode && aircraft.status === 'AWAITING_DICE_ROLL'
@@ -1013,6 +1141,7 @@ async function request(path, options = {}) {
         body: JSON.stringify({
           aircraftCode,
           diceValue: resolvedDiceValue,
+          diceSelectionMode,
         }),
       });
       setManualMissionPreviewAssignments((current) => {
@@ -1253,19 +1382,25 @@ async function request(path, options = {}) {
                       <h4>Aircraft settings</h4>
                       <p className="muted-copy">Review the aircraft types already used in this scenario. You can adjust existing aircraft instances, but not add new aircraft types.</p>
                     </header>
-                    <p className="muted-copy">{scenarioAircraftGroups.length} aircraft type{scenarioAircraftGroups.length === 1 ? '' : 's'} across {(selectedScenario.aircraft || []).length} aircraft.</p>
                     <div className="scenario-config-grid scenario-config-grid-aircraft">
                       <div className="scenario-config-row scenario-config-head">
-                        <span>Type</span>
-                        <span>Count</span>
+                        <span>Aircraft type</span>
+                        <span>Initial aircraft count</span>
                         <span>Fuel</span>
                         <span>Weapons</span>
                         <span>Flight hours</span>
                       </div>
                       {scenarioAircraftGroups.map((group) => (
                         <div key={group.typeCode} className="scenario-config-row">
-                          <strong>{group.typeCode}</strong>
-                          <span>{group.aircraft.length}</span>
+                          <span className="scenario-row-label">{group.typeCode}</span>
+                          <input
+                            type="number"
+                            min="1"
+                            max={Math.max(1, totalScenarioParkingCapacity - ((selectedScenario.aircraft || []).length - group.aircraft.length))}
+                            value={group.aircraft.length}
+                            disabled={scenarioBusy || !selectedScenario.editable}
+                            onChange={(event) => updateScenarioAircraftGroupCount(group.typeCode, event.target.value)}
+                          />
                           <input
                             type="number"
                             min="0"
@@ -1307,7 +1442,7 @@ async function request(path, options = {}) {
                       </div>
                       {(selectedScenario.missions || []).map((mission) => (
                         <div key={mission.code} className="scenario-config-row">
-                          <strong>{mission.code}</strong>
+                          <span className="scenario-row-label">{mission.code}</span>
                           <span>{mission.missionTypeName || mission.missionTypeCode}</span>
                           <input
                             type="number"
@@ -1338,50 +1473,187 @@ async function request(path, options = {}) {
                   <article className="scenario-editor-card">
                     <header className="section-heading">
                       <h4>Base settings</h4>
-                      <p className="muted-copy">Bases are fixed. You can only change parking slots and repair slots for the bases already in this scenario.</p>
+                      <p className="muted-copy">Bases are fixed. You can change existing slot capacities, base start/max resources, and delivery amounts for the bases already in this scenario.</p>
                     </header>
-                    <div className="scenario-config-grid scenario-config-grid-bases">
-                      <div className="scenario-config-row scenario-config-head">
-                        <span>Base</span>
-                        <span>Name</span>
-                        <span>Parking slots</span>
-                        <span>Repair slots</span>
-                      </div>
-                      {(selectedScenario.bases || []).map((base) => {
-                        const supportsRepairSlots = base.code !== 'C' && base.baseTypeCode !== 'FUEL';
-                        return (
-                          <div key={base.code} className="scenario-base-block">
-                            <div className="scenario-config-row">
-                              <strong>{base.code}</strong>
-                              <span>{BASE_TYPE_LABELS[base.baseTypeCode] || base.name || base.baseTypeCode || 'Base'}</span>
-                              <input
-                                type="number"
-                                min="0"
-                                value={base.parkingCapacity ?? 0}
-                                disabled={scenarioBusy || !selectedScenario.editable}
-                                onChange={(event) => updateScenarioNumberField('bases', base.code, 'parkingCapacity', event.target.value)}
-                              />
-                              {supportsRepairSlots ? (
+                    <div className="scenario-subsection">
+                      <h5 className="scenario-subsection-title">Capacity</h5>
+                      <div className="scenario-config-grid scenario-config-grid-bases">
+                        <div className="scenario-config-row scenario-config-head scenario-base-capacity-row">
+                          <span>Base</span>
+                          <span>Name</span>
+                          <span>Parking slots</span>
+                          <span>Repair slots</span>
+                        </div>
+                        {(selectedScenario.bases || []).map((base, index) => {
+                          const supportsRepairSlots = !isFuelOutpostScenarioBase(base);
+                          const isFuelOutpostBase = !supportsRepairSlots;
+                          return (
+                            <div key={`${base.code}-capacity-group`} className="scenario-base-rule-group">
+                              <div key={`${base.code}-capacity`} className={`scenario-config-row scenario-base-capacity-row ${index > 0 ? 'scenario-base-separator' : ''}`}>
+                                <span className="scenario-row-label">{base.code}</span>
+                                <span>{BASE_TYPE_LABELS[base.baseTypeCode] || base.name || base.baseTypeCode || 'Base'}</span>
                                 <input
                                   type="number"
                                   min="0"
-                                  value={base.maintenanceCapacity ?? 0}
+                                  value={base.parkingCapacity ?? 0}
                                   disabled={scenarioBusy || !selectedScenario.editable}
-                                  onChange={(event) => updateScenarioNumberField('bases', base.code, 'maintenanceCapacity', event.target.value)}
+                                  onChange={(event) => updateScenarioNumberField('bases', base.code, 'parkingCapacity', event.target.value)}
                                 />
+                                {supportsRepairSlots ? (
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={base.maintenanceCapacity ?? 0}
+                                    disabled={scenarioBusy || !selectedScenario.editable}
+                                    onChange={(event) => updateScenarioNumberField('bases', base.code, 'maintenanceCapacity', event.target.value)}
+                                  />
+                                ) : (
+                                  <input
+                                    className="scenario-constant-zero"
+                                    type="number"
+                                    min="0"
+                                    value={0}
+                                    disabled
+                                    readOnly
+                                  />
+                                )}
+                              </div>
+                              {isFuelOutpostBase ? (
+                                <div key={`${base.code}-capacity-note`} className="scenario-base-rule-note scenario-base-rule-note-critical">
+                                  Repair slots are fixed at 0 for Base C because this base is refuel-only.
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="scenario-subsection">
+                      <h5 className="scenario-subsection-title">Resources</h5>
+                      <div className="scenario-config-grid scenario-config-grid-base-resources">
+                        <div className="scenario-config-row scenario-config-head scenario-base-resource-row">
+                          <span>Base</span>
+                          <span>Resource</span>
+                          <span>Start</span>
+                          <span>Max</span>
+                        </div>
+                        {(selectedScenario.bases || []).flatMap((base, baseIndex) => {
+                          const isFuelOutpostBase = isFuelOutpostScenarioBase(base);
+                          const resourceRows = [
+                            ['Fuel', 'fuelStart', 'fuelMax', true],
+                            ['Weapons', 'weaponsStart', 'weaponsMax', !isFuelOutpostBase],
+                            ['Spare parts', 'sparePartsStart', 'sparePartsMax', !isFuelOutpostBase],
+                          ].map(([label, startField, maxField, editable], index) => (
+                            <div
+                              key={`${base.code}-${label}`}
+                              className={`scenario-config-row scenario-base-resource-row ${baseIndex > 0 && index === 0 ? 'scenario-base-separator' : ''}`}
+                            >
+                              <span className="scenario-row-label">{index === 0 ? base.code : ''}</span>
+                              <span>{label}</span>
+                              {editable ? (
+                                <>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={base[startField] ?? 0}
+                                    disabled={scenarioBusy || !selectedScenario.editable}
+                                    onChange={(event) => updateScenarioNumberField('bases', base.code, startField, event.target.value)}
+                                  />
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={base[maxField] ?? 0}
+                                    disabled={scenarioBusy || !selectedScenario.editable}
+                                    onChange={(event) => updateScenarioNumberField('bases', base.code, maxField, event.target.value)}
+                                  />
+                                </>
+                              ) : (
+                                <>
+                                  <input className="scenario-constant-zero" type="number" min="0" value={0} disabled readOnly />
+                                  <input className="scenario-constant-zero" type="number" min="0" value={0} disabled readOnly />
+                                </>
+                              )}
+                            </div>
+                          ));
+
+                          if (isFuelOutpostBase) {
+                            resourceRows.push(
+                              <div key={`${base.code}-resource-note`} className="scenario-base-rule-note scenario-base-rule-note-critical">
+                                Weapons and spare-parts stocks are fixed at 0 for Base C because this base type is refuel-only.
+                              </div>
+                            );
+                          }
+
+                          return resourceRows;
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="scenario-subsection">
+                      <h5 className="scenario-subsection-title">Deliveries</h5>
+                      <div className="scenario-config-grid scenario-config-grid-base-deliveries">
+                        <div className="scenario-config-row scenario-config-head scenario-base-delivery-row">
+                          <span>Base</span>
+                          <span>Delivery</span>
+                          <span>Amount</span>
+                          <span>Frequency</span>
+                        </div>
+                        {(selectedScenario.bases || []).flatMap((base, baseIndex) => {
+                          const isFuelOutpostBase = isFuelOutpostScenarioBase(base);
+                          const deliveryRows = (base.supplyRules || []).map((rule, index) => (
+                            <div
+                              key={`${base.code}-${rule.resource}`}
+                              className={`scenario-config-row scenario-base-delivery-row ${baseIndex > 0 && index === 0 ? 'scenario-base-separator' : ''}`}
+                            >
+                              <span className="scenario-row-label">{index === 0 ? base.code : ''}</span>
+                              <span>{humanizeStatus(rule.resource)}</span>
+                              {isFuelOutpostBase && rule.resource !== 'FUEL' ? (
+                                <input className="scenario-constant-zero" type="number" min="0" value={0} disabled readOnly />
                               ) : (
                                 <input
                                   type="number"
                                   min="0"
-                                  value={0}
-                                  disabled
-                                  readOnly
+                                  value={rule.deliveryAmount ?? 0}
+                                  disabled={scenarioBusy || !selectedScenario.editable}
+                                  onChange={(event) => updateScenarioSupplyRuleNumberField(base.code, rule.resource, event.target.value)}
                                 />
                               )}
+                              <span className="scenario-inline-note">Every {rule.frequencyRounds} rounds</span>
                             </div>
-                          </div>
-                        );
-                      })}
+                          ));
+
+                          if (isFuelOutpostBase && !(base.supplyRules || []).some((rule) => rule.resource === 'WEAPONS')) {
+                            deliveryRows.push(
+                              <div key={`${base.code}-WEAPONS-constant`} className="scenario-config-row scenario-base-delivery-row scenario-base-rule-row">
+                                <span className="scenario-row-label" />
+                                <span>Weapons</span>
+                                <input className="scenario-constant-zero" type="number" min="0" value={0} disabled readOnly />
+                                <span className="scenario-base-rule-note scenario-base-rule-note-critical">Not available for Base C</span>
+                              </div>
+                            );
+                          }
+                          if (isFuelOutpostBase && !(base.supplyRules || []).some((rule) => rule.resource === 'SPARE_PARTS')) {
+                            deliveryRows.push(
+                              <div key={`${base.code}-SPARE_PARTS-constant`} className="scenario-config-row scenario-base-delivery-row scenario-base-rule-row">
+                                <span className="scenario-row-label" />
+                                <span>Spare parts</span>
+                                <input className="scenario-constant-zero" type="number" min="0" value={0} disabled readOnly />
+                                <span className="scenario-base-rule-note scenario-base-rule-note-critical">Not available for Base C</span>
+                              </div>
+                            );
+                          }
+                          if (isFuelOutpostBase) {
+                            deliveryRows.push(
+                              <div key={`${base.code}-delivery-note`} className="scenario-base-rule-note scenario-base-rule-note-critical">
+                                Weapons and spare-parts deliveries do not apply to Base C in any scenario. This base remains fuel-only.
+                              </div>
+                            );
+                          }
+
+                          return deliveryRows;
+                        })}
+                      </div>
                     </div>
                   </article>
                 </section>

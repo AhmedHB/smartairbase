@@ -1,6 +1,7 @@
 package se.smartairbase.mcpserver.domain.game;
 
 import jakarta.persistence.*;
+import se.smartairbase.mcpserver.domain.game.enums.DiceSelectionMode;
 import se.smartairbase.mcpserver.domain.rule.RepairRule;
 
 import java.time.LocalDateTime;
@@ -29,6 +30,13 @@ public class DiceRoll {
     @JoinColumn(name = "repair_rule_id", nullable = false)
     private RepairRule repairRule;
 
+    /**
+     * Exact selection method for this roll, used for later analytics and audit.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "dice_selection_mode", nullable = false, length = 40)
+    private DiceSelectionMode diceSelectionMode;
+
     @Column(name = "rolled_at", nullable = false)
     private LocalDateTime rolledAt;
 
@@ -36,11 +44,12 @@ public class DiceRoll {
     }
 
     public DiceRoll(GameRound gameRound, GameAircraft gameAircraft, Integer diceValue, RepairRule repairRule,
-                    LocalDateTime rolledAt) {
+                    DiceSelectionMode diceSelectionMode, LocalDateTime rolledAt) {
         this.gameRound = gameRound;
         this.gameAircraft = gameAircraft;
         this.diceValue = diceValue;
         this.repairRule = repairRule;
+        this.diceSelectionMode = diceSelectionMode;
         this.rolledAt = rolledAt;
     }
 
@@ -49,5 +58,6 @@ public class DiceRoll {
     public GameAircraft getGameAircraft() { return gameAircraft; }
     public Integer getDiceValue() { return diceValue; }
     public RepairRule getRepairRule() { return repairRule; }
+    public DiceSelectionMode getDiceSelectionMode() { return diceSelectionMode; }
     public LocalDateTime getRolledAt() { return rolledAt; }
 }

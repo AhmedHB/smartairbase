@@ -26,11 +26,16 @@ import se.smartairbase.mcpserver.repository.ScenarioMissionRepository;
 import se.smartairbase.mcpserver.repository.ScenarioRepository;
 import se.smartairbase.mcpserver.repository.ScenarioSupplyRuleRepository;
 
+import se.smartairbase.mcpserver.domain.rule.enums.ResourceType;
+
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.Comparator;
+import java.util.EnumMap;
+import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class ScenarioService {
@@ -44,6 +49,7 @@ public class ScenarioService {
     private final ScenarioSupplyRuleRepository scenarioSupplyRuleRepository;
     private final RepairRuleRepository repairRuleRepository;
     private final GameService gameService;
+    private final se.smartairbase.mcpserver.repository.AircraftTypeRepository aircraftTypeRepository;
 
     public ScenarioService(ScenarioRepository scenarioRepository,
                            ScenarioBaseRepository scenarioBaseRepository,
@@ -51,7 +57,8 @@ public class ScenarioService {
                            ScenarioMissionRepository scenarioMissionRepository,
                            ScenarioSupplyRuleRepository scenarioSupplyRuleRepository,
                            RepairRuleRepository repairRuleRepository,
-                           GameService gameService) {
+                           GameService gameService,
+                           se.smartairbase.mcpserver.repository.AircraftTypeRepository aircraftTypeRepository) {
         this.scenarioRepository = scenarioRepository;
         this.scenarioBaseRepository = scenarioBaseRepository;
         this.scenarioAircraftRepository = scenarioAircraftRepository;
@@ -59,6 +66,7 @@ public class ScenarioService {
         this.scenarioSupplyRuleRepository = scenarioSupplyRuleRepository;
         this.repairRuleRepository = repairRuleRepository;
         this.gameService = gameService;
+        this.aircraftTypeRepository = aircraftTypeRepository;
     }
 
     @Transactional(readOnly = true)
@@ -157,6 +165,9 @@ public class ScenarioService {
         if (!scenario.isEditable() || scenario.getSourceType() != ScenarioSourceType.USER) {
             throw new IllegalArgumentException("Scenario cannot be edited: " + scenario.getName());
         }
+        // Custom scenarios may tune base capacities, base start/max inventories,
+        // aircraft setup, mission costs, and delivery amounts, while fixed rules
+        // such as delivery frequency and system scenarios remain locked.
         scenario.updateDescription(request.description(), LocalDateTime.now());
 
         Map<String, ScenarioBase> basesByCode = new HashMap<>();
@@ -168,32 +179,70 @@ public class ScenarioService {
             if (base == null) {
                 throw new IllegalArgumentException("Unknown base in scenario update: " + baseUpdate.code());
             }
+            boolean fuelOutpostBase = isFuelOutpostBase(baseUpdate.code(), baseUpdate.baseTypeCode());
             int maintenanceCapacity = sanitizeBaseMaintenanceCapacity(baseUpdate.code(), baseUpdate.baseTypeCode(), baseUpdate.maintenanceCapacity());
             base.updateCapacity(
                     sanitizeNonNegative(baseUpdate.parkingCapacity(), "parkingCapacity"),
                     maintenanceCapacity
             );
+            int fuelMax = sanitizeResourceMax(baseUpdate.fuelMax(), "fuel");
+            int weaponsMax = fuelOutpostBase ? 0 : sanitizeResourceMax(baseUpdate.weaponsMax(), "weapons");
+            int sparePartsMax = fuelOutpostBase ? 0 : sanitizeResourceMax(baseUpdate.sparePartsMax(), "spareParts");
+            base.updateResources(
+                    sanitizeResourceStart(baseUpdate.fuelStart(), fuelMax, "fuel"),
+                    fuelMax,
+                    fuelOutpostBase ? 0 : sanitizeResourceStart(baseUpdate.weaponsStart(), weaponsMax, "weapons"),
+                    weaponsMax,
+                    fuelOutpostBase ? 0 : sanitizeResourceStart(baseUpdate.sparePartsStart(), sparePartsMax, "spareParts"),
+                    sparePartsMax
+            );
+
+            Map<ResourceType, ScenarioSupplyRule> supplyRulesByResource = new EnumMap<>(ResourceType.class);
+            for (ScenarioSupplyRule rule : scenarioSupplyRuleRepository.findByScenarioBase_Id(base.getId())) {
+                supplyRulesByResource.put(rule.getResource(), rule);
+            }
+            for (ScenarioSupplyRuleDto supplyRuleUpdate : baseUpdate.supplyRules() == null ? List.<ScenarioSupplyRuleDto>of() : baseUpdate.supplyRules()) {
+                ResourceType resource = parseResourceType(supplyRuleUpdate.resource());
+                ScenarioSupplyRule supplyRule = supplyRulesByResource.get(resource);
+                if (supplyRule == null) {
+                    throw new IllegalArgumentException("Unknown supply rule for base " + baseUpdate.code() + ": " + supplyRuleUpdate.resource());
+                }
+                int deliveryAmount = sanitizeNonNegative(supplyRuleUpdate.deliveryAmount(), "deliveryAmount");
+                // Base C remains fuel-only even for editable custom scenarios.
+                supplyRule.updateDeliveryAmount(fuelOutpostBase && resource != ResourceType.FUEL ? 0 : deliveryAmount);
+            }
         });
 
-        Map<String, ScenarioAircraft> aircraftByCode = new HashMap<>();
-        for (ScenarioAircraft aircraft : scenarioAircraftRepository.findByScenario_Id(scenarioId)) {
-            aircraftByCode.put(aircraft.getCode(), aircraft);
+        // Scenario aircraft are stored one row per starting aircraft, so an edited
+        // initial aircraft count arrives as a replaced scenario-aircraft list.
+        List<ScenarioAircraftDto> aircraftUpdates = request.aircraft() == null ? List.of() : request.aircraft();
+        int totalParkingCapacity = basesByCode.values().stream().mapToInt(ScenarioBase::getParkingCapacity).sum();
+        if (aircraftUpdates.isEmpty()) {
+            throw new IllegalArgumentException("Aircraft count must be at least 1");
         }
-        request.aircraft().forEach(aircraftUpdate -> {
-            ScenarioAircraft aircraft = aircraftByCode.get(aircraftUpdate.code());
-            if (aircraft == null) {
-                throw new IllegalArgumentException("Unknown aircraft in scenario update: " + aircraftUpdate.code());
+        if (aircraftUpdates.size() > totalParkingCapacity) {
+            throw new IllegalArgumentException("Aircraft count exceeds total parking capacity of " + totalParkingCapacity);
+        }
+        Set<String> aircraftCodes = new HashSet<>();
+        scenarioAircraftRepository.deleteAll(scenarioAircraftRepository.findByScenario_Id(scenarioId));
+        for (ScenarioAircraftDto aircraftUpdate : aircraftUpdates) {
+            if (!aircraftCodes.add(aircraftUpdate.code())) {
+                throw new IllegalArgumentException("Duplicate aircraft code in scenario update: " + aircraftUpdate.code());
             }
             if (aircraftUpdate.startBaseCode() != null && !basesByCode.containsKey(aircraftUpdate.startBaseCode())) {
                 throw new IllegalArgumentException("Unknown start base for aircraft " + aircraftUpdate.code() + ": " + aircraftUpdate.startBaseCode());
             }
-            aircraft.updateSetup(
+            scenarioAircraftRepository.save(new ScenarioAircraft(
+                    scenario,
+                    aircraftUpdate.code(),
+                    aircraftTypeRepository.findByCode(aircraftUpdate.aircraftTypeCode())
+                            .orElseThrow(() -> new IllegalArgumentException("Unknown aircraft type in scenario update: " + aircraftUpdate.aircraftTypeCode())),
                     aircraftUpdate.startBaseCode(),
                     sanitizeNonNegative(aircraftUpdate.fuelStart(), "fuelStart"),
                     sanitizeNonNegative(aircraftUpdate.weaponsStart(), "weaponsStart"),
                     sanitizeNonNegative(aircraftUpdate.flightHoursStart(), "flightHoursStart")
-            );
-        });
+            ));
+        }
 
         Map<String, ScenarioMission> missionsByCode = new HashMap<>();
         for (ScenarioMission mission : scenarioMissionRepository.findByScenario_IdOrderBySortOrder(scenarioId)) {
@@ -343,20 +392,44 @@ public class ScenarioService {
         return value;
     }
 
+    private int sanitizeResourceMax(Integer value, String resourceName) {
+        return sanitizeNonNegative(value, resourceName + "Max");
+    }
+
+    private int sanitizeResourceStart(Integer startValue, int maxValue, String resourceName) {
+        int sanitizedStart = sanitizeNonNegative(startValue, resourceName + "Start");
+        if (sanitizedStart > maxValue) {
+            throw new IllegalArgumentException(resourceName + "Start cannot exceed " + resourceName + "Max");
+        }
+        return sanitizedStart;
+    }
+
+    private ResourceType parseResourceType(String value) {
+        try {
+            return ResourceType.valueOf(value == null ? "" : value.trim().toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("Unknown resource type: " + value);
+        }
+    }
+
     private int sanitizeBaseMaintenanceCapacity(String baseCode, String baseTypeCode, Integer value) {
         int maintenanceCapacity = sanitizeNonNegative(value, "maintenanceCapacity");
-        String normalizedBaseCode = baseCode == null ? "" : baseCode.trim().toUpperCase();
-        String normalizedBaseTypeCode = baseTypeCode == null ? "" : baseTypeCode.trim().toUpperCase();
-        if ("C".equals(normalizedBaseCode)
-                || "BASE_C".equals(normalizedBaseCode)
-                || "FUEL".equals(normalizedBaseTypeCode)
-                || "C".equals(normalizedBaseTypeCode)) {
+        if (isFuelOutpostBase(baseCode, baseTypeCode)) {
             if (maintenanceCapacity != 0) {
                 throw new IllegalArgumentException("Base C cannot have repair slots");
             }
             return 0;
         }
         return maintenanceCapacity;
+    }
+
+    private boolean isFuelOutpostBase(String baseCode, String baseTypeCode) {
+        String normalizedBaseCode = baseCode == null ? "" : baseCode.trim().toUpperCase();
+        String normalizedBaseTypeCode = baseTypeCode == null ? "" : baseTypeCode.trim().toUpperCase();
+        return "C".equals(normalizedBaseCode)
+                || "BASE_C".equals(normalizedBaseCode)
+                || "FUEL".equals(normalizedBaseTypeCode)
+                || "C".equals(normalizedBaseTypeCode);
     }
 
     private void validateScenarioName(String name) {

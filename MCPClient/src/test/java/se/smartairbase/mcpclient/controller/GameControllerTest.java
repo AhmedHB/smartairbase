@@ -219,7 +219,17 @@ class GameControllerTest {
         mockMvc.perform(post("/api/games/5/dice-rolls")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"aircraftCode":"F1","diceValue":9}
+                                {"aircraftCode":"F1","diceValue":9,"diceSelectionMode":"MANUAL_DIRECT_SELECTION"}
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void recordDiceRollRejectsUnknownSelectionMode() throws Exception {
+        mockMvc.perform(post("/api/games/5/dice-rolls")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"aircraftCode":"F1","diceValue":4,"diceSelectionMode":"SOMETHING_ELSE"}
                                 """))
                 .andExpect(status().isBadRequest());
     }

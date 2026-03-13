@@ -37,6 +37,10 @@ public class ScenarioSupplyRule {
         this.deliveryAmount = deliveryAmount;
     }
 
+    public void updateDeliveryAmount(Integer deliveryAmount) {
+        this.deliveryAmount = deliveryAmount;
+    }
+
     public Long getId() { return id; }
     public ScenarioBase getScenarioBase() { return scenarioBase; }
     public ResourceType getResource() { return resource; }

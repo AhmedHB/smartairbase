@@ -13,6 +13,7 @@ import se.smartairbase.mcpserver.mcp.dto.LandingOptionsDto;
 import se.smartairbase.mcpserver.mcp.dto.MissionStateDto;
 import se.smartairbase.mcpserver.mcp.dto.RoundExecutionResultDto;
 import se.smartairbase.mcpserver.repository.GameRoundRepository;
+import se.smartairbase.mcpserver.repository.GameRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -34,6 +35,9 @@ class RoundServiceFlowTests {
 
     @Autowired
     private GameRoundRepository gameRoundRepository;
+
+    @Autowired
+    private GameRepository gameRepository;
 
     @Test
     void startRoundOpensPlanningPhase() {
@@ -100,7 +104,7 @@ class RoundServiceFlowTests {
         roundService.assignMission(gameId, "F1", "M1-1");
         roundService.resolveMissions(gameId);
 
-        ActionResultDto diceResult = roundService.recordDiceRoll(gameId, "F1", 6);
+        ActionResultDto diceResult = roundService.recordDiceRoll(gameId, "F1", 6, "MANUAL_DIRECT_SELECTION");
         LandingOptionsDto options = roundService.listAvailableLandingBases(gameId, "F1");
         ActionResultDto landingResult = roundService.landAircraft(gameId, "F1", "BASE_A");
         RoundExecutionResultDto completeResult = roundService.completeRound(gameId);
@@ -128,7 +132,7 @@ class RoundServiceFlowTests {
         roundService.assignMission(gameId, "F1", "M1-1");
         roundService.resolveMissions(gameId);
 
-        ActionResultDto diceResult = roundService.recordDiceRoll(gameId, "F1", 1);
+        ActionResultDto diceResult = roundService.recordDiceRoll(gameId, "F1", 1, "AUTO_MIN_DAMAGE");
         RoundExecutionResultDto completeResult = roundService.completeRound(gameId);
         GameStateDto state = gameQueryService.getGameState(gameId);
         AircraftStateDto f1 = aircraft(state, "F1");
@@ -140,6 +144,37 @@ class RoundServiceFlowTests {
         assertThat(f1.lastDiceValue()).isEqualTo(1);
         assertThat(completeResult.phase()).isEqualTo("ROUND_COMPLETE");
         assertThat(state.game().roundOpen()).isFalse();
+    }
+
+    @Test
+    void diceSelectionProfileTracksManualMixedChoicesAcrossRolls() {
+        Long gameId = gameService.createGameFromScenario("SCN_STANDARD", "V7").gameId();
+        roundService.startRound(gameId);
+        roundService.assignMission(gameId, "F1", "M1-1");
+        roundService.assignMission(gameId, "F2", "M2-1");
+        roundService.resolveMissions(gameId);
+
+        roundService.recordDiceRoll(gameId, "F1", 6, "MANUAL_DIRECT_SELECTION");
+        roundService.recordDiceRoll(gameId, "F2", 5, "MANUAL_RANDOM_SELECTION");
+
+        assertThat(gameRepository.findById(gameId).orElseThrow().getDiceSelectionProfile().name())
+                .isEqualTo("MANUAL_MIXED");
+    }
+
+    @Test
+    void diceRollStoresSelectionModeAndGameProfileTracksUniformAutoStrategy() {
+        Long gameId = gameService.createGameFromScenario("SCN_STANDARD", "V7").gameId();
+        roundService.startRound(gameId);
+        roundService.assignMission(gameId, "F1", "M1-1");
+        roundService.resolveMissions(gameId);
+
+        roundService.recordDiceRoll(gameId, "F1", 5, "AUTO_MIN_DAMAGE");
+
+        DiceRoll savedRoll = diceRollRepository.findByGameRound_Game_IdOrderByRolledAtAsc(gameId).getFirst();
+        Game savedGame = gameRepository.findById(gameId).orElseThrow();
+
+        assertThat(savedRoll.getDiceSelectionMode().name()).isEqualTo("AUTO_MIN_DAMAGE");
+        assertThat(savedGame.getDiceSelectionProfile().name()).isEqualTo("AUTO_MIN_DAMAGE");
     }
 
     @Test

@@ -144,13 +144,14 @@ public class SmartAirBaseMcpClient {
     }
 
     /**
-     * Stores the player's dice value for one aircraft.
+     * Stores one resolved dice value together with the mode that produced it.
      */
     public ActionResultDTO recordDiceRoll(String gameId, DiceRollRequestDTO request) {
         return toolExecutor.execute(SmartAirBaseTool.RECORD_DICE_ROLL, Map.of(
                 "gameId", gameId,
                 "aircraftCode", request.aircraftCode(),
-                "diceValue", request.diceValue()
+                "diceValue", request.diceValue(),
+                "diceSelectionMode", request.diceSelectionMode()
         ), ActionResultDTO.class);
     }
 

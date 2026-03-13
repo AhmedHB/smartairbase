@@ -63,9 +63,9 @@ class AutoPlayServiceTest {
 
         AutoPlayService service = new AutoPlayService(mcpClient, rules);
 
-        var response = service.resolveDiceRoll("3", new DiceRollRequestDTO("F1", 6));
+        var response = service.resolveDiceRoll("3", new DiceRollRequestDTO("F1", 6, "AUTO_RANDOM"));
 
-        verify(mcpClient).recordDiceRoll("3", new DiceRollRequestDTO("F1", 6));
+        verify(mcpClient).recordDiceRoll("3", new DiceRollRequestDTO("F1", 6, "AUTO_RANDOM"));
         verify(mcpClient).landAircraft("3", new LandAircraftRequestDTO("F1", "A"));
         verify(mcpClient).completeRound("3");
         assertThat(response.roundCompleted()).isTrue();
@@ -122,7 +122,7 @@ class AutoPlayServiceTest {
         when(mcpClient.getGameStateView("9"))
                 .thenReturn(state(activeSummary(1, "DICE_ROLL", true, false, false), awaitingDiceAircraft("F1"), completedMissions("M1")))
                 .thenReturn(state(activeSummary(1, "LANDING", true, false, false), awaitingLandingAircraft("F1", "NONE"), completedMissions("M1")));
-        when(mcpClient.recordDiceRoll("9", new DiceRollRequestDTO("F1", 1)))
+        when(mcpClient.recordDiceRoll("9", new DiceRollRequestDTO("F1", 1, "AUTO_MIN_DAMAGE")))
                 .thenThrow(new IllegalStateException("Round is in phase LANDING"));
         when(mcpClient.getLandingOptionsView("9", "F1"))
                 .thenReturn(TestStateFactory.landingOptions("F1", false,
@@ -130,7 +130,7 @@ class AutoPlayServiceTest {
 
         AutoPlayService service = new AutoPlayService(mcpClient, rules);
 
-        var response = service.resolveDiceRoll("9", new DiceRollRequestDTO("F1", 1));
+        var response = service.resolveDiceRoll("9", new DiceRollRequestDTO("F1", 1, "AUTO_MIN_DAMAGE"));
 
         assertThat(response.nextAction()).isEqualTo("WAIT");
         assertThat(response.messages()).contains("Dice step already finished");
@@ -155,9 +155,9 @@ class AutoPlayServiceTest {
 
         AutoPlayService service = new AutoPlayService(mcpClient, rules);
 
-        var response = service.resolveDiceRoll("11", new DiceRollRequestDTO("F1", 1));
+        var response = service.resolveDiceRoll("11", new DiceRollRequestDTO("F1", 1, "AUTO_MIN_DAMAGE"));
 
-        verify(mcpClient).recordDiceRoll("11", new DiceRollRequestDTO("F1", 1));
+        verify(mcpClient).recordDiceRoll("11", new DiceRollRequestDTO("F1", 1, "AUTO_MIN_DAMAGE"));
         verify(mcpClient, never()).getLandingOptionsView("11", "F1");
         verify(mcpClient, never()).landAircraft(eq("11"), argThat(request -> "F1".equals(request.aircraftCode())));
         verify(mcpClient).completeRound("11");
@@ -196,7 +196,7 @@ class AutoPlayServiceTest {
 
         AutoPlayService service = new AutoPlayService(mcpClient, rules);
 
-        service.resolveDiceRoll("3", new DiceRollRequestDTO("F1", 6));
+        service.resolveDiceRoll("3", new DiceRollRequestDTO("F1", 6, "AUTO_RANDOM"));
 
         verify(mcpClient).landAircraft(eq("3"), argThat(request -> "F1".equals(request.aircraftCode()) && "BASE_A".equals(request.baseCode())));
     }

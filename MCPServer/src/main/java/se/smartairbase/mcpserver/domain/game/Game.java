@@ -1,6 +1,7 @@
 package se.smartairbase.mcpserver.domain.game;
 
 import jakarta.persistence.*;
+import se.smartairbase.mcpserver.domain.game.enums.DiceSelectionProfile;
 import se.smartairbase.mcpserver.domain.game.enums.GameStatus;
 import se.smartairbase.mcpserver.domain.rule.Scenario;
 
@@ -41,6 +42,14 @@ public class Game {
     @Column(name = "ended_at")
     private LocalDateTime endedAt;
 
+    /**
+     * Derived summary of the dice-selection styles that have occurred so far in
+     * this game.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "dice_selection_profile", length = 40)
+    private DiceSelectionProfile diceSelectionProfile;
+
     protected Game() {
     }
 
@@ -76,6 +85,10 @@ public class Game {
         this.endedAt = now;
     }
 
+    public void setDiceSelectionProfile(DiceSelectionProfile diceSelectionProfile) {
+        this.diceSelectionProfile = diceSelectionProfile;
+    }
+
     public Long getId() { return id; }
     public Scenario getScenario() { return scenario; }
     public String getName() { return name; }
@@ -83,4 +96,5 @@ public class Game {
     public Integer getCurrentRound() { return currentRound; }
     public LocalDateTime getStartedAt() { return startedAt; }
     public LocalDateTime getEndedAt() { return endedAt; }
+    public DiceSelectionProfile getDiceSelectionProfile() { return diceSelectionProfile; }
 }

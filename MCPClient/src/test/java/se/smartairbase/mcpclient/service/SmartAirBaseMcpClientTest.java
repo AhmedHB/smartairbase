@@ -200,7 +200,7 @@ class SmartAirBaseMcpClientTest {
 
         SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor, objectMapper);
 
-        client.recordDiceRoll("7", new DiceRollRequestDTO("F2", 6));
+        client.recordDiceRoll("7", new DiceRollRequestDTO("F2", 6, "AUTO_RANDOM"));
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(Map.class);
@@ -208,7 +208,8 @@ class SmartAirBaseMcpClientTest {
         assertThat(payloadCaptor.getValue()).containsExactlyInAnyOrderEntriesOf(Map.of(
                 "gameId", "7",
                 "aircraftCode", "F2",
-                "diceValue", 6
+                "diceValue", 6,
+                "diceSelectionMode", "AUTO_RANDOM"
         ));
     }
 
