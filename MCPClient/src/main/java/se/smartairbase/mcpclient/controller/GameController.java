@@ -157,7 +157,10 @@ public class GameController {
     @PostMapping("/scenarios/{scenarioId}/create-game")
     public GameSummaryDTO createGameFromScenario(@PathVariable String scenarioId,
                                                  @RequestBody(required = false) CreateScenarioGameRequestDTO request) {
-        return mcpClient.createGameFromScenario(scenarioId, request == null ? new CreateScenarioGameRequestDTO(null) : request);
+        return mcpClient.createGameFromScenario(
+                scenarioId,
+                request == null ? new CreateScenarioGameRequestDTO(null, null, null, null) : request
+        );
     }
 
     /**

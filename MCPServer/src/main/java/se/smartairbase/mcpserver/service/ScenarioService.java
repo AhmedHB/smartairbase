@@ -228,6 +228,10 @@ public class ScenarioService {
         }
         Set<String> aircraftCodes = new HashSet<>();
         scenarioAircraftRepository.deleteAll(scenarioAircraftRepository.findByScenario_Id(scenarioId));
+        // Flush deletions before reinserting rows with reused aircraft codes in the
+        // same scenario, otherwise the unique (scenario_id, code) constraint can
+        // fail before Hibernate sends the deletes.
+        scenarioAircraftRepository.flush();
         for (ScenarioAircraftDto aircraftUpdate : aircraftUpdates) {
             if (!aircraftCodes.add(aircraftUpdate.code())) {
                 throw new IllegalArgumentException("Duplicate aircraft code in scenario update: " + aircraftUpdate.code());
@@ -267,9 +271,13 @@ public class ScenarioService {
     }
 
     @Transactional
-    public GameSummaryDto createGameFromScenario(Long scenarioId, String gameName) {
+    public GameSummaryDto createGameFromScenario(Long scenarioId,
+                                                 String gameName,
+                                                 Integer aircraftCount,
+                                                 Map<String, Integer> missionTypeCounts,
+                                                 Integer maxRounds) {
         Scenario scenario = loadScenario(scenarioId);
-        return gameService.createGameFromScenario(scenario.getName(), scenario.getVersion(), gameName, null, null, null);
+        return gameService.createGameFromScenario(scenario, gameName, aircraftCount, missionTypeCounts, maxRounds);
     }
 
     @Transactional

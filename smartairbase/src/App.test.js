@@ -260,10 +260,52 @@ beforeEach(() => {
       });
     }
 
+    if (String(url).endsWith('/scenarios/1/create-game') && options.method === 'POST') {
+      const payload = JSON.parse(options.body);
+      if (payload.gameName === 'TAKEN_NAME') {
+        return Promise.resolve({
+          ok: false,
+          text: () => Promise.resolve(JSON.stringify({ message: 'The game name "TAKEN_NAME" is already in use. Choose a different name.' })),
+        });
+      }
+      currentGameName = payload.gameName || 'GAME_001';
+      return jsonResponse({
+        gameId: 11,
+        name: currentGameName,
+        scenarioName: 'SCN_STANDARD',
+        scenarioVersion: 'V7',
+        status: 'ACTIVE',
+        currentRound: 0,
+        roundPhase: null,
+        roundOpen: false,
+        canStartRound: true,
+        canCompleteRound: false,
+      });
+    }
+
+    if (String(url).endsWith('/scenarios/2/create-game') && options.method === 'POST') {
+      const payload = JSON.parse(options.body);
+      currentGameName = payload.gameName || 'GAME_001';
+      return jsonResponse({
+        gameId: 11,
+        name: currentGameName,
+        scenarioName: 'WINTER_OPS',
+        scenarioVersion: 'V7',
+        status: 'ACTIVE',
+        currentRound: 0,
+        roundPhase: null,
+        roundOpen: false,
+        canStartRound: true,
+        canCompleteRound: false,
+      });
+    }
+
     if (String(url).endsWith('/scenarios/3/create-game') && options.method === 'POST') {
+      const payload = JSON.parse(options.body);
+      currentGameName = payload.gameName || 'SCN_STANDARD_COPY_TEST';
       return jsonResponse({
         gameId: 31,
-        name: 'SCN_STANDARD_COPY_TEST',
+        name: currentGameName,
         scenarioName: 'SCN_STANDARD_COPY',
         scenarioVersion: 'V7',
         status: 'ACTIVE',
@@ -340,29 +382,6 @@ beforeEach(() => {
         return true;
       });
       return jsonResponse(filtered);
-    }
-
-    if (String(url).endsWith('/games') && options.method === 'POST') {
-      const payload = JSON.parse(options.body);
-      if (payload.gameName === 'TAKEN_NAME') {
-        return Promise.resolve({
-          ok: false,
-          text: () => Promise.resolve(JSON.stringify({ message: 'The game name "TAKEN_NAME" is already in use. Choose a different name.' })),
-        });
-      }
-      currentGameName = payload.gameName || 'GAME_001';
-      return jsonResponse({
-        gameId: 11,
-        name: currentGameName,
-        scenarioName: payload.scenarioName || 'SCN_STANDARD',
-        scenarioVersion: 'V7',
-        status: 'ACTIVE',
-        currentRound: 0,
-        roundPhase: null,
-        roundOpen: false,
-        canStartRound: true,
-        canCompleteRound: false,
-      });
     }
 
     if (String(url).endsWith('/games/11') && (!options.method || options.method === 'GET')) {
@@ -594,16 +613,16 @@ test('selected scenario in editor is used when creating a game in play mode', as
 
   await waitFor(() => {
     expect(global.fetch).toHaveBeenCalledWith(
-      'http://localhost:8080/api/games',
+      'http://localhost:8080/api/scenarios/2/create-game',
       expect.objectContaining({
         method: 'POST',
-        body: expect.stringContaining('"scenarioName":"WINTER_OPS"'),
+        body: expect.stringContaining('"maxRounds":1000'),
       })
     );
   });
 
-  const createGameCall = global.fetch.mock.calls.find(([url, options]) => url === 'http://localhost:8080/api/games' && options?.method === 'POST');
-  expect(createGameCall[1].body).toContain('"maxRounds":1000');
+  const createGameCall = global.fetch.mock.calls.find(([url, options]) => url === 'http://localhost:8080/api/scenarios/2/create-game' && options?.method === 'POST');
+  expect(createGameCall[1].body).toContain('"aircraftCount":1');
 });
 
 test('show scenario rules reflects the selected scenario data', async () => {
@@ -641,7 +660,7 @@ test('create game supports a custom game name', async () => {
 
   await waitFor(() => {
     expect(global.fetch).toHaveBeenCalledWith(
-      'http://localhost:8080/api/games',
+      'http://localhost:8080/api/scenarios/1/create-game',
       expect.objectContaining({
         method: 'POST',
         body: expect.stringContaining('"gameName":"My named game"'),
@@ -932,7 +951,7 @@ test('raw tool wrapper errors are shown as readable messages', async () => {
         diceRules: [],
       });
     }
-    if (String(url).endsWith('/games') && options.method === 'POST') {
+    if (String(url).endsWith('/scenarios/1/create-game') && options.method === 'POST') {
       return Promise.resolve({
         ok: false,
         text: () => Promise.resolve(JSON.stringify({

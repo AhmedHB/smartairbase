@@ -54,10 +54,23 @@ public class SmartAirBaseMcpClient {
     }
 
     public GameSummaryDTO createGameFromScenario(String scenarioId, CreateScenarioGameRequestDTO request) {
-        return toolExecutor.execute(SmartAirBaseTool.CREATE_GAME_FROM_SCENARIO, Map.of(
-                "scenarioId", scenarioId,
-                "gameName", request != null ? request.gameName() : null
-        ), GameSummaryDTO.class);
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("scenarioId", scenarioId);
+        if (request != null) {
+            if (request.gameName() != null) {
+                payload.put("gameName", request.gameName());
+            }
+            if (request.aircraftCount() != null) {
+                payload.put("aircraftCount", request.aircraftCount());
+            }
+            if (request.missionTypeCounts() != null) {
+                payload.put("missionTypeCounts", request.missionTypeCounts());
+            }
+            if (request.maxRounds() != null) {
+                payload.put("maxRounds", request.maxRounds());
+            }
+        }
+        return toolExecutor.execute(SmartAirBaseTool.CREATE_GAME_FROM_SCENARIO, payload, GameSummaryDTO.class);
     }
 
     public SimulationBatchDTO createSimulationBatch(CreateSimulationBatchRequestDTO request) {

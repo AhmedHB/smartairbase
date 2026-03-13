@@ -1116,14 +1116,23 @@ async function request(path, options = {}) {
   }
 
   async function createNewGame(loadingMessage, successPrefix, options = {}) {
+    if (!selectedScenarioId) {
+      setStatus({ kind: 'error', message: 'Select a scenario before creating a game.' });
+      return;
+    }
     setStatus({ kind: 'loading', message: loadingMessage });
     try {
-      const data = await request('/games', {
+      const data = await request(`/scenarios/${selectedScenarioId}/create-game`, {
         method: 'POST',
         body: JSON.stringify({
-          ...createForm,
-          maxRounds: Math.max(1, Number(createForm.maxRounds || 1000)),
           gameName: options.gameName ?? null,
+          aircraftCount: Math.max(1, Number(createForm.aircraftCount || 1)),
+          missionTypeCounts: {
+            M1: Math.max(0, Number(createForm.missionTypeCounts?.M1 || 0)),
+            M2: Math.max(0, Number(createForm.missionTypeCounts?.M2 || 0)),
+            M3: Math.max(0, Number(createForm.missionTypeCounts?.M3 || 0)),
+          },
+          maxRounds: Math.max(1, Number(createForm.maxRounds || 1000)),
         }),
       });
       await finalizeCreatedGame(data, successPrefix);

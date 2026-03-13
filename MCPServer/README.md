@@ -35,6 +35,7 @@ PostgreSQL
 ### Game
 
 - `create_game(scenarioName, version, gameName, aircraftCount, missionTypeCounts, maxRounds)`
+- `create_game_from_scenario(scenarioId, gameName, aircraftCount, missionTypeCounts, maxRounds)`
 - `get_game_state(gameId)`
 - `abort_game(gameId)`
 - `list_analysis_feed(gameId)`
@@ -78,6 +79,12 @@ This allows later statistics to distinguish exact roll-selection behavior per th
 ## Dynamic Game Creation
 
 Games are built from the seeded `SCN_STANDARD` scenario template.
+
+For generic creation flows, `create_game(...)` still resolves a scenario by name/version.
+For editable custom scenarios, the UI now uses `create_game_from_scenario(...)` so the exact selected `scenarioId` is materialized into runtime game tables without re-looking it up by name.
+This is the path that preserves scenario-editor changes such as base capacities, start inventories, delivery amounts, and the edited scenario aircraft list.
+
+When a scenario update replaces the aircraft rows for one scenario, the service flushes the deletes before inserting the replacement rows. That keeps reused aircraft codes such as `F1` valid under the unique `(scenario_id, code)` constraint.
 
 At creation time the current implementation can override:
 

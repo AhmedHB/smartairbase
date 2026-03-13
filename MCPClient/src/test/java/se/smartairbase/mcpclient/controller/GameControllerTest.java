@@ -216,7 +216,7 @@ class GameControllerTest {
 
     @Test
     void createGameFromScenarioDelegatesToClient() throws Exception {
-        CreateScenarioGameRequestDTO request = new CreateScenarioGameRequestDTO("Scenario test");
+        CreateScenarioGameRequestDTO request = new CreateScenarioGameRequestDTO("Scenario test", 4, java.util.Map.of("M1", 2), 250);
         when(mcpClient.createGameFromScenario("1", request))
                 .thenReturn(new GameSummaryDTO(21L, "Scenario test", "SCN_STANDARD", "V7", "ACTIVE", 0, null, false, true, false, 1000));
 
