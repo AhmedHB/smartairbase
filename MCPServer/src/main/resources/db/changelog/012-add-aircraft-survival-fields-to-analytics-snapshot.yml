@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: 012-001-add-aircraft-survival-fields-to-analytics-snapshot
+      author: openai
+      changes:
+        - addColumn:
+            tableName: game_analytics_snapshot
+            columns:
+              - column:
+                  name: surviving_aircraft_count
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: destroyed_aircraft_count
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false

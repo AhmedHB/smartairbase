@@ -28,8 +28,38 @@ databaseChangeLog:
                   name: description
                   type: TEXT
               - column:
+                  name: source_type
+                  type: VARCHAR(20)
+                  defaultValue: SYSTEM
+                  constraints:
+                    nullable: false
+              - column:
+                  name: editable
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deletable
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: published
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
                   name: created_at
                   type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
                   constraints:
                     nullable: false
 
@@ -37,6 +67,11 @@ databaseChangeLog:
             tableName: scenario
             columnNames: name, version
             constraintName: uk_scenario_name_version
+        - sql:
+            sql: |
+              ALTER TABLE scenario
+              ADD CONSTRAINT chk_scenario_source_type
+              CHECK (source_type IN ('SYSTEM', 'USER'));
 
   - changeSet:
       id: 001-002-create-aircraft-type
@@ -482,6 +517,21 @@ databaseChangeLog:
                   type: VARCHAR(20)
                   constraints:
                     nullable: false
+              - column:
+                  name: fuel_start
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: weapons_start
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: flight_hours_start
+                  type: INTEGER
+                  constraints:
+                    nullable: false
 
         - addUniqueConstraint:
             tableName: scenario_aircraft
@@ -501,6 +551,16 @@ databaseChangeLog:
             referencedTableName: aircraft_type
             referencedColumnNames: aircraft_type_id
             constraintName: fk_scenario_aircraft_aircraft_type
+        - sql:
+            sql: |
+              ALTER TABLE scenario_aircraft
+              ADD CONSTRAINT chk_scenario_aircraft_fuel_start CHECK (fuel_start >= 0);
+
+              ALTER TABLE scenario_aircraft
+              ADD CONSTRAINT chk_scenario_aircraft_weapons_start CHECK (weapons_start >= 0);
+
+              ALTER TABLE scenario_aircraft
+              ADD CONSTRAINT chk_scenario_aircraft_flight_hours_start CHECK (flight_hours_start >= 0);
 
   - changeSet:
       id: 001-010-create-scenario-mission
@@ -537,6 +597,26 @@ databaseChangeLog:
                   type: INTEGER
                   constraints:
                     nullable: false
+              - column:
+                  name: default_count
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fuel_cost
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: weapon_cost
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: flight_time_cost
+                  type: INTEGER
+                  constraints:
+                    nullable: false
 
         - addUniqueConstraint:
             tableName: scenario_mission
@@ -561,6 +641,18 @@ databaseChangeLog:
             sql: |
               ALTER TABLE scenario_mission
               ADD CONSTRAINT chk_scenario_mission_sort_order CHECK (sort_order >= 0);
+
+              ALTER TABLE scenario_mission
+              ADD CONSTRAINT chk_scenario_mission_default_count CHECK (default_count >= 0);
+
+              ALTER TABLE scenario_mission
+              ADD CONSTRAINT chk_scenario_mission_fuel_cost CHECK (fuel_cost >= 0);
+
+              ALTER TABLE scenario_mission
+              ADD CONSTRAINT chk_scenario_mission_weapon_cost CHECK (weapon_cost >= 0);
+
+              ALTER TABLE scenario_mission
+              ADD CONSTRAINT chk_scenario_mission_flight_time_cost CHECK (flight_time_cost >= 0);
 
   - changeSet:
       id: 001-011-create-game
@@ -596,6 +688,15 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: dice_selection_profile
+                  type: VARCHAR(40)
+              - column:
+                  name: max_rounds
+                  type: INTEGER
+                  defaultValueNumeric: 1000
+                  constraints:
+                    nullable: false
+              - column:
                   name: started_at
                   type: TIMESTAMP
               - column:
@@ -613,6 +714,12 @@ databaseChangeLog:
             sql: |
               ALTER TABLE game
               ADD CONSTRAINT chk_game_current_round CHECK (current_round >= 0);
+
+              ALTER TABLE game
+              ADD CONSTRAINT chk_game_max_rounds CHECK (max_rounds >= 1);
+
+              CREATE UNIQUE INDEX IF NOT EXISTS uk_game_name_normalized
+              ON game (lower(btrim(name)));
 
   - changeSet:
       id: 001-012-create-game-base
@@ -746,6 +853,21 @@ databaseChangeLog:
                   type: VARCHAR(30)
                   constraints:
                     nullable: false
+              - column:
+                  name: fuel_capacity
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: weapons_capacity
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: flight_hours_capacity
+                  type: INTEGER
+                  constraints:
+                    nullable: false
 
         - addUniqueConstraint:
             tableName: game_aircraft
@@ -765,6 +887,16 @@ databaseChangeLog:
             referencedTableName: aircraft_type
             referencedColumnNames: aircraft_type_id
             constraintName: fk_game_aircraft_aircraft_type
+        - sql:
+            sql: |
+              ALTER TABLE game_aircraft
+              ADD CONSTRAINT chk_game_aircraft_fuel_capacity CHECK (fuel_capacity >= 0);
+
+              ALTER TABLE game_aircraft
+              ADD CONSTRAINT chk_game_aircraft_weapons_capacity CHECK (weapons_capacity >= 0);
+
+              ALTER TABLE game_aircraft
+              ADD CONSTRAINT chk_game_aircraft_flight_hours_capacity CHECK (flight_hours_capacity >= 0);
 
   - changeSet:
       id: 001-014-create-game-mission
@@ -806,6 +938,21 @@ databaseChangeLog:
                   type: INTEGER
                   constraints:
                     nullable: false
+              - column:
+                  name: fuel_cost
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: weapon_cost
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: flight_time_cost
+                  type: INTEGER
+                  constraints:
+                    nullable: false
 
         - addUniqueConstraint:
             tableName: game_mission
@@ -830,6 +977,15 @@ databaseChangeLog:
             sql: |
               ALTER TABLE game_mission
               ADD CONSTRAINT chk_game_mission_sort_order CHECK (sort_order >= 0);
+
+              ALTER TABLE game_mission
+              ADD CONSTRAINT chk_game_mission_fuel_cost CHECK (fuel_cost >= 0);
+
+              ALTER TABLE game_mission
+              ADD CONSTRAINT chk_game_mission_weapon_cost CHECK (weapon_cost >= 0);
+
+              ALTER TABLE game_mission
+              ADD CONSTRAINT chk_game_mission_flight_time_cost CHECK (flight_time_cost >= 0);
 
   - changeSet:
       id: 001-015-create-base-state
@@ -1091,6 +1247,12 @@ databaseChangeLog:
                   type: TIMESTAMP
                   constraints:
                     nullable: false
+              - column:
+                  name: dice_selection_mode
+                  type: VARCHAR(40)
+                  defaultValue: MANUAL_DIRECT_SELECTION
+                  constraints:
+                    nullable: false
 
         - addUniqueConstraint:
             tableName: dice_roll
@@ -1292,6 +1454,81 @@ databaseChangeLog:
       id: 001-021-create-indexes
       author: openai
       changes:
+        - createTable:
+            tableName: game_analysis_entry
+            columns:
+              - column:
+                  name: game_analysis_entry_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_game_analysis_entry
+                    nullable: false
+              - column:
+                  name: game_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: round_number
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: phase
+                  type: VARCHAR(40)
+              - column:
+                  name: role_name
+                  type: VARCHAR(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source
+                  type: VARCHAR(40)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: summary
+                  type: VARCHAR(1000)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: details
+                  type: VARCHAR(2000)
+              - column:
+                  name: related_aircraft
+                  type: VARCHAR(1000)
+              - column:
+                  name: related_bases
+                  type: VARCHAR(1000)
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: game_analysis_entry
+            baseColumnNames: game_id
+            referencedTableName: game
+            referencedColumnNames: game_id
+            constraintName: fk_game_analysis_entry_game
+
+        - addUniqueConstraint:
+            tableName: game_analysis_entry
+            columnNames: game_id, round_number, role_name
+            constraintName: uk_game_analysis_entry_game_round_role
+
+        - createIndex:
+            tableName: game_analysis_entry
+            indexName: idx_game_analysis_entry_game_created
+            columns:
+              - column:
+                  name: game_id
+              - column:
+                  name: created_at
+
         - createIndex:
             tableName: game_base
             indexName: idx_game_base_game_id

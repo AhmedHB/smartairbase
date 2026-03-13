@@ -6,6 +6,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import se.smartairbase.mcpserver.domain.game.DiceRoll;
 import se.smartairbase.mcpserver.domain.game.Game;
+import se.smartairbase.mcpserver.domain.game.GameAnalyticsSnapshot;
 import se.smartairbase.mcpserver.domain.game.GameRound;
 import se.smartairbase.mcpserver.mcp.dto.ActionResultDto;
 import se.smartairbase.mcpserver.mcp.dto.AircraftStateDto;
@@ -15,6 +16,7 @@ import se.smartairbase.mcpserver.mcp.dto.LandingOptionsDto;
 import se.smartairbase.mcpserver.mcp.dto.MissionStateDto;
 import se.smartairbase.mcpserver.mcp.dto.RoundExecutionResultDto;
 import se.smartairbase.mcpserver.repository.DiceRollRepository;
+import se.smartairbase.mcpserver.repository.GameAnalyticsSnapshotRepository;
 import se.smartairbase.mcpserver.repository.GameRoundRepository;
 import se.smartairbase.mcpserver.repository.GameRepository;
 
@@ -44,6 +46,9 @@ class RoundServiceFlowTests {
 
     @Autowired
     private DiceRollRepository diceRollRepository;
+
+    @Autowired
+    private GameAnalyticsSnapshotRepository gameAnalyticsSnapshotRepository;
 
     @Test
     void startRoundOpensPlanningPhase() {
@@ -221,6 +226,60 @@ class RoundServiceFlowTests {
         assertThatThrownBy(() -> gameService.createGameFromScenario("SCN_STANDARD", "V7", "my_game"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("The game name \"my_game\" is already in use. Choose a different name.");
+    }
+
+    @Test
+    void gameLosesWhenConfiguredMaxRoundsIsReachedWithoutVictory() {
+        Long gameId = gameService.createGameFromScenario("SCN_STANDARD", "V7", null, 3, java.util.Map.of("M1", 1, "M2", 1, "M3", 1), 1).gameId();
+        roundService.startRound(gameId);
+        roundService.assignMission(gameId, "F1", "M1-1");
+        roundService.resolveMissions(gameId);
+        roundService.recordDiceRoll(gameId, "F1", 6, "MANUAL_DIRECT_SELECTION");
+        roundService.landAircraft(gameId, "F1", "BASE_A");
+
+        RoundExecutionResultDto result = roundService.completeRound(gameId);
+        GameStateDto state = gameQueryService.getGameState(gameId);
+
+        assertThat(result.gameStatus()).isEqualTo("LOST");
+        assertThat(state.game().status()).isEqualTo("LOST");
+        assertThat(gameRepository.findById(gameId).orElseThrow().getMaxRounds()).isEqualTo(1);
+    }
+
+    @Test
+    void winningGameCreatesAnalyticsSnapshotWithSetupFeatures() {
+        Long gameId = gameService.createGameFromScenario("SCN_STANDARD", "V7").gameId();
+        roundService.startRound(gameId);
+        roundService.assignMission(gameId, "F1", "M1-1");
+        roundService.assignMission(gameId, "F2", "M2-1");
+        roundService.assignMission(gameId, "F3", "M3-1");
+        roundService.resolveMissions(gameId);
+        roundService.recordDiceRoll(gameId, "F1", 6, "AUTO_RANDOM");
+        roundService.recordDiceRoll(gameId, "F2", 6, "AUTO_RANDOM");
+        roundService.recordDiceRoll(gameId, "F3", 6, "AUTO_RANDOM");
+        roundService.landAircraft(gameId, "F1", "BASE_A");
+        roundService.landAircraft(gameId, "F2", "BASE_A");
+        roundService.landAircraft(gameId, "F3", "BASE_B");
+        roundService.completeRound(gameId);
+
+        GameAnalyticsSnapshot snapshot = gameAnalyticsSnapshotRepository.findByGame_Id(gameId).orElseThrow();
+
+        assertThat(snapshot.getScenarioName()).isEqualTo("SCN_STANDARD");
+        assertThat(snapshot.getGameStatus()).isEqualTo("WON");
+        assertThat(snapshot.isWin()).isTrue();
+        assertThat(snapshot.getRoundsToOutcome()).isEqualTo(1);
+        assertThat(snapshot.getDiceSelectionProfile()).isEqualTo("AUTO_RANDOM");
+        assertThat(snapshot.getAircraftCount()).isEqualTo(3);
+        assertThat(snapshot.getSurvivingAircraftCount()).isEqualTo(3);
+        assertThat(snapshot.getDestroyedAircraftCount()).isEqualTo(0);
+        assertThat(snapshot.getMissionCount()).isEqualTo(3);
+        assertThat(snapshot.getCompletedMissionCount()).isEqualTo(3);
+        assertThat(snapshot.getM1Count()).isEqualTo(1);
+        assertThat(snapshot.getM2Count()).isEqualTo(1);
+        assertThat(snapshot.getM3Count()).isEqualTo(1);
+        assertThat(snapshot.getTotalParkingCapacity()).isGreaterThan(0);
+        assertThat(snapshot.getTotalMaintenanceCapacity()).isGreaterThan(0);
+        assertThat(snapshot.getTotalFuelStart()).isGreaterThan(0);
+        assertThat(snapshot.getFuelDeliveryAmountTotal()).isGreaterThanOrEqualTo(0);
     }
 
     private AircraftStateDto aircraft(GameStateDto state, String code) {

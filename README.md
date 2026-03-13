@@ -11,6 +11,13 @@ The repository contains three applications:
 - `smartairbase`
   A React frontend that talks to `MCPClient`.
 
+The repository now supports two runtime styles:
+
+- `Play`
+  Run and visualize one live game in the browser.
+- `Simulator`
+  Queue and execute many non-visualized runs of the same setup for later analysis.
+
 For dice-related analytics the system now distinguishes:
 
 - `diceSelectionMode` on each saved dice roll
@@ -138,6 +145,8 @@ UI flow:
 
 - automated mode keeps a one-click round start and then auto-runs dice and landings
 - manual mode is split into `Next turn` and `Resolve missions` so the player can inspect the `On mission` state before dice handling starts
+- both `Play` and `Simulator` can set a `maxRounds` upper limit for a run
+- if a play session reaches that limit without a win, it ends as a loss caused by taking too many rounds
 
 Dice strategy options in the frontend:
 
@@ -237,6 +246,47 @@ Implemented outcome rules:
 - `LOST` when no operational aircraft remain
 
 Destroyed aircraft do not block victory by themselves as long as all missions are completed and all surviving aircraft have been recovered to a stable end state.
+
+### Simulator
+
+The `Simulator` tab can launch a batch of ordinary games without visualizing each run.
+
+Simulator inputs:
+
+- scenario
+- batch name
+- number of runs
+- aircraft count
+- mission mix per mission type
+- dice strategy
+- max rounds per run
+
+Runtime behavior:
+
+- each run is still persisted as a normal `game`
+- each game name is derived from the batch name with a sequence suffix
+- `Play` and `Scenario editor` are locked while a batch is running
+- analysis narration is not used during simulator execution
+
+### Analytics Snapshot
+
+Each finished game, whether started from `Play` or `Simulator`, writes one row to `game_analytics_snapshot`.
+
+That snapshot is intended as a stable dataset row for later statistics and machine-learning work. It includes:
+
+- scenario name
+- win/loss status
+- rounds to outcome
+- dice selection profile
+- aircraft count
+- surviving aircraft count
+- destroyed aircraft count
+- total missions
+- completed mission count
+- mission mix
+- aggregate base capacities
+- aggregate resource start/max values
+- aggregate delivery amounts
 
 ### Example Play
 

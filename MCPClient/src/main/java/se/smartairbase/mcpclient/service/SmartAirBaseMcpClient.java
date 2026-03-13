@@ -10,6 +10,7 @@ import se.smartairbase.mcpclient.domain.SmartAirBaseTool;
 import se.smartairbase.mcpclient.controller.dto.AssignMissionRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.CreateScenarioGameRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.CreateGameRequestDTO;
+import se.smartairbase.mcpclient.controller.dto.CreateSimulationBatchRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.DiceRollRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.DuplicateScenarioRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.BaseStateDTO;
@@ -20,6 +21,7 @@ import se.smartairbase.mcpclient.controller.dto.LandingOptionsDTO;
 import se.smartairbase.mcpclient.controller.dto.RoundExecutionResultDTO;
 import se.smartairbase.mcpclient.controller.dto.ScenarioDefinitionDTO;
 import se.smartairbase.mcpclient.controller.dto.ScenarioSummaryDTO;
+import se.smartairbase.mcpclient.controller.dto.SimulationBatchDTO;
 import se.smartairbase.mcpclient.controller.dto.UpdateScenarioRequestDTO;
 
 import java.util.Map;
@@ -54,6 +56,18 @@ public class SmartAirBaseMcpClient {
                 "scenarioId", scenarioId,
                 "gameName", request != null ? request.gameName() : null
         ), GameSummaryDTO.class);
+    }
+
+    public SimulationBatchDTO createSimulationBatch(CreateSimulationBatchRequestDTO request) {
+        return toolExecutor.execute(SmartAirBaseTool.CREATE_SIMULATION_BATCH, request, SimulationBatchDTO.class);
+    }
+
+    public SimulationBatchDTO getSimulationBatch(String simulationBatchId) {
+        return toolExecutor.execute(
+                SmartAirBaseTool.GET_SIMULATION_BATCH,
+                Map.of("simulationBatchId", simulationBatchId),
+                SimulationBatchDTO.class
+        );
     }
 
     public List<ScenarioSummaryDTO> listScenarios() {

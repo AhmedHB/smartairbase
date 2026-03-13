@@ -24,7 +24,9 @@ import se.smartairbase.mcpclient.service.AutoPlayService;
 import se.smartairbase.mcpclient.service.GameRulesReferenceService;
 import se.smartairbase.mcpclient.service.SmartAirBaseMcpClient;
 import se.smartairbase.mcpclient.controller.dto.CreateGameRequestDTO;
+import se.smartairbase.mcpclient.controller.dto.CreateSimulationBatchRequestDTO;
 import se.smartairbase.mcpclient.service.TestStateFactory;
+import se.smartairbase.mcpclient.controller.dto.SimulationBatchDTO;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -63,8 +65,8 @@ class GameControllerTest {
 
     @Test
     void createGameDelegatesToClient() throws Exception {
-        GameSummaryDTO response = new GameSummaryDTO(11L, "smartairbase-v7", "smartairbase", "7", "ACTIVE", 0, null, false, true, false);
-        CreateGameRequestDTO request = new CreateGameRequestDTO("smartairbase", "7", "GAME_001", null, null);
+        GameSummaryDTO response = new GameSummaryDTO(11L, "smartairbase-v7", "smartairbase", "7", "ACTIVE", 0, null, false, true, false, 1000);
+        CreateGameRequestDTO request = new CreateGameRequestDTO("smartairbase", "7", "GAME_001", null, null, 1000);
         when(mcpClient.createGame(eq(request))).thenReturn(response);
 
         mockMvc.perform(post("/api/games")
@@ -73,6 +75,65 @@ class GameControllerTest {
                 .andExpect(status().isOk());
 
         verify(mcpClient).createGame(eq(request));
+    }
+
+    @Test
+    void createSimulationBatchDelegatesToClient() throws Exception {
+        CreateSimulationBatchRequestDTO request = new CreateSimulationBatchRequestDTO(
+                "SIM_BATCH",
+                "SCN_STANDARD",
+                3,
+                java.util.Map.of("M1", 1, "M2", 1, "M3", 1),
+                "RANDOM",
+                10,
+                1000
+        );
+        when(mcpClient.createSimulationBatch(request)).thenReturn(new SimulationBatchDTO(
+                41L, "SIM_BATCH", "SCN_STANDARD", 3, 1, 1, 1, "RANDOM", 1000, 10, 0, 0, 0, 0, "PENDING", null
+        ));
+
+        mockMvc.perform(post("/api/simulations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.simulationBatchId").value(41))
+                .andExpect(jsonPath("$.name").value("SIM_BATCH"));
+
+        verify(mcpClient).createSimulationBatch(request);
+    }
+
+    @Test
+    void createGameRejectsNonPositiveMaxRounds() throws Exception {
+        mockMvc.perform(post("/api/games")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"scenarioName":"SCN_STANDARD","version":"7","maxRounds":0}
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void createSimulationBatchRejectsNonPositiveMaxRounds() throws Exception {
+        mockMvc.perform(post("/api/simulations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"batchName":"SIM_BATCH","scenarioName":"SCN_STANDARD","aircraftCount":3,"runCount":10,"maxRounds":0}
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getSimulationBatchDelegatesToClient() throws Exception {
+        when(mcpClient.getSimulationBatch("41")).thenReturn(new SimulationBatchDTO(
+                41L, "SIM_BATCH", "SCN_STANDARD", 3, 1, 1, 1, "RANDOM", 1000, 10, 6, 0, 4, 2, "RUNNING", "SIM_BATCH_007"
+        ));
+
+        mockMvc.perform(get("/api/simulations/41"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("RUNNING"))
+                .andExpect(jsonPath("$.currentGameName").value("SIM_BATCH_007"));
+
+        verify(mcpClient).getSimulationBatch("41");
     }
 
     @Test
@@ -136,7 +197,7 @@ class GameControllerTest {
     void createGameFromScenarioDelegatesToClient() throws Exception {
         CreateScenarioGameRequestDTO request = new CreateScenarioGameRequestDTO("Scenario test");
         when(mcpClient.createGameFromScenario("1", request))
-                .thenReturn(new GameSummaryDTO(21L, "Scenario test", "SCN_STANDARD", "V7", "ACTIVE", 0, null, false, true, false));
+                .thenReturn(new GameSummaryDTO(21L, "Scenario test", "SCN_STANDARD", "V7", "ACTIVE", 0, null, false, true, false, 1000));
 
         mockMvc.perform(post("/api/scenarios/1/create-game")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -204,7 +265,7 @@ class GameControllerTest {
 
     @Test
     void createGameReturnsBadRequestWhenNameAlreadyExists() throws Exception {
-        CreateGameRequestDTO request = new CreateGameRequestDTO("smartairbase", "7", "GAME_001", null, null);
+        CreateGameRequestDTO request = new CreateGameRequestDTO("smartairbase", "7", "GAME_001", null, null, 1000);
         when(mcpClient.createGame(eq(request))).thenThrow(new IllegalArgumentException("The game name \"GAME_001\" is already in use. Choose a different name."));
 
         mockMvc.perform(post("/api/games")

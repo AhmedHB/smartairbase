@@ -99,6 +99,50 @@
   font-size: 1rem;
 }
 
+.metric-card-rich-value {
+  font-size: 0.95rem;
+}
+
+.metric-card-stack {
+  color: #20304a;
+}
+
+.metric-card-stack div + div {
+  margin-top: 4px;
+}
+
+.simulation-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.simulation-running-indicator {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 8px;
+  border-radius: 999px;
+  background: #2f7d4f;
+  box-shadow: 0 0 0 rgba(47, 125, 79, 0.35);
+  animation: simulation-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes simulation-pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(47, 125, 79, 0.35);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 8px rgba(47, 125, 79, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(47, 125, 79, 0);
+  }
+}
+
 .mission-section {
   margin-top: 16px;
 }
@@ -115,11 +159,12 @@
 
 .mode-tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding: 6px;
+  grid-template-columns: repeat(3, auto);
+  gap: 4px;
+  padding: 4px;
   border-radius: 12px;
   background: rgba(84, 97, 123, 0.08);
+  justify-content: start;
 }
 
 .mode-tab {
@@ -127,6 +172,9 @@
   color: #4b5668;
   border: 1px solid transparent;
   box-shadow: none;
+  padding: 8px 12px;
+  font-size: 0.92rem;
+  white-space: nowrap;
 }
 
 .mode-tab:hover:not(:disabled) {
@@ -153,6 +201,14 @@
   margin-top: 16px;
   display: grid;
   gap: 10px;
+}
+
+.workspace-intro {
+  margin: 0;
+  max-width: 72ch;
+  color: #5f6878;
+  font-size: 0.94rem;
+  line-height: 1.45;
 }
 
 .scenario-list {
@@ -767,6 +823,14 @@ button:disabled {
   padding-left: 18px;
 }
 
+.field-warning-copy {
+  display: block;
+  margin-top: 6px;
+  color: #b23a2a;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
 .compact-list li + li {
   margin-top: 6px;
 }
@@ -897,6 +961,7 @@ button:disabled {
   }
 
   .status-stack,
+  .simulation-metrics-grid,
   .slot-grid,
   .button-row {
     grid-template-columns: 1fr;

@@ -67,18 +67,18 @@ management:
 
 logging:
   level:
-    se.smartairbase.mcpclient.logging: DEBUG
+    se.smartairbase.mcpclient.logging: info
 
-    org.springframework.ai: DEBUG
-    org.springframework.ai.chat.observation: DEBUG
-    org.springframework.ai.chat.client.observation: DEBUG
+    org.springframework.ai: info
+    org.springframework.ai.chat.observation: info
+    org.springframework.ai.chat.client.observation: info
 
     org.springframework.web.client: INFO
     org.springframework.web.reactive.function.client: INFO
     reactor.netty.http.client: INFO
 
-    io.micrometer.observation: DEBUG
-    io.micrometer.tracing: DEBUG
+    io.micrometer.observation: info
+    io.micrometer.tracing: info
 
   pattern:
     console: "%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"

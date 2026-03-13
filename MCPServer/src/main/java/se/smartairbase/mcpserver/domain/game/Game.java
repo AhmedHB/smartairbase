@@ -36,6 +36,9 @@ public class Game {
     @Column(name = "current_round", nullable = false)
     private Integer currentRound = 0;
 
+    @Column(name = "max_rounds", nullable = false)
+    private Integer maxRounds = 1000;
+
     @Column(name = "started_at")
     private LocalDateTime startedAt;
 
@@ -53,9 +56,10 @@ public class Game {
     protected Game() {
     }
 
-    public Game(Scenario scenario, String name) {
+    public Game(Scenario scenario, String name, Integer maxRounds) {
         this.scenario = scenario;
         this.name = name;
+        this.maxRounds = maxRounds == null ? 1000 : Math.max(1, maxRounds);
     }
 
     public void markActive(LocalDateTime now) {
@@ -94,6 +98,7 @@ public class Game {
     public String getName() { return name; }
     public GameStatus getStatus() { return status; }
     public Integer getCurrentRound() { return currentRound; }
+    public Integer getMaxRounds() { return maxRounds; }
     public LocalDateTime getStartedAt() { return startedAt; }
     public LocalDateTime getEndedAt() { return endedAt; }
     public DiceSelectionProfile getDiceSelectionProfile() { return diceSelectionProfile; }

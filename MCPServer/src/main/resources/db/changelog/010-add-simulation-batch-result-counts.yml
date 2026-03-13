@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: 010-001-add-simulation-batch-result-counts
+      author: openai
+      changes:
+        - addColumn:
+            tableName: simulation_batch
+            columns:
+              - column:
+                  name: won_runs
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: lost_runs
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false

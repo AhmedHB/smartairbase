@@ -1,8 +1,26 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { within } from '@testing-library/react';
 import App, { automatedDiceSelectionMode, manualDiceSelectionMode } from './App';
 
 beforeEach(() => {
   let currentGameName = 'test';
+  let simulationBatchStatus = {
+    simulationBatchId: 41,
+    name: 'SIM_BATCH',
+    scenarioName: 'SCN_STANDARD',
+    aircraftCount: 3,
+    m1Count: 1,
+    m2Count: 1,
+    m3Count: 1,
+    diceStrategy: 'RANDOM',
+    requestedRuns: 1,
+    completedRuns: 1,
+    failedRuns: 0,
+    wonRuns: 1,
+    lostRuns: 0,
+    status: 'COMPLETED',
+    currentGameName: null,
+  };
   let scenarios = [
     {
       scenarioId: 1,
@@ -215,6 +233,41 @@ beforeEach(() => {
         canStartRound: true,
         canCompleteRound: false,
       });
+    }
+
+    if (String(url).endsWith('/simulations') && options.method === 'POST') {
+      const payload = JSON.parse(options.body);
+      simulationBatchStatus = {
+        simulationBatchId: 41,
+        name: payload.batchName,
+        scenarioName: payload.scenarioName || 'SCN_STANDARD',
+        aircraftCount: payload.aircraftCount || 3,
+        m1Count: payload.missionTypeCounts?.M1 || 0,
+        m2Count: payload.missionTypeCounts?.M2 || 0,
+        m3Count: payload.missionTypeCounts?.M3 || 0,
+        diceStrategy: payload.diceStrategy || 'RANDOM',
+        requestedRuns: payload.runCount || 1,
+        completedRuns: 0,
+        failedRuns: 0,
+        wonRuns: 0,
+        lostRuns: 0,
+        status: 'PENDING',
+        currentGameName: null,
+      };
+      return jsonResponse(simulationBatchStatus);
+    }
+
+    if (String(url).endsWith('/simulations/41') && (!options.method || options.method === 'GET')) {
+      simulationBatchStatus = {
+        ...simulationBatchStatus,
+        completedRuns: simulationBatchStatus.requestedRuns,
+        failedRuns: 0,
+        wonRuns: simulationBatchStatus.requestedRuns,
+        lostRuns: 0,
+        status: 'COMPLETED',
+        currentGameName: null,
+      };
+      return jsonResponse(simulationBatchStatus);
     }
 
     if (String(url).endsWith('/games') && options.method === 'POST') {
@@ -476,6 +529,9 @@ test('selected scenario in editor is used when creating a game in play mode', as
       })
     );
   });
+
+  const createGameCall = global.fetch.mock.calls.find(([url, options]) => url === 'http://localhost:8080/api/games' && options?.method === 'POST');
+  expect(createGameCall[1].body).toContain('"maxRounds":1000');
 });
 
 test('show scenario rules reflects the selected scenario data', async () => {
@@ -573,7 +629,9 @@ test('scenario editor tab is disabled while an active game is running', async ()
   });
 
   const scenarioEditorTab = screen.getByRole('tab', { name: 'Scenario editor' });
+  const simulatorTab = screen.getByRole('tab', { name: 'Simulator' });
   expect(scenarioEditorTab).not.toBeDisabled();
+  expect(simulatorTab).not.toBeDisabled();
 
   fireEvent.click(screen.getByText('Create game'));
   fireEvent.click(screen.getByText('Use default name'));
@@ -583,7 +641,86 @@ test('scenario editor tab is disabled while an active game is running', async ()
   });
 
   expect(scenarioEditorTab).toBeDisabled();
+  expect(simulatorTab).toBeDisabled();
   expect(screen.queryByText('Scenario library')).not.toBeInTheDocument();
+});
+
+test('simulator locks play and scenario editor while a batch is running', async () => {
+  render(<App />);
+
+  await waitFor(() => {
+    expect(global.fetch).toHaveBeenCalled();
+  });
+
+  const originalFetch = global.fetch;
+  let resolveStatus;
+  const delayedStatus = new Promise((resolve) => {
+    resolveStatus = resolve;
+  });
+  global.fetch = jest.fn((url, options = {}) => {
+    if (
+      String(url) === 'http://localhost:8080/api/simulations/41'
+      && (!options?.method || options?.method === 'GET')
+    ) {
+      return delayedStatus;
+    }
+    return originalFetch(url, options);
+  });
+
+  fireEvent.click(screen.getByText('Simulator'));
+  const simulatorForm = screen.getByText('Start simulation').closest('form');
+  expect(simulatorForm).toBeTruthy();
+  const simulatorInputs = simulatorForm.querySelectorAll('input');
+  fireEvent.change(simulatorInputs[0], { target: { value: 'batch' } });
+  fireEvent.change(simulatorInputs[1], { target: { value: '1' } });
+  fireEvent.click(screen.getByText('Start simulation'));
+
+  await waitFor(() => {
+    expect(screen.getByRole('tab', { name: 'Play' })).toBeDisabled();
+    expect(screen.getByRole('tab', { name: 'Scenario editor' })).toBeDisabled();
+  });
+
+  resolveStatus(jsonResponse({
+    simulationBatchId: 41,
+    name: 'BATCH',
+    scenarioName: 'SCN_STANDARD',
+    aircraftCount: 3,
+    m1Count: 1,
+    m2Count: 1,
+    m3Count: 1,
+    diceStrategy: 'RANDOM',
+    maxRounds: 1000,
+    requestedRuns: 1,
+    completedRuns: 1,
+    failedRuns: 0,
+    wonRuns: 1,
+    lostRuns: 0,
+    status: 'COMPLETED',
+    currentGameName: null,
+  }));
+
+  await waitFor(() => {
+    expect(screen.getByText('Simulation batch completed. 1/1 games saved.')).toBeInTheDocument();
+  });
+
+  const resultsPanel = screen.getByText('Simulation results').closest('section');
+  expect(resultsPanel).toBeTruthy();
+  const results = within(resultsPanel);
+  expect(results.getByText('Scenario')).toBeInTheDocument();
+  expect(results.getByText('SCN_STANDARD')).toBeInTheDocument();
+  expect(results.getByText('Won')).toBeInTheDocument();
+  expect(results.getByText('Lost')).toBeInTheDocument();
+  expect(results.getByText('Failed')).toBeInTheDocument();
+
+  const simulatorCreateCall = global.fetch.mock.calls.find(([url, options]) =>
+    String(url) === 'http://localhost:8080/api/simulations'
+      && options?.method === 'POST'
+      && String(options?.body || '').includes('"batchName":"BATCH"')
+  );
+  expect(simulatorCreateCall).toBeTruthy();
+  expect(String(simulatorCreateCall[1]?.body || '')).toContain('"maxRounds":1000');
+  expect(screen.getByRole('tab', { name: 'Play' })).not.toBeDisabled();
+  expect(screen.getByRole('tab', { name: 'Scenario editor' })).not.toBeDisabled();
 });
 
 test('custom game name must be unique', async () => {

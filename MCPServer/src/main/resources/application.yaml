@@ -41,9 +41,9 @@ server:
 
 logging:
   level:
-    org.hibernate.SQL: debug
-    org.hibernate.tool.schema: debug
-    org.springframework.jdbc.datasource.init: debug
+    org.hibernate.SQL: info
+    org.hibernate.tool.schema: info
+    org.springframework.jdbc.datasource.init: info
 
   pattern:
     console: "%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"

@@ -79,6 +79,7 @@ public class RoundService {
     private final ScenarioBaseRepository scenarioBaseRepository;
     private final ScenarioSupplyRuleRepository scenarioSupplyRuleRepository;
     private final BaseTypeServiceRepository baseTypeServiceRepository;
+    private final GameAnalyticsSnapshotService gameAnalyticsSnapshotService;
 
     public RoundService(GameRepository gameRepository,
                         GameAircraftRepository gameAircraftRepository,
@@ -93,7 +94,8 @@ public class RoundService {
                         ResourceTransactionRepository resourceTransactionRepository,
                         ScenarioBaseRepository scenarioBaseRepository,
                         ScenarioSupplyRuleRepository scenarioSupplyRuleRepository,
-                        BaseTypeServiceRepository baseTypeServiceRepository) {
+                        BaseTypeServiceRepository baseTypeServiceRepository,
+                        GameAnalyticsSnapshotService gameAnalyticsSnapshotService) {
         this.gameRepository = gameRepository;
         this.gameAircraftRepository = gameAircraftRepository;
         this.gameMissionRepository = gameMissionRepository;
@@ -108,6 +110,7 @@ public class RoundService {
         this.scenarioBaseRepository = scenarioBaseRepository;
         this.scenarioSupplyRuleRepository = scenarioSupplyRuleRepository;
         this.baseTypeServiceRepository = baseTypeServiceRepository;
+        this.gameAnalyticsSnapshotService = gameAnalyticsSnapshotService;
     }
 
     @Transactional
@@ -747,6 +750,7 @@ public class RoundService {
                 });
         if (allCompleted && allSurvivingAircraftRecovered) {
             game.markWon(LocalDateTime.now());
+            gameAnalyticsSnapshotService.captureIfTerminal(game);
             return;
         }
 
@@ -755,6 +759,13 @@ public class RoundService {
                 .anyMatch(status -> status != AircraftStatus.CRASHED && status != AircraftStatus.DESTROYED);
         if (!anyOperationalAircraft) {
             game.markLost(LocalDateTime.now());
+            gameAnalyticsSnapshotService.captureIfTerminal(game);
+            return;
+        }
+
+        if (game.getCurrentRound() != null && game.getMaxRounds() != null && game.getCurrentRound() >= game.getMaxRounds()) {
+            game.markLost(LocalDateTime.now());
+            gameAnalyticsSnapshotService.captureIfTerminal(game);
         }
     }
 

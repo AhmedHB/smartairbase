@@ -11,6 +11,8 @@ It owns:
 - damage and landing flow
 - maintenance and supply updates
 - win/loss evaluation
+- simulator batch execution
+- analytics snapshot persistence for finished games
 
 ## Architecture
 
@@ -31,11 +33,16 @@ PostgreSQL
 
 ### Game
 
-- `create_game(scenarioName, version, gameName, aircraftCount, missionTypeCounts)`
+- `create_game(scenarioName, version, gameName, aircraftCount, missionTypeCounts, maxRounds)`
 - `get_game_state(gameId)`
 - `abort_game(gameId)`
 - `list_analysis_feed(gameId)`
 - `append_analysis_feed_items(gameId, items)`
+
+### Simulation
+
+- `create_simulation_batch(batchName, scenarioName, aircraftCount, missionTypeCounts, diceStrategy, runCount, maxRounds)`
+- `get_simulation_batch(simulationBatchId)`
 
 ### Mission
 
@@ -77,6 +84,7 @@ Runtime generation rules:
 
 - game names default to `GAME_001`, `GAME_002`, ... when no explicit name is supplied
 - explicit custom game names must be unique across all persisted games
+- the optional `maxRounds` limit is stored per game and forces a loss if the game stays active beyond that round budget
 - frontend operators are expected to create at most one active game at a time from the main control panel
 - aircraft codes: `F1`, `F2`, `F3`, ...
 - mission codes: `M1-1`, `M1-2`, `M2-1`, ...
@@ -163,7 +171,17 @@ Important files:
 
 - `src/main/resources/db/changelog/001-create-schema.yml`
 - `src/main/resources/db/changelog/002-load-data.yml`
-- `src/main/resources/db/changelog/003-create-game-schema.yml`
+- `src/main/resources/db/changelog/009-create-simulation-batch-schema.yml`
+- `src/main/resources/db/changelog/011-create-game-analytics-snapshot-schema.yml`
+
+For a fresh database, the baseline changelog chain is now intentionally short:
+
+- `001` creates the core runtime schema, including `game_analysis_entry`
+- `002` loads seed data and fixes seed sequences
+- `009` creates simulator batch tables
+- `011` creates the analytics snapshot table
+
+This means deleting the local database and restarting `MCPServer` recreates the final schema directly instead of replaying a longer chain of historical add-column migrations.
 
 Seed data includes:
 
@@ -172,6 +190,8 @@ Seed data includes:
 - mission types
 - repair rules
 - `SCN_STANDARD`
+- simulator batches in `simulation_batch` and `simulation_batch_game`
+- one analytics dataset row per finished game in `game_analytics_snapshot`
 
 ## Running Locally
 

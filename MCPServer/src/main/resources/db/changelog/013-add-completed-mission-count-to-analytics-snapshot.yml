@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-001-add-completed-mission-count-to-analytics-snapshot
+      author: openai
+      changes:
+        - addColumn:
+            tableName: game_analytics_snapshot
+            columns:
+              - column:
+                  name: completed_mission_count
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
