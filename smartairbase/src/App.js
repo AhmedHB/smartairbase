@@ -6,6 +6,7 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:808
 const INITIAL_CREATE_FORM = {
   scenarioName: 'SCN_STANDARD',
   gameName: '',
+  maxRounds: 1000,
   aircraftCount: 3,
   missionTypeCounts: {
     M1: 1,
@@ -22,12 +23,27 @@ const INITIAL_DICE_AUTOMATION = {
   missionPreviewSeconds: 5,
 };
 
+const INITIAL_SIMULATION_FORM = {
+  batchName: 'SIM_BATCH',
+  runCount: 10,
+  maxRounds: 1000,
+  scenarioName: 'SCN_STANDARD',
+  aircraftCount: 3,
+  missionTypeCounts: {
+    M1: 1,
+    M2: 1,
+    M3: 1,
+  },
+  diceStrategy: 'RANDOM',
+};
+
 const BASE_TYPE_LABELS = {
   A: 'Main Airbase',
   B: 'Forward Base',
   C: 'Fuel Outpost',
 };
 const TOOL_WRAPPER_MESSAGE_PATTERN = /text=([^,\]]+)/;
+const SIMULATION_POLL_INTERVAL_MS = 500;
 
 function isFuelOutpostScenarioBase(base) {
   const normalizedBaseCode = String(base?.code || '').trim().toUpperCase();
@@ -36,6 +52,12 @@ function isFuelOutpostScenarioBase(base) {
     || normalizedBaseCode === 'BASE_C'
     || normalizedBaseTypeCode === 'FUEL'
     || normalizedBaseTypeCode === 'C';
+}
+
+function sleep(milliseconds) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, milliseconds);
+  });
 }
 
 export function automatedDiceSelectionMode(strategy) {
@@ -55,6 +77,7 @@ export function manualDiceSelectionMode(useRandomDice) {
 function App() {
   const [currentView, setCurrentView] = useState('PLAY');
   const [createForm, setCreateForm] = useState(INITIAL_CREATE_FORM);
+  const [simulationForm, setSimulationForm] = useState(INITIAL_SIMULATION_FORM);
   const [diceAutomation, setDiceAutomation] = useState(INITIAL_DICE_AUTOMATION);
   const [gameId, setGameId] = useState('');
   const [rules, setRules] = useState(null);
@@ -74,9 +97,27 @@ function App() {
   const [analysisFeed, setAnalysisFeed] = useState([]);
   const [analysisPending, setAnalysisPending] = useState(false);
   const [status, setStatus] = useState({ kind: 'idle', message: 'Create a game to begin.' });
+  const [simulationStatus, setSimulationStatus] = useState({
+    running: false,
+    completedRuns: 0,
+    failedRuns: 0,
+    wonRuns: 0,
+    lostRuns: 0,
+    requestedRuns: 0,
+    currentGameName: '',
+    batchName: '',
+    scenarioName: '',
+    aircraftCount: 0,
+    missionTypeCounts: { M1: 0, M2: 0, M3: 0 },
+    diceStrategy: 'RANDOM',
+    maxRounds: 1000,
+    message: 'Configure a simulation batch to run saved games without visual playback.',
+  });
+  const [simulationElapsedSeconds, setSimulationElapsedSeconds] = useState(0);
   const hasValidDuplicateScenarioName = duplicateScenarioName.trim().length > 0;
   const [showCreateGamePrompt, setShowCreateGamePrompt] = useState(false);
   const [useCustomGameName, setUseCustomGameName] = useState(false);
+  const simulationStartedAtRef = useRef(null);
   const automationInFlightRef = useRef(false);
   const nextRoundInFlightRef = useRef(false);
   const gameStateRef = useRef(null);
@@ -165,10 +206,21 @@ function App() {
   // The control panel allows exactly one active game at a time. Create is locked
   // while a live game is running, and abort only becomes available for that state.
   const hasOngoingGame = isValidGameId(gameId) && gameState?.game?.status === 'ACTIVE';
+  const workspaceLocked = hasOngoingGame || simulationStatus.running;
   const selectedScenarioRules = useMemo(
     () => scenarioRulesFor(selectedScenario, createForm.scenarioName),
     [selectedScenario, createForm.scenarioName]
   );
+
+  useEffect(() => {
+    if (!simulationStatus.running) {
+      return undefined;
+    }
+    const timerId = window.setInterval(() => {
+      setSimulationElapsedSeconds(Math.max(0, Math.floor((Date.now() - (simulationStartedAtRef.current || Date.now())) / 1000)));
+    }, 1000);
+    return () => window.clearInterval(timerId);
+  }, [simulationStatus.running]);
 
   useEffect(() => {
     if (!pendingDiceAircraft.length) {
@@ -377,6 +429,15 @@ function App() {
     [selectedScenario]
   );
 
+  const simulationMissionSummary = useMemo(
+    () => (selectedScenario?.missions || []).map((mission) => ({
+      code: mission.code,
+      name: mission.missionTypeName || mission.missionTypeCode || mission.code,
+      count: Number(simulationForm.missionTypeCounts?.[mission.code] || 0),
+    })),
+    [selectedScenario, simulationForm.missionTypeCounts]
+  );
+
 async function request(path, options = {}) {
     const controller = new AbortController();
     activeRequestControllersRef.current.add(controller);
@@ -472,6 +533,21 @@ async function request(path, options = {}) {
               Number(mission.defaultCount ?? 0),
             ])),
           }));
+          setSimulationForm((current) => ({
+            ...current,
+            scenarioName: data?.name || current.scenarioName,
+            aircraftCount: (data?.aircraft || []).length || current.aircraftCount,
+            missionTypeCounts: {
+              M1: 0,
+              M2: 0,
+              M3: 0,
+              ...Object.fromEntries((data?.missions || []).map((mission) => [
+                mission.missionTypeCode || mission.code,
+                Number(mission.defaultCount ?? 0),
+              ])),
+            },
+            batchName: current.batchName || defaultSimulationBatchName(data?.name),
+          }));
           setDuplicateScenarioName(defaultDuplicateScenarioName(data?.name));
         }
       } catch (error) {
@@ -507,7 +583,7 @@ async function request(path, options = {}) {
     const shouldGenerate = isValidGameId(gameId)
       && round > 0
       && !gameState?.game?.roundOpen
-      && (statusValue === 'ACTIVE' || statusValue === 'WON' || statusValue === 'LOST' || statusValue === 'ABORTED');
+      && statusValue === 'ACTIVE';
     if (!shouldGenerate) {
       return undefined;
     }
@@ -587,9 +663,15 @@ async function request(path, options = {}) {
   }
 
   function applyGameState(nextState) {
+    if (['WON', 'LOST', 'ABORTED'].includes(nextState?.game?.status)) {
+      stopAutomation();
+    }
     gameStateRef.current = nextState;
     setPreviousGameState(gameState);
     setGameState(nextState);
+    if (['WON', 'LOST', 'ABORTED'].includes(nextState?.game?.status)) {
+      setAnalysisPending(false);
+    }
   }
 
   function clearMissionPreview() {
@@ -731,6 +813,151 @@ async function request(path, options = {}) {
     }
   }
 
+  async function handleStartSimulation(event) {
+    event.preventDefault();
+    if (workspaceLocked) {
+      return;
+    }
+    if (!simulationForm.batchName.trim()) {
+      setSimulationStatus((current) => ({
+        ...current,
+        message: 'Simulation batch name is required.',
+      }));
+      return;
+    }
+
+    const config = {
+      batchName: normalizeScenarioTemplateName(simulationForm.batchName),
+      scenarioName: simulationForm.scenarioName,
+      aircraftCount: Math.max(1, Number(simulationForm.aircraftCount || 1)),
+      missionTypeCounts: {
+        M1: Math.max(0, Number(simulationForm.missionTypeCounts?.M1 || 0)),
+        M2: Math.max(0, Number(simulationForm.missionTypeCounts?.M2 || 0)),
+        M3: Math.max(0, Number(simulationForm.missionTypeCounts?.M3 || 0)),
+      },
+      runCount: Math.max(1, Number(simulationForm.runCount || 1)),
+      maxRounds: Math.max(1, Number(simulationForm.maxRounds || 1000)),
+      diceStrategy: simulationForm.diceStrategy,
+    };
+
+    setCurrentView('SIMULATOR');
+    simulationStartedAtRef.current = Date.now();
+    setSimulationElapsedSeconds(0);
+    setSimulationStatus({
+      running: true,
+      completedRuns: 0,
+      failedRuns: 0,
+      wonRuns: 0,
+      lostRuns: 0,
+      requestedRuns: config.runCount,
+      currentGameName: '',
+      batchName: config.batchName,
+      scenarioName: config.scenarioName,
+      aircraftCount: config.aircraftCount,
+      missionTypeCounts: config.missionTypeCounts,
+      diceStrategy: config.diceStrategy,
+      maxRounds: config.maxRounds,
+      message: `Running simulation batch ${config.batchName}...`,
+    });
+
+    try {
+      const batch = await request('/simulations', {
+        method: 'POST',
+        body: JSON.stringify(config),
+      });
+
+      let latestBatch = batch;
+      while (latestBatch?.status === 'PENDING' || latestBatch?.status === 'RUNNING') {
+        setSimulationStatus({
+          running: true,
+          completedRuns: latestBatch.completedRuns || 0,
+          failedRuns: latestBatch.failedRuns || 0,
+          wonRuns: latestBatch.wonRuns || 0,
+          lostRuns: latestBatch.lostRuns || 0,
+          requestedRuns: latestBatch.requestedRuns || config.runCount,
+          currentGameName: latestBatch.currentGameName || '',
+          batchName: latestBatch.name || config.batchName,
+          scenarioName: latestBatch.scenarioName || config.scenarioName,
+          aircraftCount: latestBatch.aircraftCount || config.aircraftCount,
+          missionTypeCounts: {
+            M1: latestBatch.m1Count || 0,
+            M2: latestBatch.m2Count || 0,
+            M3: latestBatch.m3Count || 0,
+          },
+          diceStrategy: latestBatch.diceStrategy || config.diceStrategy,
+          maxRounds: latestBatch.maxRounds || config.maxRounds,
+          message: latestBatch.currentGameName
+            ? `Running ${latestBatch.currentGameName} (${latestBatch.completedRuns || 0}/${latestBatch.requestedRuns || config.runCount} completed)...`
+            : `Running simulation batch ${latestBatch.name || config.batchName}...`,
+        });
+        await sleep(SIMULATION_POLL_INTERVAL_MS);
+        latestBatch = await request(`/simulations/${batch.simulationBatchId}`);
+      }
+
+      const completedRuns = latestBatch?.completedRuns || 0;
+      const failedRuns = latestBatch?.failedRuns || 0;
+      const requestedRuns = latestBatch?.requestedRuns || config.runCount;
+      setSimulationStatus({
+        running: false,
+        completedRuns,
+        failedRuns,
+        wonRuns: latestBatch?.wonRuns || 0,
+        lostRuns: latestBatch?.lostRuns || 0,
+        requestedRuns,
+        currentGameName: '',
+        batchName: latestBatch?.name || config.batchName,
+        scenarioName: latestBatch?.scenarioName || config.scenarioName,
+        aircraftCount: latestBatch?.aircraftCount || config.aircraftCount,
+        missionTypeCounts: {
+          M1: latestBatch?.m1Count || 0,
+          M2: latestBatch?.m2Count || 0,
+          M3: latestBatch?.m3Count || 0,
+        },
+        diceStrategy: latestBatch?.diceStrategy || config.diceStrategy,
+        maxRounds: latestBatch?.maxRounds || config.maxRounds,
+        message: latestBatch?.status === 'FAILED'
+          ? `Simulation batch failed after ${completedRuns}/${requestedRuns} completed${failedRuns ? `, ${failedRuns} failed` : ''}.`
+          : `Simulation batch completed. ${completedRuns}/${requestedRuns} games saved${failedRuns ? `, ${failedRuns} failed` : ''}.`,
+      });
+    } catch (error) {
+      if (isAbortError(error)) {
+        setSimulationStatus({
+          running: false,
+          completedRuns: 0,
+          failedRuns: 0,
+          wonRuns: 0,
+          lostRuns: 0,
+          requestedRuns: config.runCount,
+          currentGameName: '',
+          batchName: config.batchName,
+          scenarioName: config.scenarioName,
+          aircraftCount: config.aircraftCount,
+          missionTypeCounts: config.missionTypeCounts,
+          diceStrategy: config.diceStrategy,
+          maxRounds: config.maxRounds,
+          message: 'Simulation batch was interrupted.',
+        });
+        return;
+      }
+      setSimulationStatus({
+        running: false,
+        completedRuns: 0,
+        failedRuns: 0,
+        wonRuns: 0,
+        lostRuns: 0,
+        requestedRuns: config.runCount,
+        currentGameName: '',
+        batchName: config.batchName,
+        scenarioName: config.scenarioName,
+        aircraftCount: config.aircraftCount,
+        missionTypeCounts: config.missionTypeCounts,
+        diceStrategy: config.diceStrategy,
+        maxRounds: config.maxRounds,
+        message: error.message,
+      });
+    }
+  }
+
   function handleResetView() {
     void handleAbortGame();
   }
@@ -742,6 +969,7 @@ async function request(path, options = {}) {
         method: 'POST',
         body: JSON.stringify({
           ...createForm,
+          maxRounds: Math.max(1, Number(createForm.maxRounds || 1000)),
           gameName: options.gameName ?? null,
         }),
       });
@@ -1007,7 +1235,7 @@ async function request(path, options = {}) {
         setManualMissionPreviewAssignments({});
         applyGameState(data.gameState);
         setStatus({
-          kind: 'success',
+          kind: finalGameStatusKind(data.gameState, 'success'),
           message: data.gameFinished
             ? finalGameMessage(data.gameState)
             : `Round planned. Next action: ${humanizeAction(data.nextAction)}.`,
@@ -1032,7 +1260,7 @@ async function request(path, options = {}) {
           setMissionPreviewActive(false);
           missionPreviewTimerRef.current = null;
           setStatus({
-            kind: 'success',
+            kind: finalGameStatusKind(data.gameState, 'success'),
             message: data.gameFinished
               ? finalGameMessage(data.gameState)
               : `Round prepared. Next action: ${humanizeAction(data.nextAction)}.`,
@@ -1041,7 +1269,7 @@ async function request(path, options = {}) {
         } else {
           applyGameState(data.gameState);
           setStatus({
-            kind: 'success',
+            kind: finalGameStatusKind(data.gameState, 'success'),
             message: data.gameFinished
               ? finalGameMessage(data.gameState)
               : `Round prepared. Next action: ${humanizeAction(data.nextAction)}.`,
@@ -1073,7 +1301,7 @@ async function request(path, options = {}) {
       setManualMissionPreviewAssignments({});
       applyGameState(data.gameState);
       setStatus({
-        kind: 'success',
+        kind: finalGameStatusKind(data.gameState, 'success'),
         message: data.gameFinished
           ? finalGameMessage(data.gameState)
           : `Mission resolution completed. Next action: ${humanizeAction(data.nextAction)}.`,
@@ -1155,7 +1383,7 @@ async function request(path, options = {}) {
       setLastAutoResponse(data);
       applyGameState(data.gameState);
       setStatus({
-        kind: data.gameFinished ? 'success' : 'idle',
+        kind: data.gameFinished ? finalGameStatusKind(data.gameState, 'success') : 'idle',
         message: data.gameFinished
           ? finalGameMessage(data.gameState)
           : automated
@@ -1205,9 +1433,20 @@ async function request(path, options = {}) {
               role="tab"
               aria-selected={currentView === 'PLAY'}
               className={`mode-tab ${currentView === 'PLAY' ? 'mode-tab-active' : ''}`}
+              disabled={simulationStatus.running}
               onClick={() => setCurrentView('PLAY')}
             >
               Play
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={currentView === 'SIMULATOR'}
+              className={`mode-tab ${currentView === 'SIMULATOR' ? 'mode-tab-active' : ''}`}
+              disabled={hasOngoingGame}
+              onClick={() => setCurrentView('SIMULATOR')}
+            >
+              Simulator
             </button>
             <button
               type="button"
@@ -1216,16 +1455,18 @@ async function request(path, options = {}) {
               className={`mode-tab ${currentView === 'SCENARIOS' ? 'mode-tab-active' : ''}`}
               // Keep live play isolated from scenario editing until the game is
               // finished or aborted, so the control panel stays single-purpose.
-              disabled={hasOngoingGame}
+              disabled={workspaceLocked}
               onClick={() => setCurrentView('SCENARIOS')}
             >
               Scenario editor
             </button>
           </div>
-          <p className="muted-copy">
+          <p className="workspace-intro">
             {currentView === 'PLAY'
-              ? 'Play the current game and manage rounds, dice, and abort.'
-            : 'Inspect and edit the selected scenario without adding new bases, mission types, or aircraft types.'}
+              ? 'Play a single game, progress rounds, choose dice handling, and follow the live result.'
+              : currentView === 'SIMULATOR'
+                ? 'Run multiple games without visual playback to compare outcomes for a chosen setup and dice strategy.'
+                : 'Duplicate and tune your own scenario settings while keeping the standard template locked.'}
           </p>
         </div>
         {currentView === 'PLAY' ? (
@@ -1242,6 +1483,261 @@ async function request(path, options = {}) {
           </div>
         ) : null}
       </section>
+
+      {currentView === 'SIMULATOR' ? (
+        <section className="scenario-browser">
+          <article className="info-panel scenario-detail-panel">
+            <h3>Simulator</h3>
+            <form className="scenario-editor-sections" onSubmit={handleStartSimulation}>
+              <label>
+                Batch name
+                <input
+                  value={simulationForm.batchName}
+                  onChange={(event) => setSimulationForm((current) => ({
+                    ...current,
+                    batchName: normalizeScenarioTemplateName(event.target.value),
+                  }))}
+                  disabled={workspaceLocked}
+                />
+              </label>
+              <label>
+                Scenario
+                <select
+                  value={selectedScenarioId}
+                  onChange={(event) => setSelectedScenarioId(event.target.value)}
+                  disabled={workspaceLocked}
+                >
+                  {scenarios.map((scenario) => (
+                    <option key={scenario.scenarioId} value={scenario.scenarioId}>
+                      {scenario.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="scenario-config-grid">
+                <label>
+                  Runs
+                  <input
+                    type="number"
+                    min="1"
+                    value={simulationForm.runCount}
+                    onChange={(event) => setSimulationForm((current) => ({
+                      ...current,
+                      runCount: Math.max(1, Number(event.target.value) || 1),
+                    }))}
+                    disabled={workspaceLocked}
+                  />
+                </label>
+                <label>
+                  Max rounds
+                  <input
+                    type="number"
+                    min="1"
+                    value={simulationForm.maxRounds}
+                    onChange={(event) => setSimulationForm((current) => ({
+                      ...current,
+                      maxRounds: Math.max(1, Number(event.target.value) || 1000),
+                    }))}
+                    disabled={workspaceLocked}
+                  />
+                  <span className="field-warning-copy">Upper limit for how many rounds a single run may take.</span>
+                </label>
+                <label>
+                  Aircraft
+                  <input
+                    type="number"
+                    min="1"
+                    max={totalScenarioParkingCapacity || 8}
+                    value={simulationForm.aircraftCount}
+                    onChange={(event) => setSimulationForm((current) => ({
+                      ...current,
+                      aircraftCount: Math.max(1, Math.min(totalScenarioParkingCapacity || 8, Number(event.target.value) || 1)),
+                    }))}
+                    disabled={workspaceLocked}
+                  />
+                </label>
+                <label>
+                  M1 missions
+                  <input
+                    type="number"
+                    min="0"
+                    value={simulationForm.missionTypeCounts.M1}
+                    onChange={(event) => setSimulationForm((current) => ({
+                      ...current,
+                      missionTypeCounts: { ...current.missionTypeCounts, M1: Math.max(0, Number(event.target.value) || 0) },
+                    }))}
+                    disabled={workspaceLocked}
+                  />
+                </label>
+                <label>
+                  M2 missions
+                  <input
+                    type="number"
+                    min="0"
+                    value={simulationForm.missionTypeCounts.M2}
+                    onChange={(event) => setSimulationForm((current) => ({
+                      ...current,
+                      missionTypeCounts: { ...current.missionTypeCounts, M2: Math.max(0, Number(event.target.value) || 0) },
+                    }))}
+                    disabled={workspaceLocked}
+                  />
+                </label>
+                <label>
+                  M3 missions
+                  <input
+                    type="number"
+                    min="0"
+                    value={simulationForm.missionTypeCounts.M3}
+                    onChange={(event) => setSimulationForm((current) => ({
+                      ...current,
+                      missionTypeCounts: { ...current.missionTypeCounts, M3: Math.max(0, Number(event.target.value) || 0) },
+                    }))}
+                    disabled={workspaceLocked}
+                  />
+                </label>
+                <label>
+                  Dice strategy
+                  <select
+                    value={simulationForm.diceStrategy}
+                    onChange={(event) => setSimulationForm((current) => ({ ...current, diceStrategy: event.target.value }))}
+                    disabled={workspaceLocked}
+                  >
+                    <option value="RANDOM">Random dice outcome</option>
+                    <option value="MIN_DAMAGE">Favor as little damage as possible</option>
+                    <option value="MAX_DAMAGE">Cause as much damage as possible</option>
+                  </select>
+                </label>
+              </div>
+              <div className="button-row">
+                <button
+                  type="submit"
+                  className="active-button"
+                  disabled={workspaceLocked || !simulationForm.batchName.trim()}
+                >
+                  Start simulation
+                </button>
+              </div>
+              <p className={simulationStatus.message?.toLowerCase().includes('error') || simulationStatus.message?.toLowerCase().includes('failed') ? 'field-warning-copy' : 'muted-copy'}>
+                {simulationStatus.message}
+              </p>
+              {simulationStatus.requestedRuns && (simulationStatus.running || simulationStatus.completedRuns > 0 || simulationStatus.failedRuns > 0) ? (
+                <p className="muted-copy">
+                  {simulationStatus.running ? <span className="simulation-running-indicator" aria-hidden="true" /> : null}
+                  Completed {simulationStatus.completedRuns}/{simulationStatus.requestedRuns}
+                  {simulationStatus.failedRuns ? ` · Failed ${simulationStatus.failedRuns}` : ''}
+                  {simulationStatus.currentGameName ? ` · Current ${simulationStatus.currentGameName}` : ''}
+                </p>
+              ) : null}
+            </form>
+
+            {(simulationStatus.running || simulationStatus.completedRuns > 0 || simulationStatus.failedRuns > 0) ? (
+              <section className="scenario-reference-section simulation-results-panel">
+                <div className="section-heading">
+                  <h4>Simulation results</h4>
+                  <p className="muted-copy">Aggregated outcomes for the current batch. Starting a new simulation resets this panel.</p>
+                </div>
+                <div className="simulation-metrics-grid">
+                  <MetricCard label="Batch" value={simulationStatus.batchName || 'N/A'} />
+                  <MetricCard label="Scenario" value={simulationStatus.scenarioName || 'N/A'} />
+                  <MetricCard label="Elapsed time" value={formatElapsedTime(simulationElapsedSeconds)} />
+                  <MetricCard label="Progress" value={`${simulationStatus.completedRuns}/${simulationStatus.requestedRuns || 0}`} />
+                  <MetricCard label="Won" value={simulationStatus.wonRuns} />
+                  <MetricCard label="Lost" value={simulationStatus.lostRuns} />
+                  <MetricCard label="Failed" value={simulationStatus.failedRuns} />
+                  <MetricCard label="Current run" value={simulationStatus.currentGameName || (simulationStatus.running ? 'Starting...' : 'Complete')} />
+                  <MetricCard label="Aircraft" value={simulationStatus.aircraftCount} />
+                  <MetricCard label="Max rounds" value={simulationStatus.maxRounds} />
+                  <MetricCard label="Dice strategy" value={humanizeStatus(simulationStatus.diceStrategy || 'RANDOM')} />
+                  <MetricCard
+                    label="Mission mix"
+                    value={(
+                      <div className="metric-card-stack">
+                        <div>M1: {simulationStatus.missionTypeCounts.M1 || 0}</div>
+                        <div>M2: {simulationStatus.missionTypeCounts.M2 || 0}</div>
+                        <div>M3: {simulationStatus.missionTypeCounts.M3 || 0}</div>
+                      </div>
+                    )}
+                  />
+                </div>
+              </section>
+            ) : null}
+          </article>
+
+          <article className="info-panel scenario-detail-panel">
+            <h3>Scenario overview</h3>
+            {selectedScenario ? (
+              <>
+                <section className="scenario-reference-section">
+                  <div className="section-heading">
+                    <h4>{selectedScenario.name}</h4>
+                    <p className="muted-copy">
+                      {Number(simulationForm.aircraftCount || 0)} aircraft · {totalConfiguredMissionCount(simulationForm.missionTypeCounts)} missions · {(selectedScenario.bases || []).length} bases
+                    </p>
+                  </div>
+                  {selectedScenario.description ? <p>{selectedScenario.description}</p> : null}
+                  <div>
+                    <p className="muted-copy">Simulation setup</p>
+                    <ul className="compact-list">
+                      {simulationMissionSummary.map((mission) => (
+                        <li key={mission.code}>{mission.name}: {mission.count}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </section>
+
+                <section className="scenario-reference-section">
+                  <div className="section-heading">
+                    <h4>Base overview</h4>
+                    <p className="muted-copy">Configured capacities and starting resources for the selected scenario.</p>
+                  </div>
+                  <ul className="compact-list">
+                    {(selectedScenario.bases || []).map((base) => (
+                      <li key={base.code}>
+                        {base.code} · {BASE_TYPE_LABELS[base.baseTypeCode] || base.name || base.baseTypeCode || 'Base'} ·
+                        {' '}Parking {base.parkingCapacity ?? 0} ·
+                        {' '}Repair {isFuelOutpostScenarioBase(base) ? 0 : (base.maintenanceCapacity ?? 0)} ·
+                        {' '}Fuel {base.fuelStart ?? 0}/{base.fuelMax ?? 0} ·
+                        {' '}Weapons {base.weaponsStart ?? 0}/{base.weaponsMax ?? 0} ·
+                        {' '}Spare parts {base.sparePartsStart ?? 0}/{base.sparePartsMax ?? 0}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+
+                <section className="scenario-reference-section">
+                  <div className="section-heading">
+                    <h4>Deliveries</h4>
+                    <p className="muted-copy">Delivery amounts stay tied to each base and keep their configured frequency.</p>
+                  </div>
+                  <ul className="compact-list">
+                    {(selectedScenario.bases || []).flatMap((base) => (
+                      (base.supplyRules || []).map((rule) => (
+                        <li key={`${base.code}-${rule.resource}`}>
+                          {base.code} · {humanizeStatus(rule.resource)} {rule.deliveryAmount > 0 ? `+${rule.deliveryAmount}` : rule.deliveryAmount} · Every {rule.frequencyRounds} rounds
+                        </li>
+                      ))
+                    ))}
+                  </ul>
+                </section>
+
+                <section className="scenario-reference-section">
+                  <div className="section-heading">
+                    <h4>{selectedScenarioRules.title}</h4>
+                    <p className="muted-copy">{selectedScenarioRules.summary}</p>
+                  </div>
+                  <ul className="compact-list scenario-rules-list">
+                    {selectedScenarioRules.points.map((point) => (
+                      <li key={point}>{point}</li>
+                    ))}
+                  </ul>
+                </section>
+              </>
+            ) : (
+              <p className="muted-copy">Select a scenario to inspect it.</p>
+            )}
+          </article>
+        </section>
+      ) : null}
 
       {currentView === 'SCENARIOS' ? (
         <section className="scenario-browser">
@@ -1663,7 +2159,7 @@ async function request(path, options = {}) {
             )}
           </article>
         </section>
-      ) : (
+      ) : currentView === 'PLAY' ? (
         <>
 
       <section className="mission-section">
@@ -1939,6 +2435,19 @@ async function request(path, options = {}) {
                 </article>
               ) : null}
               <label>
+                Max rounds
+                <input
+                  type="number"
+                  min="1"
+                  value={createForm.maxRounds}
+                  onChange={(event) => setCreateForm((current) => ({
+                    ...current,
+                    maxRounds: Math.max(1, Number(event.target.value) || 1000),
+                  }))}
+                />
+              </label>
+              <span className="field-warning-copy">Upper limit for how many rounds this game may take before it is marked as lost.</span>
+              <label>
                 Aircraft
                 <input
                   type="number"
@@ -2170,16 +2679,27 @@ async function request(path, options = {}) {
         </article>
       </section>
         </>
-      )}
+      ) : null}
     </main>
   );
+}
+
+function formatElapsedTime(totalSeconds) {
+  const seconds = Math.max(0, Number(totalSeconds) || 0);
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = seconds % 60;
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+  }
+  return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
 }
 
 function MetricCard({ label, value }) {
   return (
     <article className="metric-card">
       <span>{label}</span>
-      <strong>{value}</strong>
+      {typeof value === 'string' || typeof value === 'number' ? <strong>{value}</strong> : <div className="metric-card-rich-value">{value}</div>}
     </article>
   );
 }
@@ -2258,11 +2778,22 @@ function finalGameMessage(gameState) {
   const summary = summarizeGameOutcome(gameState);
   const gameName = gameState?.game?.name;
   const prefix = gameName ? `Game ${gameName}` : 'Game';
-  return `${prefix} finished with status ${gameState?.game?.status}. ${summary}`;
+  const timeoutReason = isMaxRoundsFailure(gameState)
+    ? ' Result: failed because the game exceeded the configured maximum number of rounds.'
+    : '';
+  return `${prefix} finished with status ${gameState?.game?.status}.${timeoutReason} ${summary}`;
+}
+
+function finalGameStatusKind(gameState, defaultKind = 'success') {
+  return isMaxRoundsFailure(gameState) ? 'error' : defaultKind;
 }
 
 function defaultDuplicateScenarioName(name) {
   return normalizeScenarioTemplateName(name ? `${name}_COPY` : 'SCENARIO_COPY');
+}
+
+function defaultSimulationBatchName(name) {
+  return normalizeScenarioTemplateName(name ? `${name}_SIM` : 'SIM_BATCH');
 }
 
 function normalizeScenarioTemplateName(value) {
@@ -2277,6 +2808,9 @@ function finalGameLogTitle(gameState) {
   }
   if (gameState?.game?.status === 'ABORTED') {
     return 'Game aborted';
+  }
+  if (isMaxRoundsFailure(gameState)) {
+    return 'Game failed on max rounds';
   }
   return 'Game lost';
 }
@@ -2299,6 +2833,13 @@ function summarizeGameOutcome(gameState) {
   const destroyedAircraft = crashedCount(gameState);
   const rounds = gameState?.game?.currentRound ?? 0;
   return `${completedMissions}/${totalMissions} missions completed, ${landedAircraft} aircraft landed, ${destroyedAircraft} destroyed, ${rounds} rounds.`;
+}
+
+function isMaxRoundsFailure(gameState) {
+  const status = gameState?.game?.status;
+  const currentRound = Number(gameState?.game?.currentRound ?? 0);
+  const maxRounds = Number(gameState?.game?.maxRounds ?? 0);
+  return status === 'LOST' && maxRounds > 0 && currentRound >= maxRounds;
 }
 
 function scenarioRulesFor(selectedScenario, scenarioName) {

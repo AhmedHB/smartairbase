@@ -7,6 +7,7 @@ import se.smartairbase.mcpserver.service.AnalysisFeedPersistenceService;
 import se.smartairbase.mcpserver.service.GameService;
 import se.smartairbase.mcpserver.service.GameQueryService;
 import se.smartairbase.mcpserver.service.ScenarioService;
+import se.smartairbase.mcpserver.service.SimulationBatchService;
 
 import java.util.List;
 import java.util.Map;
@@ -18,15 +19,18 @@ public class GameTools {
     private final GameQueryService gameQueryService;
     private final AnalysisFeedPersistenceService analysisFeedPersistenceService;
     private final ScenarioService scenarioService;
+    private final SimulationBatchService simulationBatchService;
 
     public GameTools(GameService gameService,
                      GameQueryService gameQueryService,
                      AnalysisFeedPersistenceService analysisFeedPersistenceService,
-                     ScenarioService scenarioService) {
+                     ScenarioService scenarioService,
+                     SimulationBatchService simulationBatchService) {
         this.gameService = gameService;
         this.gameQueryService = gameQueryService;
         this.analysisFeedPersistenceService = analysisFeedPersistenceService;
         this.scenarioService = scenarioService;
+        this.simulationBatchService = simulationBatchService;
     }
 
     @Tool(
@@ -37,8 +41,9 @@ public class GameTools {
                              String version,
                              String gameName,
                              Integer aircraftCount,
-                             Map<String, Integer> missionTypeCounts) {
-        return gameService.createGameFromScenario(scenarioName, version, gameName, aircraftCount, missionTypeCounts);
+                             Map<String, Integer> missionTypeCounts,
+                             Integer maxRounds) {
+        return gameService.createGameFromScenario(scenarioName, version, gameName, aircraftCount, missionTypeCounts, maxRounds);
     }
 
     @Tool(
@@ -102,6 +107,36 @@ public class GameTools {
     )
     public Object createGameFromScenario(Long scenarioId, String gameName) {
         return scenarioService.createGameFromScenario(scenarioId, gameName);
+    }
+
+    @Tool(
+            name = "create_simulation_batch",
+            description = "Create one saved simulation batch that runs many games without analysis feed playback"
+    )
+    public Object createSimulationBatch(String batchName,
+                                        String scenarioName,
+                                        Integer aircraftCount,
+                                        Map<String, Integer> missionTypeCounts,
+                                        String diceStrategy,
+                                        Integer runCount,
+                                        Integer maxRounds) {
+        return simulationBatchService.createBatch(new se.smartairbase.mcpserver.mcp.dto.CreateSimulationBatchRequestDto(
+                batchName,
+                scenarioName,
+                aircraftCount,
+                missionTypeCounts,
+                diceStrategy,
+                runCount,
+                maxRounds
+        ));
+    }
+
+    @Tool(
+            name = "get_simulation_batch",
+            description = "Get progress for one saved simulation batch"
+    )
+    public Object getSimulationBatch(Long simulationBatchId) {
+        return simulationBatchService.getBatch(simulationBatchId);
     }
 
     @Tool(

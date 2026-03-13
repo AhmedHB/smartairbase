@@ -17,7 +17,7 @@ public final class TestStateFactory {
 
     public static GameSummaryDTO summary(Integer round, String phase, boolean roundOpen, boolean canStartRound,
                                          boolean canCompleteRound, String status) {
-        return new GameSummaryDTO(1L, "test", "smartairbase", "7", status, round, phase, roundOpen, canStartRound, canCompleteRound);
+        return new GameSummaryDTO(1L, "test", "smartairbase", "7", status, round, phase, roundOpen, canStartRound, canCompleteRound, 1000);
     }
 
     public static AircraftStateDTO aircraft(String code, String status, String currentBase, int fuel, int weapons,

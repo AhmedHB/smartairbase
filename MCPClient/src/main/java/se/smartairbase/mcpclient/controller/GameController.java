@@ -21,6 +21,7 @@ import se.smartairbase.mcpclient.controller.dto.ActionResultDTO;
 import se.smartairbase.mcpclient.controller.dto.AircraftStateDTO;
 import se.smartairbase.mcpclient.controller.dto.CreateGameRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.CreateScenarioGameRequestDTO;
+import se.smartairbase.mcpclient.controller.dto.CreateSimulationBatchRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.DiceRollRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.DuplicateScenarioRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.BaseStateDTO;
@@ -31,6 +32,7 @@ import se.smartairbase.mcpclient.controller.dto.LandingOptionsDTO;
 import se.smartairbase.mcpclient.controller.dto.RoundExecutionResultDTO;
 import se.smartairbase.mcpclient.controller.dto.ScenarioDefinitionDTO;
 import se.smartairbase.mcpclient.controller.dto.ScenarioSummaryDTO;
+import se.smartairbase.mcpclient.controller.dto.SimulationBatchDTO;
 import se.smartairbase.mcpclient.controller.dto.UpdateScenarioRequestDTO;
 
 import java.util.List;
@@ -75,6 +77,22 @@ public class GameController {
     @PostMapping("/games")
     public GameSummaryDTO createGame(@Valid @RequestBody CreateGameRequestDTO request) {
         return mcpClient.createGame(request);
+    }
+
+    /**
+     * Creates one saved simulation batch that runs multiple games in the background.
+     */
+    @PostMapping("/simulations")
+    public SimulationBatchDTO createSimulationBatch(@Valid @RequestBody CreateSimulationBatchRequestDTO request) {
+        return mcpClient.createSimulationBatch(request);
+    }
+
+    /**
+     * Returns progress for one background simulation batch.
+     */
+    @GetMapping("/simulations/{simulationBatchId}")
+    public SimulationBatchDTO getSimulationBatch(@PathVariable String simulationBatchId) {
+        return mcpClient.getSimulationBatch(simulationBatchId);
     }
 
     /**

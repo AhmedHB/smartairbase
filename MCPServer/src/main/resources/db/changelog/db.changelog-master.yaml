@@ -6,20 +6,8 @@ databaseChangeLog:
       file: 002-load-data.yml
       relativeToChangelogFile: true
   - include:
-      file: 003-create-game-schema.yml
+      file: 009-create-simulation-batch-schema.yml
       relativeToChangelogFile: true
   - include:
-      file: 004-update-dice-outcomes.yml
-      relativeToChangelogFile: true
-  - include:
-      file: 005-add-scenario-metadata.yml
-      relativeToChangelogFile: true
-  - include:
-      file: 006-add-scenario-editor-overrides.yml
-      relativeToChangelogFile: true
-  - include:
-      file: 007-enforce-unique-game-names.yml
-      relativeToChangelogFile: true
-  - include:
-      file: 008-add-dice-selection-metadata.yml
+      file: 011-create-game-analytics-snapshot-schema.yml
       relativeToChangelogFile: true

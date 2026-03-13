@@ -68,7 +68,7 @@ public class GameService {
 
     @Transactional
     public GameSummaryDto createGameFromScenario(String scenarioName, String version) {
-        return createGameFromScenario(scenarioName, version, null, null, null);
+        return createGameFromScenario(scenarioName, version, null, null, null, null);
     }
 
     @Transactional
@@ -80,7 +80,7 @@ public class GameService {
      * the `GAME_###` format.</p>
      */
     public GameSummaryDto createGameFromScenario(String scenarioName, String version, String gameName) {
-        return createGameFromScenario(scenarioName, version, gameName, null, null);
+        return createGameFromScenario(scenarioName, version, gameName, null, null, null);
     }
 
     @Transactional
@@ -88,7 +88,8 @@ public class GameService {
                                                  String version,
                                                  String gameName,
                                                  Integer aircraftCount,
-                                                 Map<String, Integer> missionTypeCounts) {
+                                                 Map<String, Integer> missionTypeCounts,
+                                                 Integer maxRounds) {
         String normalizedName = normalizeScenarioName(scenarioName);
         String normalizedVersion = normalizeScenarioVersion(version);
 
@@ -104,7 +105,7 @@ public class GameService {
                         ? new IllegalArgumentException("Scenario not found: " + scenarioName)
                         : new IllegalArgumentException("Scenario not found: " + scenarioName + " v" + version));
 
-        Game game = new Game(scenario, resolveGameName(gameName));
+        Game game = new Game(scenario, resolveGameName(gameName), maxRounds);
         game.markActive(LocalDateTime.now());
         try {
             game = gameRepository.save(game);
@@ -178,7 +179,7 @@ public class GameService {
                 LocalDateTime.now()));
 
         return new GameSummaryDto(game.getId(), game.getName(), scenario.getName(), scenario.getVersion(),
-                game.getStatus().name(), game.getCurrentRound(), null, false, true, false);
+                game.getStatus().name(), game.getCurrentRound(), null, false, true, false, game.getMaxRounds());
     }
 
     @Transactional

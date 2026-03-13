@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 014-001-add-max-rounds-to-simulation-batch
+      author: openai
+      changes:
+        - addColumn:
+            tableName: simulation_batch
+            columns:
+              - column:
+                  name: max_rounds
+                  type: INTEGER
+                  defaultValueNumeric: 1000
+                  constraints:
+                    nullable: false

@@ -1,0 +1,161 @@
+databaseChangeLog:
+  - changeSet:
+      id: 009-001-create-simulation-batch
+      author: openai
+      changes:
+        - createTable:
+            tableName: simulation_batch
+            columns:
+              - column:
+                  name: simulation_batch_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_simulation_batch
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: scenario_name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: aircraft_count
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: m1_count
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: m2_count
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: m3_count
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dice_strategy
+                  type: VARCHAR(40)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: max_rounds
+                  type: INTEGER
+                  defaultValueNumeric: 1000
+                  constraints:
+                    nullable: false
+              - column:
+                  name: requested_runs
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: completed_runs
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: failed_runs
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: won_runs
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: lost_runs
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: started_at
+                  type: TIMESTAMP
+              - column:
+                  name: ended_at
+                  type: TIMESTAMP
+        - addUniqueConstraint:
+            tableName: simulation_batch
+            columnNames: name
+            constraintName: uk_simulation_batch_name
+
+  - changeSet:
+      id: 009-002-create-simulation-batch-game
+      author: openai
+      changes:
+        - createTable:
+            tableName: simulation_batch_game
+            columns:
+              - column:
+                  name: simulation_batch_game_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_simulation_batch_game
+                    nullable: false
+              - column:
+                  name: simulation_batch_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: game_id
+                  type: BIGINT
+              - column:
+                  name: run_number
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: game_name
+                  type: VARCHAR(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ended_at
+                  type: TIMESTAMP
+        - addForeignKeyConstraint:
+            baseTableName: simulation_batch_game
+            baseColumnNames: simulation_batch_id
+            referencedTableName: simulation_batch
+            referencedColumnNames: simulation_batch_id
+            constraintName: fk_simulation_batch_game_batch
+        - addUniqueConstraint:
+            tableName: simulation_batch_game
+            columnNames: simulation_batch_id, run_number
+            constraintName: uk_simulation_batch_game_run

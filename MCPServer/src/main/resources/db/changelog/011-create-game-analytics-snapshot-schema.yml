@@ -1,0 +1,154 @@
+databaseChangeLog:
+  - changeSet:
+      id: 011-001-create-game-analytics-snapshot
+      author: openai
+      changes:
+        - createTable:
+            tableName: game_analytics_snapshot
+            columns:
+              - column:
+                  name: game_analytics_snapshot_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_game_analytics_snapshot
+                    nullable: false
+              - column:
+                  name: game_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: scenario_name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: game_status
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_win
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: rounds_to_outcome
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dice_selection_profile
+                  type: VARCHAR(40)
+              - column:
+                  name: aircraft_count
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: surviving_aircraft_count
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: destroyed_aircraft_count
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: mission_count
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: completed_mission_count
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: m1_count
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: m2_count
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: m3_count
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: total_parking_capacity
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: total_maintenance_capacity
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: total_fuel_start
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: total_fuel_max
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: total_weapons_start
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: total_weapons_max
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: total_spare_parts_start
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: total_spare_parts_max
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fuel_delivery_amount_total
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: weapons_delivery_amount_total
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: spare_parts_delivery_amount_total
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: game_analytics_snapshot
+            columnNames: game_id
+            constraintName: uk_game_analytics_snapshot_game
+        - addForeignKeyConstraint:
+            baseTableName: game_analytics_snapshot
+            baseColumnNames: game_id
+            referencedTableName: game
+            referencedColumnNames: game_id
+            constraintName: fk_game_analytics_snapshot_game

@@ -108,3 +108,15 @@ databaseChangeLog:
             relativeToChangelogFile: false
             separator: ","
             quotchar: '"'
+
+  - changeSet:
+      id: 002-11-fix-sequences-for-seeded-scenarios
+      author: openai
+      changes:
+        - sql:
+            sql: |
+              SELECT setval(pg_get_serial_sequence('scenario', 'scenario_id'), COALESCE((SELECT MAX(scenario_id) FROM scenario), 1), true);
+              SELECT setval(pg_get_serial_sequence('scenario_base', 'scenario_base_id'), COALESCE((SELECT MAX(scenario_base_id) FROM scenario_base), 1), true);
+              SELECT setval(pg_get_serial_sequence('scenario_aircraft', 'scenario_aircraft_id'), COALESCE((SELECT MAX(scenario_aircraft_id) FROM scenario_aircraft), 1), true);
+              SELECT setval(pg_get_serial_sequence('scenario_mission', 'scenario_mission_id'), COALESCE((SELECT MAX(scenario_mission_id) FROM scenario_mission), 1), true);
+              SELECT setval(pg_get_serial_sequence('scenario_supply_rule', 'scenario_supply_rule_id'), COALESCE((SELECT MAX(scenario_supply_rule_id) FROM scenario_supply_rule), 1), true);

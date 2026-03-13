@@ -50,6 +50,8 @@ Main endpoints:
 
 - `GET /api/reference/rules`
 - `POST /api/games`
+- `POST /api/simulations`
+- `GET /api/simulations/{batchId}`
 - `GET /api/games/{gameId}`
 - `POST /api/games/{gameId}/abort`
 - `GET /api/games/{gameId}/analysis-feed`
@@ -77,6 +79,7 @@ Main endpoints:
 - `gameName` (optional)
 - `aircraftCount`
 - `missionTypeCounts`
+- `maxRounds`
 
 Example:
 
@@ -89,14 +92,39 @@ Example:
     "M1": 3,
     "M2": 2,
     "M3": 1
-  }
+  },
+  "maxRounds": 1000
 }
 ```
 
 If `gameName` is omitted, `MCPServer` generates a default such as `GAME_001`.
 If `gameName` is provided, it must be unique across existing games or the API returns `400 Bad Request`.
+If `maxRounds` is provided, `MCPServer` treats it as a hard upper bound on how many rounds the game may take before failing as a loss.
 
 Scenario-editor saves are consumed at game-creation time. If a custom scenario changes base capacities, start/max resource values, delivery amounts, or the scenario aircraft list, those values are what `POST /api/games` will use when the frontend creates a game from that scenario.
+
+## Simulation Batches
+
+`POST /api/simulations` starts a simulator batch that creates and runs many ordinary games without visualizing each run in the browser.
+
+Supported input:
+
+- `batchName`
+- `scenarioName`
+- `aircraftCount`
+- `missionTypeCounts`
+- `diceStrategy`
+- `runCount`
+- `maxRounds`
+
+The batch name must be unique. Each run is saved as a normal game whose name is derived from that batch name with a sequence suffix.
+
+`GET /api/simulations/{batchId}` returns:
+
+- progress counts
+- current batch status
+- current game name, when a run is active
+- aggregate win/loss/failed totals for the batch
 
 ## Autoplay Behavior
 
@@ -134,6 +162,8 @@ Dice roll requests now also carry `diceSelectionMode`, so `MCPServer` can persis
 - automated random
 - automated min-damage
 - automated max-damage
+
+That persisted per-roll metadata is later summarized on the game as `diceSelectionProfile`, which is also used by the analytics snapshot table on the server.
 
 The returned game state reflects the post-landing or post-round server state, which means aircraft may already have been refueled or rearmed by the time the browser renders the response.
 

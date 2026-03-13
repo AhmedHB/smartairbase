@@ -266,7 +266,7 @@ public class ScenarioService {
     @Transactional
     public GameSummaryDto createGameFromScenario(Long scenarioId, String gameName) {
         Scenario scenario = loadScenario(scenarioId);
-        return gameService.createGameFromScenario(scenario.getName(), scenario.getVersion(), gameName);
+        return gameService.createGameFromScenario(scenario.getName(), scenario.getVersion(), gameName, null, null, null);
     }
 
     @Transactional

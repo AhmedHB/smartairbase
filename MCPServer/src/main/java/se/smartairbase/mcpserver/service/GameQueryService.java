@@ -98,7 +98,8 @@ public class GameQueryService {
                 activeRound != null ? activeRound.getPhase().name() : null,
                 activeRound != null,
                 game.getStatus() == GameStatus.ACTIVE && activeRound == null,
-                canCompleteRound);
+                canCompleteRound,
+                game.getMaxRounds());
 
         return new GameStateDto(summary, bases, aircraft, missions,
                 gameEventRepository.findByGame_IdOrderByCreatedAtAsc(gameId).size(),

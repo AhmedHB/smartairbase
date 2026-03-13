@@ -10,6 +10,7 @@ public record GameSummaryDTO(
         String roundPhase,
         boolean roundOpen,
         boolean canStartRound,
-        boolean canCompleteRound
+        boolean canCompleteRound,
+        Integer maxRounds
 ) {
 }

@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 015-add-max-rounds-to-game
+      author: openai
+      changes:
+        - addColumn:
+            tableName: game
+            columns:
+              - column:
+                  name: max_rounds
+                  type: INTEGER
+                  defaultValueNumeric: 1000
+                  constraints:
+                    nullable: false
+

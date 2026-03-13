@@ -9,6 +9,7 @@ import se.smartairbase.mcpclient.controller.dto.AnalysisFeedResponseDTO;
 import se.smartairbase.mcpclient.controller.dto.AssignMissionRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.CreateScenarioGameRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.CreateGameRequestDTO;
+import se.smartairbase.mcpclient.controller.dto.CreateSimulationBatchRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.DiceRollRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.DuplicateScenarioRequestDTO;
 import se.smartairbase.mcpclient.controller.dto.GameSummaryDTO;
@@ -18,6 +19,7 @@ import se.smartairbase.mcpclient.controller.dto.ScenarioBaseDTO;
 import se.smartairbase.mcpclient.controller.dto.ScenarioDefinitionDTO;
 import se.smartairbase.mcpclient.controller.dto.ScenarioMissionDTO;
 import se.smartairbase.mcpclient.controller.dto.ScenarioSummaryDTO;
+import se.smartairbase.mcpclient.controller.dto.SimulationBatchDTO;
 import se.smartairbase.mcpclient.controller.dto.UpdateScenarioRequestDTO;
 import se.smartairbase.mcpclient.domain.SmartAirBaseTool;
 
@@ -38,8 +40,8 @@ class SmartAirBaseMcpClientTest {
     @Test
     void createGameUsesCreateGameToolAndRequestBody() {
         McpToolExecutor executor = mock(McpToolExecutor.class);
-        GameSummaryDTO response = new GameSummaryDTO(1L, "smartairbase-v7", "smartairbase", "7", "ACTIVE", 0, null, false, true, false);
-        CreateGameRequestDTO request = new CreateGameRequestDTO("smartairbase", "7", "GAME_001", 3, Map.of("M1", 1, "M2", 1, "M3", 1));
+        GameSummaryDTO response = new GameSummaryDTO(1L, "smartairbase-v7", "smartairbase", "7", "ACTIVE", 0, null, false, true, false, 1000);
+        CreateGameRequestDTO request = new CreateGameRequestDTO("smartairbase", "7", "GAME_001", 3, Map.of("M1", 1, "M2", 1, "M3", 1), 1000);
         when(executor.execute(eq(SmartAirBaseTool.CREATE_GAME), eq(request), eq(GameSummaryDTO.class)))
                 .thenReturn(response);
 
@@ -49,6 +51,48 @@ class SmartAirBaseMcpClientTest {
 
         assertThat(result.gameId()).isEqualTo(1L);
         verify(executor).execute(eq(SmartAirBaseTool.CREATE_GAME), eq(request), eq(GameSummaryDTO.class));
+    }
+
+    @Test
+    void createSimulationBatchUsesExpectedToolPayload() {
+        McpToolExecutor executor = mock(McpToolExecutor.class);
+        CreateSimulationBatchRequestDTO request = new CreateSimulationBatchRequestDTO(
+                "SIM_BATCH",
+                "SCN_STANDARD",
+                3,
+                Map.of("M1", 1, "M2", 1, "M3", 1),
+                "RANDOM",
+                10,
+                1000
+        );
+        SimulationBatchDTO response = new SimulationBatchDTO(
+                41L, "SIM_BATCH", "SCN_STANDARD", 3, 1, 1, 1, "RANDOM", 1000, 10, 0, 0, 0, 0, "PENDING", null
+        );
+        when(executor.execute(eq(SmartAirBaseTool.CREATE_SIMULATION_BATCH), eq(request), eq(SimulationBatchDTO.class)))
+                .thenReturn(response);
+
+        SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor, objectMapper);
+
+        SimulationBatchDTO result = client.createSimulationBatch(request);
+
+        assertThat(result.simulationBatchId()).isEqualTo(41L);
+        verify(executor).execute(eq(SmartAirBaseTool.CREATE_SIMULATION_BATCH), eq(request), eq(SimulationBatchDTO.class));
+    }
+
+    @Test
+    void getSimulationBatchUsesExpectedToolPayload() {
+        McpToolExecutor executor = mock(McpToolExecutor.class);
+        when(executor.execute(eq(SmartAirBaseTool.GET_SIMULATION_BATCH), eq(Map.of("simulationBatchId", "41")), eq(SimulationBatchDTO.class)))
+                .thenReturn(new SimulationBatchDTO(
+                        41L, "SIM_BATCH", "SCN_STANDARD", 3, 1, 1, 1, "RANDOM", 1000, 10, 5, 0, 3, 2, "RUNNING", "SIM_BATCH_006"
+                ));
+
+        SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor, objectMapper);
+
+        SimulationBatchDTO result = client.getSimulationBatch("41");
+
+        assertThat(result.status()).isEqualTo("RUNNING");
+        verify(executor).execute(eq(SmartAirBaseTool.GET_SIMULATION_BATCH), eq(Map.of("simulationBatchId", "41")), eq(SimulationBatchDTO.class));
     }
 
     @Test
@@ -115,7 +159,7 @@ class SmartAirBaseMcpClientTest {
         McpToolExecutor executor = mock(McpToolExecutor.class);
         CreateScenarioGameRequestDTO request = new CreateScenarioGameRequestDTO("Scenario test");
         when(executor.execute(eq(SmartAirBaseTool.CREATE_GAME_FROM_SCENARIO), anyMap(), eq(GameSummaryDTO.class)))
-                .thenReturn(new GameSummaryDTO(11L, "Scenario test", "SCN_STANDARD", "V7", "ACTIVE", 0, null, false, true, false));
+                .thenReturn(new GameSummaryDTO(11L, "Scenario test", "SCN_STANDARD", "V7", "ACTIVE", 0, null, false, true, false, 1000));
 
         SmartAirBaseMcpClient client = new SmartAirBaseMcpClient(executor, objectMapper);
 

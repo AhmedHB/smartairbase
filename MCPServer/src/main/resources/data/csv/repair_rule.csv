@@ -1,7 +1,7 @@
 repair_rule_id,dice_value,damage,spare_parts_cost,repair_rounds,requires_full_service
-1,1,NONE,0,0,false
-2,2,MINOR_REPAIR,1,1,false
-3,3,MINOR_REPAIR,1,1,false
+1,1,DESTROYED,0,0,false
+2,2,FULL_SERVICE_REQUIRED,4,4,true
+3,3,MAJOR_REPAIR,3,3,false
 4,4,COMPONENT_DAMAGE,2,2,false
-5,5,MAJOR_REPAIR,3,3,false
-6,6,FULL_SERVICE_REQUIRED,4,4,true
+5,5,MINOR_REPAIR,1,1,false
+6,6,NONE,0,0,false

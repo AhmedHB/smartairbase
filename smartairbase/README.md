@@ -28,6 +28,7 @@ The frontend provides a guided operator workflow:
 - submit dice rolls
 - inspect bases, aircraft, and mission progress
 - abort the current game and return the UI to its initial state
+- run non-visualized simulator batches and inspect aggregate results
 
 The player does not manually assign missions or landing bases in the main flow. Those decisions are made by `MCPClient` autoplay.
 
@@ -52,12 +53,14 @@ The create-game form currently exposes:
 - optional game name, chosen through a prompt after pressing `Create game`
 - aircraft count
 - mission count for each mission type
+- max rounds
 
 The scenario version is kept internally and is no longer shown in the GUI.
 The scenario name is selected from a dropdown and is not free-text editable.
 Default scenario name: `SCN_STANDARD`.
 If the user does not provide a custom name, the backend generates a default game name such as `GAME_001`.
 If the user provides a custom game name, it must be unique. Duplicate names are rejected and shown as an error in the UI.
+`Max rounds` in `Play` is a hard upper bound on how many rounds a run may take. If the limit is reached without a win, the game ends as a loss because it took too many rounds.
 `Create game` is disabled while an active game is loaded, so the operator cannot start a second live game from the same screen state.
 The aircraft field is capped at `8` and the UI explains that this is the maximum for the current scenario.
 Under `Game ID`, the control panel also shows a read-only `Current game name` field that always reflects the loaded game or `No active game`.
@@ -104,6 +107,28 @@ Saved custom-scenario values are not only cosmetic. When a new game is created f
 - the edited base start/max inventories
 - the edited delivery amounts
 - the edited scenario aircraft list
+
+### Simulator
+
+The `Simulator` tab starts a backend batch instead of playing a visible match.
+
+The simulator form exposes:
+
+- unique batch name
+- scenario
+- run count
+- aircraft count
+- mission mix
+- dice strategy
+- max rounds per run
+
+While a batch is running:
+
+- `Play` is locked
+- `Scenario editor` is locked
+- the UI shows progress, elapsed time, and aggregate result cards
+
+Simulator results are aggregated from the server-side analytics snapshot rows created by each finished run.
 
 ### Abort Game
 
@@ -188,6 +213,14 @@ The frontend now tags each dice-roll request with a `diceSelectionMode` so later
 - automated max-damage dice choice
 
 `MCPServer` persists the exact mode on each roll and derives a game-level `diceSelectionProfile` from the full set of recorded rolls.
+
+Every finished game also writes one analytics row on the server with setup features and final outcome data such as:
+
+- rounds to outcome
+- completed mission count
+- surviving aircraft count
+- destroyed aircraft count
+- aggregate base and delivery values
 
 ### Analysis Feed
 
