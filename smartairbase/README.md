@@ -198,6 +198,13 @@ Manual mode:
 - `Resolve missions` moves those aircraft from `On mission` into `Awaiting dice roll`
 - `Roll dice` stays manual
 
+The `Play` tab is also laid out to match that flow more closely:
+
+- `Control center` appears before `Missions`
+- `Mission complete` appears under `On mission` and before `Awaiting dice roll`
+- `Dice Outcome` appears after `Awaiting dice roll`
+- `Event history` and `Analysis feed` are shown below the bases section, stacked vertically at the same content width as the bases area
+
 ### Mission Cards
 
 Mission cards are shown dynamically:
@@ -223,6 +230,8 @@ The main board also includes:
 - aircraft cards in `Holding`, `Park`, and `Repair` with `current/max` values for fuel, weapons, and flight hours
 - positive `Added:` diffs on aircraft cards when fuel, weapons, or flight hours have been restored since the previous state refresh
 - flight hours should only increase after full service, not after ordinary landing or ordinary repair
+
+Aircraft cards in `Park` and `Repair` are now compact by default. They show the aircraft ID immediately, while the fuller status text and value details appear on hover.
 
 ### Event History
 

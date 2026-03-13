@@ -456,6 +456,238 @@ function App() {
     [selectedScenario, simulationForm.missionTypeCounts]
   );
 
+  const controlCenterPanel = (
+    <section className="event-panel control-center-panel">
+      <h3>Control center</h3>
+      <form className="create-form" onSubmit={handleCreateGame}>
+      <label>
+        Scenario
+        <select
+          value={createForm.scenarioName}
+          onChange={(event) => {
+            const nextScenarioName = event.target.value;
+            const nextScenario = scenarios.find((scenario) => scenario.name === nextScenarioName);
+            if (nextScenario) {
+              setSelectedScenarioId(String(nextScenario.scenarioId));
+            }
+            setCreateForm((current) => ({
+              ...current,
+              scenarioName: nextScenarioName,
+            }));
+          }}
+        >
+          {scenarios.map((scenario) => (
+            <option key={scenario.scenarioId} value={scenario.name}>{scenario.name}</option>
+          ))}
+        </select>
+      </label>
+      <button type="button" className="play-action-button compact-button" onClick={() => setShowScenarioRules((current) => !current)}>
+        {showScenarioRules ? 'Hide scenario rules' : 'Show scenario rules'}
+      </button>
+      {showScenarioRules ? (
+        <article className="scenario-rules-panel">
+          <h4>{selectedScenarioRules.title}</h4>
+          <p className="muted-copy">{selectedScenarioRules.summary}</p>
+          <ul className="compact-list scenario-rules-list">
+            {selectedScenarioRules.points.map((point) => (
+              <li key={point}>{point}</li>
+            ))}
+          </ul>
+        </article>
+      ) : null}
+      <fieldset className="radio-group">
+        <legend>Dice handling</legend>
+        <label className="radio-option">
+          <input
+            type="radio"
+            name="diceAutomationMode"
+            checked={diceAutomation.mode === 'MANUAL'}
+            onChange={() => setDiceAutomation((current) => ({ ...current, mode: 'MANUAL' }))}
+          />
+          <span>Manual</span>
+        </label>
+        <label className="radio-option">
+          <input
+            type="radio"
+            name="diceAutomationMode"
+            checked={diceAutomation.mode === 'AUTOMATED'}
+            onChange={() => setDiceAutomation((current) => ({ ...current, mode: 'AUTOMATED' }))}
+          />
+          <span>Automated</span>
+        </label>
+      </fieldset>
+      {diceAutomation.mode === 'AUTOMATED' ? (
+        <article className="scenario-rules-panel automation-panel">
+          <label>
+            Dice strategy
+            <select
+              value={diceAutomation.strategy}
+              onChange={(event) => setDiceAutomation((current) => ({ ...current, strategy: event.target.value }))}
+            >
+              <option value="RANDOM">Random dice outcome</option>
+              <option value="MIN_DAMAGE">Favor as little damage as possible</option>
+              <option value="MAX_DAMAGE">Cause as much damage as possible</option>
+            </select>
+          </label>
+          <label>
+            Mission preview seconds
+            <input
+              type="number"
+              min="0"
+              value={diceAutomation.missionPreviewSeconds}
+              onChange={(event) => setDiceAutomation((current) => ({
+                ...current,
+                missionPreviewSeconds: Math.max(0, Number(event.target.value) || 0),
+              }))}
+            />
+          </label>
+          <label>
+            Seconds before dice roll
+            <input
+              type="number"
+              min="0"
+              value={diceAutomation.diceDelaySeconds}
+              onChange={(event) => setDiceAutomation((current) => ({
+                ...current,
+                diceDelaySeconds: Math.max(0, Number(event.target.value) || 0),
+              }))}
+            />
+          </label>
+          <label>
+            Seconds before next round
+            <input
+              type="number"
+              min="0"
+              value={diceAutomation.nextRoundDelaySeconds}
+              onChange={(event) => setDiceAutomation((current) => ({
+                ...current,
+                nextRoundDelaySeconds: Math.max(0, Number(event.target.value) || 0),
+              }))}
+            />
+          </label>
+          <p className="muted-copy">Automated dice rolls and next rounds use separate wait times.</p>
+        </article>
+      ) : null}
+      <label>
+        Max rounds
+        <input
+          type="number"
+          min="1"
+          value={createForm.maxRounds}
+          onChange={(event) => setCreateForm((current) => ({
+            ...current,
+            maxRounds: Math.max(1, Number(event.target.value) || 1000),
+          }))}
+        />
+      </label>
+      <span className="field-warning-copy">Upper limit for how many rounds this game may take before it is marked as lost.</span>
+      <label>
+        Aircraft
+        <input
+          type="number"
+          min="1"
+          max="8"
+          value={createForm.aircraftCount}
+          onChange={(event) => setCreateForm((current) => ({
+            ...current,
+            aircraftCount: Math.min(8, Math.max(1, Number(event.target.value) || 1)),
+          }))}
+        />
+      </label>
+      <p className="muted-copy">Max 8 aircraft in the current scenario.</p>
+        {rules?.missions?.map((mission) => (
+          <label key={mission.code}>
+            {mission.code} missions
+            <input
+              type="number"
+              min="0"
+              value={createForm.missionTypeCounts?.[mission.code] ?? 0}
+              onChange={(event) => setCreateForm((current) => ({
+                ...current,
+                missionTypeCounts: {
+                  ...current.missionTypeCounts,
+                  [mission.code]: Number(event.target.value),
+                },
+              }))}
+            />
+          </label>
+        ))}
+        <button type="submit" className={`play-action-button compact-button ${nextStep === 'CREATE_GAME' ? 'next-step-button' : ''}`.trim()} disabled={hasOngoingGame}>Create game</button>
+        {showCreateGamePrompt ? (
+          <article className="scenario-rules-panel">
+            <h4>Name game</h4>
+            <p className="muted-copy">Choose the default game name with a running number, or enter your own name.</p>
+            <div className="button-row">
+              <button type="button" onClick={handleCreateGameWithDefaultName} disabled={status.kind === 'loading'}>
+                Use default name
+              </button>
+              <button
+                type="button"
+                className={useCustomGameName ? 'next-step-button' : ''}
+                onClick={() => setUseCustomGameName(true)}
+                disabled={status.kind === 'loading'}
+              >
+                Enter name
+              </button>
+            </div>
+            {useCustomGameName ? (
+              <>
+                <label>
+                  Game name
+                  <input
+                    value={createForm.gameName}
+                    onChange={(event) => setCreateForm((current) => ({
+                      ...current,
+                      gameName: event.target.value,
+                    }))}
+                    aria-invalid={!createForm.gameName.trim()}
+                    disabled={status.kind === 'loading'}
+                  />
+                </label>
+                {!createForm.gameName.trim() ? (
+                  <p className="muted-copy">Game name is required when you choose a custom name.</p>
+                ) : null}
+                <div className="button-row">
+                  <button
+                    type="button"
+                    onClick={handleCreateGameWithCustomName}
+                    disabled={status.kind === 'loading' || !createForm.gameName.trim()}
+                  >
+                    Create named game
+                  </button>
+                </div>
+              </>
+            ) : null}
+          </article>
+        ) : null}
+      </form>
+      <label>
+        Game ID
+        <input value={gameId} onChange={(event) => setGameId(event.target.value)} placeholder="Game id" />
+      </label>
+      <label>
+        Current game name
+        <input value={gameState?.game?.name || 'No active game'} readOnly aria-label="Current game name" />
+      </label>
+      <div className="button-row play-control-row">
+        <button type="button" className={`play-action-button compact-button ${nextStep === 'NEXT_TURN' ? 'next-step-button' : ''}`.trim()} onClick={handleNextRound} disabled={!canStartNextTurn}>Next turn</button>
+        <button type="button" className={`play-action-button compact-button ${nextStep === 'RESOLVE_MISSIONS' ? 'next-step-button' : ''}`.trim()} onClick={handleResolveMissions} disabled={!canResolveMissions}>Resolve missions</button>
+        <button
+          type="button"
+          className={`play-action-button compact-button ${hasOngoingGame ? 'active-button' : ''}`.trim()}
+          onClick={handleResetView}
+          disabled={!hasOngoingGame}
+        >
+          Abort game
+        </button>
+      </div>
+      {automationEnabled && nextRoundCountdown !== null ? (
+        <p className="muted-copy">Auto next round in {nextRoundCountdown}s. You can still press Next turn manually.</p>
+      ) : null}
+      <p className={`status-pill status-${status.kind}`}>{status.message}</p>
+    </section>
+  );
+
 async function request(path, options = {}) {
     const controller = new AbortController();
     activeRequestControllersRef.current.add(controller);
@@ -1781,10 +2013,10 @@ async function request(path, options = {}) {
                   </select>
                 </label>
               </div>
-              <div className="button-row">
+              <div className="button-row simulation-action-row">
                 <button
                   type="submit"
-                  className="active-button"
+                  className="active-button compact-button simulation-action-button"
                   disabled={workspaceLocked || !simulationForm.batchName.trim()}
                 >
                   Start simulation
@@ -2517,6 +2749,8 @@ async function request(path, options = {}) {
       ) : currentView === 'PLAY' ? (
         <>
 
+      {controlCenterPanel}
+
       <section className="mission-section">
         <header className="section-heading">
           <h2>Missions</h2>
@@ -2556,6 +2790,18 @@ async function request(path, options = {}) {
       </section>
 
       <section className="holding-section">
+        <article className="info-panel">
+          <h3>Mission complete</h3>
+          <p>{lastAutoResponse?.nextAction ? `Next action - ${humanizeAction(lastAutoResponse.nextAction)}` : 'Start the next round to let the system assign missions.'}</p>
+          {lastAutoResponse?.autoAssignments?.length ? (
+            <ul className="compact-list">
+              {lastAutoResponse.autoAssignments.map((entry) => <li key={entry}>{entry}</li>)}
+            </ul>
+          ) : null}
+        </article>
+      </section>
+
+      <section className="holding-section">
         <header className="section-heading">
           <h2>Awaiting dice roll</h2>
           <p className="muted-copy">Aircraft that have completed their mission and are waiting for a dice outcome.</p>
@@ -2577,368 +2823,6 @@ async function request(path, options = {}) {
       </section>
 
       <section className="holding-section">
-        <header className="section-heading">
-          <h2>Holding</h2>
-          <p className="muted-copy">Aircraft that could not land and are currently circling in the air.</p>
-        </header>
-        <article className="holding-panel">
-          {holdingAircraft.length ? (
-            <div className="holding-grid">
-              {holdingAircraft.map((aircraft) => (
-                <div key={aircraft.code} className="holding-card">
-                  <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="muted-copy">No aircraft are currently in holding.</p>
-          )}
-        </article>
-      </section>
-
-      <section className="holding-section">
-        <header className="section-heading">
-          <h2>Destroyed aircraft</h2>
-          <p className="muted-copy">Aircraft that have crashed or been lost during the game.</p>
-        </header>
-        <article className="holding-panel">
-          {destroyedAircraft.length ? (
-            <div className="holding-grid">
-              {destroyedAircraft.map((aircraft) => (
-                <div key={aircraft.code} className="holding-card">
-                  <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="muted-copy">No aircraft have been destroyed.</p>
-          )}
-        </article>
-      </section>
-
-      <section className="bases-section">
-        <header className="section-heading">
-          <h2>Bases</h2>
-          <p className="muted-copy">Current base inventory, parking slots, and maintenance capacity.</p>
-        </header>
-        <div className="bases-layout">
-          <div className="bases-grid">
-            {basesWithAircraft.map((base) => (
-              <article key={base.code} className="base-card">
-                <header className="base-header">{base.name}</header>
-                <p className="muted-copy">
-                  Max fuel {baseReferenceByCode[normalizeBaseCode(base.code)]?.maxInventory?.fuel ?? 0} | Max weapons {baseReferenceByCode[normalizeBaseCode(base.code)]?.maxInventory?.weapons ?? 0} | Max spare parts {baseReferenceByCode[normalizeBaseCode(base.code)]?.maxInventory?.spareParts ?? 0}
-                </p>
-                <div className="warehouse-panel">
-                  <h3>Deliveries</h3>
-                  {deliverySummaryForBase(base.code, gameState?.game?.currentRound ?? 0, rules?.resourceRules).map((entry) => (
-                    <p key={`${base.code}-${entry.resource}`}>{entry.resourceLabel} {entry.amount > 0 ? `+${entry.amount}` : entry.amount} {entry.roundsText}</p>
-                  ))}
-                </div>
-                <div className="warehouse-panel">
-                  <h3>Warehouse</h3>
-                  <p>Fuel {base.fuelStock}</p>
-                  <p>Weapons {base.weaponsStock}</p>
-                  <p>Reserveparts {base.sparePartsStock}</p>
-                  <p>Parking slots free {Math.max(0, base.parkingCapacity - base.parked.length)} / {base.parkingCapacity}</p>
-                  <p>Repair slots free {Math.max(0, base.maintenanceCapacity - base.maintenance.length)} / {base.maintenanceCapacity}</p>
-                </div>
-                <div className="slot-grid">
-                  <div className="slot-panel">
-                    <h3>Park</h3>
-                    <div className="slots">
-                      {Array.from({ length: base.parkingCapacity }).map((_, index) => {
-                        const aircraft = base.parked[index];
-                        return (
-                          <div key={`${base.code}-park-${index}`} className={`slot slot-${aircraft ? 'filled' : 'empty'}`}>
-                            {aircraft ? <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} compact /> : `Slot ${index + 1}`}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  {base.maintenanceCapacity > 0 ? (
-                    <div className="slot-panel">
-                      <h3>Repair</h3>
-                      <div className="slots">
-                        {Array.from({ length: base.maintenanceCapacity }).map((_, index) => {
-                          const aircraft = base.maintenance[index];
-                          return (
-                            <div key={`${base.code}-repair-${index}`} className={`slot slot-${aircraft ? 'repairing' : 'empty'}`}>
-                              {aircraft ? <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} compact /> : `Slot ${index + 1}`}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              </article>
-            ))}
-          </div>
-
-          <aside className="side-column">
-            <section className="event-panel">
-              <h3>Control center</h3>
-              <form className="create-form" onSubmit={handleCreateGame}>
-              <label>
-                Scenario
-                <select
-                  value={createForm.scenarioName}
-                  onChange={(event) => {
-                    const nextScenarioName = event.target.value;
-                    const nextScenario = scenarios.find((scenario) => scenario.name === nextScenarioName);
-                    if (nextScenario) {
-                      setSelectedScenarioId(String(nextScenario.scenarioId));
-                    }
-                    setCreateForm((current) => ({
-                      ...current,
-                      scenarioName: nextScenarioName,
-                    }));
-                  }}
-                >
-                  {scenarios.map((scenario) => (
-                    <option key={scenario.scenarioId} value={scenario.name}>{scenario.name}</option>
-                  ))}
-                </select>
-              </label>
-              <button type="button" onClick={() => setShowScenarioRules((current) => !current)}>
-                {showScenarioRules ? 'Hide scenario rules' : 'Show scenario rules'}
-              </button>
-              {showScenarioRules ? (
-                <article className="scenario-rules-panel">
-                  <h4>{selectedScenarioRules.title}</h4>
-                  <p className="muted-copy">{selectedScenarioRules.summary}</p>
-                  <ul className="compact-list scenario-rules-list">
-                    {selectedScenarioRules.points.map((point) => (
-                      <li key={point}>{point}</li>
-                    ))}
-                  </ul>
-                </article>
-              ) : null}
-              <fieldset className="radio-group">
-                <legend>Dice handling</legend>
-                <label className="radio-option">
-                  <input
-                    type="radio"
-                    name="diceAutomationMode"
-                    checked={diceAutomation.mode === 'MANUAL'}
-                    onChange={() => setDiceAutomation((current) => ({ ...current, mode: 'MANUAL' }))}
-                  />
-                  <span>Manual</span>
-                </label>
-                <label className="radio-option">
-                  <input
-                    type="radio"
-                    name="diceAutomationMode"
-                    checked={diceAutomation.mode === 'AUTOMATED'}
-                    onChange={() => setDiceAutomation((current) => ({ ...current, mode: 'AUTOMATED' }))}
-                  />
-                  <span>Automated</span>
-                </label>
-              </fieldset>
-              {diceAutomation.mode === 'AUTOMATED' ? (
-                <article className="scenario-rules-panel automation-panel">
-                  <label>
-                    Dice strategy
-                    <select
-                      value={diceAutomation.strategy}
-                      onChange={(event) => setDiceAutomation((current) => ({ ...current, strategy: event.target.value }))}
-                    >
-                      <option value="RANDOM">Random dice outcome</option>
-                      <option value="MIN_DAMAGE">Favor as little damage as possible</option>
-                      <option value="MAX_DAMAGE">Cause as much damage as possible</option>
-                    </select>
-                  </label>
-                  <label>
-                    Mission preview seconds
-                    <input
-                      type="number"
-                      min="0"
-                      value={diceAutomation.missionPreviewSeconds}
-                      onChange={(event) => setDiceAutomation((current) => ({
-                        ...current,
-                        missionPreviewSeconds: Math.max(0, Number(event.target.value) || 0),
-                      }))}
-                    />
-                  </label>
-                  <label>
-                    Seconds before dice roll
-                    <input
-                      type="number"
-                      min="0"
-                      value={diceAutomation.diceDelaySeconds}
-                      onChange={(event) => setDiceAutomation((current) => ({
-                        ...current,
-                        diceDelaySeconds: Math.max(0, Number(event.target.value) || 0),
-                      }))}
-                    />
-                  </label>
-                  <label>
-                    Seconds before next round
-                    <input
-                      type="number"
-                      min="0"
-                      value={diceAutomation.nextRoundDelaySeconds}
-                      onChange={(event) => setDiceAutomation((current) => ({
-                        ...current,
-                        nextRoundDelaySeconds: Math.max(0, Number(event.target.value) || 0),
-                      }))}
-                    />
-                  </label>
-                  <p className="muted-copy">Automated dice rolls and next rounds use separate wait times.</p>
-                </article>
-              ) : null}
-              <label>
-                Max rounds
-                <input
-                  type="number"
-                  min="1"
-                  value={createForm.maxRounds}
-                  onChange={(event) => setCreateForm((current) => ({
-                    ...current,
-                    maxRounds: Math.max(1, Number(event.target.value) || 1000),
-                  }))}
-                />
-              </label>
-              <span className="field-warning-copy">Upper limit for how many rounds this game may take before it is marked as lost.</span>
-              <label>
-                Aircraft
-                <input
-                  type="number"
-                  min="1"
-                  max="8"
-                  value={createForm.aircraftCount}
-                  onChange={(event) => setCreateForm((current) => ({
-                    ...current,
-                    aircraftCount: Math.min(8, Math.max(1, Number(event.target.value) || 1)),
-                  }))}
-                />
-              </label>
-              <p className="muted-copy">Max 8 aircraft in the current scenario.</p>
-                {rules?.missions?.map((mission) => (
-                  <label key={mission.code}>
-                    {mission.code} missions
-                    <input
-                      type="number"
-                      min="0"
-                      value={createForm.missionTypeCounts?.[mission.code] ?? 0}
-                      onChange={(event) => setCreateForm((current) => ({
-                        ...current,
-                        missionTypeCounts: {
-                          ...current.missionTypeCounts,
-                          [mission.code]: Number(event.target.value),
-                        },
-                      }))}
-                    />
-                  </label>
-                ))}
-                <button type="submit" className={nextStep === 'CREATE_GAME' ? 'next-step-button' : ''} disabled={hasOngoingGame}>Create game</button>
-                {showCreateGamePrompt ? (
-                  <article className="scenario-rules-panel">
-                    <h4>Name game</h4>
-                    <p className="muted-copy">Choose the default game name with a running number, or enter your own name.</p>
-                    <div className="button-row">
-                      <button type="button" onClick={handleCreateGameWithDefaultName} disabled={status.kind === 'loading'}>
-                        Use default name
-                      </button>
-                      <button
-                        type="button"
-                        className={useCustomGameName ? 'next-step-button' : ''}
-                        onClick={() => setUseCustomGameName(true)}
-                        disabled={status.kind === 'loading'}
-                      >
-                        Enter name
-                      </button>
-                    </div>
-                    {useCustomGameName ? (
-                      <>
-                        <label>
-                          Game name
-                          <input
-                            value={createForm.gameName}
-                            onChange={(event) => setCreateForm((current) => ({
-                              ...current,
-                              gameName: event.target.value,
-                            }))}
-                            aria-invalid={!createForm.gameName.trim()}
-                            disabled={status.kind === 'loading'}
-                          />
-                        </label>
-                        {!createForm.gameName.trim() ? (
-                          <p className="muted-copy">Game name is required when you choose a custom name.</p>
-                        ) : null}
-                        <div className="button-row">
-                          <button
-                            type="button"
-                            onClick={handleCreateGameWithCustomName}
-                            disabled={status.kind === 'loading' || !createForm.gameName.trim()}
-                          >
-                            Create named game
-                          </button>
-                        </div>
-                      </>
-                    ) : null}
-                  </article>
-                ) : null}
-              </form>
-              <label>
-                Game ID
-                <input value={gameId} onChange={(event) => setGameId(event.target.value)} placeholder="Game id" />
-              </label>
-              <label>
-                Current game name
-                <input value={gameState?.game?.name || 'No active game'} readOnly aria-label="Current game name" />
-              </label>
-              <div className="button-row">
-                <button type="button" className={nextStep === 'NEXT_TURN' ? 'next-step-button' : ''} onClick={handleNextRound} disabled={!canStartNextTurn}>Next turn</button>
-                <button type="button" className={nextStep === 'RESOLVE_MISSIONS' ? 'next-step-button' : ''} onClick={handleResolveMissions} disabled={!canResolveMissions}>Resolve missions</button>
-                <button
-                  type="button"
-                  className={hasOngoingGame ? 'active-button' : ''}
-                  onClick={handleResetView}
-                  disabled={!hasOngoingGame}
-                >
-                  Abort game
-                </button>
-              </div>
-              {automationEnabled && nextRoundCountdown !== null ? (
-                <p className="muted-copy">Auto next round in {nextRoundCountdown}s. You can still press Next turn manually.</p>
-              ) : null}
-              <p className={`status-pill status-${status.kind}`}>{status.message}</p>
-          </section>
-
-          <section className="event-panel">
-            <h3>Event history</h3>
-            {eventLog.length ? (
-              <div className="event-list">
-                {eventLog.map((entry) => (
-                  <article key={entry.id} className="event-item">
-                    <strong>{entry.title}</strong>
-                    <span>{eventMeta(entry)}</span>
-                    {renderEventDetails(entry, rules)}
-                    {entry.payload?.messages?.length ? <p>{entry.payload.messages.join(' ')}</p> : null}
-                  </article>
-                ))}
-                </div>
-              ) : (
-                <p className="muted-copy">Game started events and autoplay decisions will appear here.</p>
-              )}
-            </section>
-          </aside>
-        </div>
-      </section>
-
-      <section className="bottom-panels">
-        <article className="info-panel">
-          <h3>Mission complete</h3>
-          <p>{lastAutoResponse?.nextAction ? `Next action - ${humanizeAction(lastAutoResponse.nextAction)}` : 'Start the next round to let the system assign missions.'}</p>
-          {lastAutoResponse?.autoAssignments?.length ? (
-            <ul className="compact-list">
-              {lastAutoResponse.autoAssignments.map((entry) => <li key={entry}>{entry}</li>)}
-            </ul>
-          ) : null}
-        </article>
         <article className="info-panel">
           <h3>Dice Outcome</h3>
           <form className="dice-form" onSubmit={handleRollDice}>
@@ -2988,10 +2872,10 @@ async function request(path, options = {}) {
                 <input type="number" min="1" max="6" value={diceValue} onChange={(event) => setDiceValue(event.target.value)} disabled={!canRollDice || automationEnabled} />
               </label>
             ) : null}
-            <div className="button-row bottom-actions">
+            <div className="button-row bottom-actions bottom-actions-left">
               <button
                 type="submit"
-                className={`${nextStep === 'ROLL_DICE' ? 'next-step-button ' : ''}${canRollDice && !automationEnabled ? 'active-button ' : ''}compact-button`}
+                className={`play-action-button ${nextStep === 'ROLL_DICE' ? 'next-step-button ' : ''}${canRollDice && !automationEnabled ? 'active-button ' : ''}compact-button`}
                 disabled={!canRollDice || automationEnabled}
               >
                 Roll dice
@@ -3005,6 +2889,127 @@ async function request(path, options = {}) {
             </ul>
           ) : null}
         </article>
+      </section>
+
+      <section className="holding-section">
+        <header className="section-heading">
+          <h2>Holding</h2>
+          <p className="muted-copy">Aircraft that could not land and are currently circling in the air.</p>
+        </header>
+        <article className="holding-panel">
+          {holdingAircraft.length ? (
+            <div className="holding-grid">
+              {holdingAircraft.map((aircraft) => (
+                <div key={aircraft.code} className="holding-card">
+                  <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted-copy">No aircraft are currently in holding.</p>
+          )}
+        </article>
+      </section>
+
+      <section className="holding-section">
+        <header className="section-heading">
+          <h2>Destroyed aircraft</h2>
+          <p className="muted-copy">Aircraft that have crashed or been lost during the game.</p>
+        </header>
+        <article className="holding-panel">
+          {destroyedAircraft.length ? (
+            <div className="holding-grid">
+              {destroyedAircraft.map((aircraft) => (
+                <div key={aircraft.code} className="holding-card">
+                  <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted-copy">No aircraft have been destroyed.</p>
+          )}
+        </article>
+      </section>
+
+      <section className="bases-section">
+        <header className="section-heading">
+          <h2>Bases</h2>
+          <p className="muted-copy">Current base inventory, parking slots, and maintenance capacity.</p>
+        </header>
+        <div className="bases-grid">
+          {basesWithAircraft.map((base) => (
+            <article key={base.code} className="base-card">
+              <header className="base-header">{base.name}</header>
+              <p className="muted-copy">
+                Max fuel {baseReferenceByCode[normalizeBaseCode(base.code)]?.maxInventory?.fuel ?? 0} | Max weapons {baseReferenceByCode[normalizeBaseCode(base.code)]?.maxInventory?.weapons ?? 0} | Max spare parts {baseReferenceByCode[normalizeBaseCode(base.code)]?.maxInventory?.spareParts ?? 0}
+              </p>
+              <div className="warehouse-panel">
+                <h3>Deliveries</h3>
+                {deliverySummaryForBase(base.code, gameState?.game?.currentRound ?? 0, rules?.resourceRules).map((entry) => (
+                  <p key={`${base.code}-${entry.resource}`}>{entry.resourceLabel} {entry.amount > 0 ? `+${entry.amount}` : entry.amount} {entry.roundsText}</p>
+                ))}
+              </div>
+              <div className="warehouse-panel">
+                <h3>Warehouse</h3>
+                <p>Fuel {base.fuelStock}</p>
+                <p>Weapons {base.weaponsStock}</p>
+                <p>Reserveparts {base.sparePartsStock}</p>
+                <p>Parking slots free {Math.max(0, base.parkingCapacity - base.parked.length)} / {base.parkingCapacity}</p>
+                <p>Repair slots free {Math.max(0, base.maintenanceCapacity - base.maintenance.length)} / {base.maintenanceCapacity}</p>
+              </div>
+              <div className="slot-grid">
+                <div className="slot-panel">
+                  <h3>Park</h3>
+                  <div className="slots">
+                    {Array.from({ length: base.parkingCapacity }).map((_, index) => {
+                      const aircraft = base.parked[index];
+                      return (
+                        <div key={`${base.code}-park-${index}`} className={`slot slot-${aircraft ? 'filled' : 'empty'}`}>
+                          {aircraft ? <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} compact /> : `Slot ${index + 1}`}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                {base.maintenanceCapacity > 0 ? (
+                  <div className="slot-panel">
+                    <h3>Repair</h3>
+                    <div className="slots">
+                      {Array.from({ length: base.maintenanceCapacity }).map((_, index) => {
+                        const aircraft = base.maintenance[index];
+                        return (
+                          <div key={`${base.code}-repair-${index}`} className={`slot slot-${aircraft ? 'repairing' : 'empty'}`}>
+                            {aircraft ? <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} compact /> : `Slot ${index + 1}`}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="bottom-panels">
+        <section className="event-panel">
+          <h3>Event history</h3>
+          {eventLog.length ? (
+            <div className="event-list">
+              {eventLog.map((entry) => (
+                <article key={entry.id} className="event-item">
+                  <strong>{entry.title}</strong>
+                  <span>{eventMeta(entry)}</span>
+                  {renderEventDetails(entry, rules)}
+                  {entry.payload?.messages?.length ? <p>{entry.payload.messages.join(' ')}</p> : null}
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="muted-copy">Game started events and autoplay decisions will appear here.</p>
+          )}
+        </section>
         <article className="info-panel analysis-feed-panel">
           <div className="analysis-feed-header">
             <h3>Analysis feed</h3>
@@ -3162,13 +3167,15 @@ function AircraftStatusCard({ aircraft, additions, compact = false }) {
   return (
     <div className={`aircraft-status-card${compact ? ' aircraft-status-card-compact' : ''}`}>
       <strong>{aircraft.code}</strong>
-      <ul className="aircraft-stats-list">
-        <li>Fuel {aircraft.fuel}/{maxStats.fuel}</li>
-        <li>Weapons {aircraft.weapons}/{maxStats.weapons}</li>
-        <li>Flight hours {aircraft.remainingFlightHours}/{maxStats.hours}</li>
-        <li>{aircraft.damage === 'NONE' ? 'Repair none' : `Repair ${humanizeStatus(aircraft.damage)}`}</li>
-      </ul>
-      {positiveAdditions.length ? <p className="aircraft-added-copy">Added: {positiveAdditions.join(', ')}</p> : null}
+      <div className="aircraft-status-card-details">
+        <ul className="aircraft-stats-list">
+          <li>Fuel {aircraft.fuel}/{maxStats.fuel}</li>
+          <li>Weapons {aircraft.weapons}/{maxStats.weapons}</li>
+          <li>Flight hours {aircraft.remainingFlightHours}/{maxStats.hours}</li>
+          <li>{aircraft.damage === 'NONE' ? 'Repair none' : `Repair ${humanizeStatus(aircraft.damage)}`}</li>
+        </ul>
+        {positiveAdditions.length ? <p className="aircraft-added-copy">Added: {positiveAdditions.join(', ')}</p> : null}
+      </div>
     </div>
   );
 }
