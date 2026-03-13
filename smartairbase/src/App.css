@@ -1,5 +1,7 @@
 .shell {
   min-height: 100vh;
+  max-width: 1760px;
+  margin: 0 auto;
   padding: 22px;
   color: #1f2430;
 }
@@ -258,12 +260,12 @@
 .dashboard-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.92rem;
+  font-size: 0.82rem;
 }
 
 .dashboard-table th,
 .dashboard-table td {
-  padding: 10px 12px;
+  padding: 7px 8px;
   border-bottom: 1px solid rgba(69, 86, 119, 0.14);
   text-align: left;
   vertical-align: top;
@@ -271,7 +273,7 @@
 }
 
 .dashboard-table th {
-  font-size: 0.82rem;
+  font-size: 0.72rem;
   color: #5d6676;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -488,6 +490,10 @@
   margin-top: 18px;
 }
 
+.mission-section {
+  margin-top: 30px;
+}
+
 .holding-section {
   margin: 18px 0;
 }
@@ -590,6 +596,11 @@
   width: 100%;
 }
 
+.aircraft-status-card-details {
+  display: grid;
+  gap: 4px;
+}
+
 .aircraft-status-card strong,
 .aircraft-status-card span {
   display: block;
@@ -612,16 +623,34 @@
   font-size: 0.72rem;
 }
 
+.aircraft-status-card-compact {
+  position: relative;
+  min-height: 100%;
+}
+
+.aircraft-status-card-compact .aircraft-status-card-details {
+  display: none;
+}
+
+.aircraft-status-card-compact:hover .aircraft-status-card-details,
+.aircraft-status-card-compact:focus-within .aircraft-status-card-details {
+  display: grid;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 5;
+  min-width: 180px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(69, 86, 119, 0.22);
+  background: rgba(85, 101, 127, 0.98);
+  box-shadow: 0 16px 28px rgba(31, 36, 48, 0.2);
+}
+
 .aircraft-added-copy {
   margin: 0;
   font-size: 0.72rem;
   color: rgba(255, 255, 255, 0.82);
-}
-
-.bases-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.52fr);
-  gap: 18px;
 }
 
 .bases-grid {
@@ -697,14 +726,15 @@
   border-color: #55657f;
 }
 
-.side-column {
-  display: grid;
-  gap: 16px;
-}
-
 .event-panel,
 .info-panel {
   padding: 14px;
+}
+
+.control-center-panel {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(84, 97, 123, 0.22);
 }
 
 .create-form,
@@ -844,6 +874,37 @@ button:disabled {
   min-width: 110px;
 }
 
+.play-action-button {
+  justify-self: start;
+  align-self: start;
+  width: auto;
+  min-width: 0;
+  padding: 7px 10px;
+  font-size: 0.88rem;
+}
+
+.play-control-row {
+  justify-content: flex-start;
+}
+
+.play-control-row > * {
+  flex: 0 0 auto;
+}
+
+.simulation-action-row {
+  justify-content: flex-start;
+}
+
+.simulation-action-row > * {
+  flex: 0 0 auto;
+}
+
+.simulation-action-button {
+  padding: 7px 10px;
+  min-width: 0;
+  font-size: 0.88rem;
+}
+
 .status-pill {
   margin: 0;
   border-radius: 999px;
@@ -899,7 +960,7 @@ button:disabled {
 
 .bottom-panels {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   margin-top: 16px;
 }
@@ -924,6 +985,10 @@ button:disabled {
 .bottom-actions {
   margin-top: 4px;
   justify-content: flex-end;
+}
+
+.bottom-actions-left {
+  justify-content: flex-start;
 }
 
 .bottom-actions + p {
@@ -1018,7 +1083,6 @@ button:disabled {
 
 @media (max-width: 1180px) {
   .topbar,
-  .bases-layout,
   .bottom-panels,
   .scenario-browser {
     grid-template-columns: 1fr;
