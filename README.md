@@ -11,6 +11,39 @@ The repository contains three applications:
 - `smartairbase`
   A React frontend that talks to `MCPClient`.
 
+## Docker Quick Start
+
+You can now start the whole stack from the repository root with one command:
+
+```bash
+docker compose up --build
+```
+
+That starts:
+
+- React frontend on `http://localhost:3000`
+- `MCPClient` API on `http://localhost:8080`
+- `MCPServer` on `http://localhost:9090`
+- PostgreSQL on `localhost:5432`
+
+Optional configuration:
+
+- copy `.env.example` to `.env`
+- set `MCPCLIENT_PROFILE=local`, `cloud`, or `cloud-gemini`
+- if you use the default `local` profile, Docker is already configured to reach Ollama on `http://host.docker.internal:11434`
+
+You can also run a smoke test for the full Docker stack:
+
+```bash
+./scripts/docker-smoke-test.sh
+```
+
+If you want the test to keep the stack running after it passes:
+
+```bash
+KEEP_STACK_RUNNING=1 ./scripts/docker-smoke-test.sh
+```
+
 `MCPClient` currently supports multiple chat-model runtime profiles:
 
 - `local`
