@@ -1110,8 +1110,20 @@ button:disabled {
   padding: 16px;
 }
 
-.play-color-sidebar h3 {
+.play-color-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #37465e;
   text-align: center;
+  padding: 4px 0 8px;
+}
+
+.play-color-toggle:hover {
+  color: #1f2430;
 }
 
 .play-color-legend {

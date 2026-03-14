@@ -100,6 +100,7 @@ function App() {
   const [scenarioBusy, setScenarioBusy] = useState(false);
   const [duplicateScenarioName, setDuplicateScenarioName] = useState('');
   const [showScenarioRules, setShowScenarioRules] = useState(false);
+  const [showColorLegend, setShowColorLegend] = useState(false);
   const [previousGameState, setPreviousGameState] = useState(null);
   const [gameState, setGameState] = useState(null);
   const [lastAutoResponse, setLastAutoResponse] = useState(null);
@@ -2795,13 +2796,17 @@ async function request(path, options = {}) {
       {controlCenterPanel}
 
       <aside className="info-panel play-color-sidebar" aria-label="Color legend">
-        <h3>Aircraft colors</h3>
-        <div className="play-color-legend">
-          <div className="play-color-legend-item"><span className="play-color-swatch play-color-blue" /> Healthy aircraft at base</div>
-          <div className="play-color-legend-item"><span className="play-color-swatch play-color-orange" /> Aircraft needs repair</div>
-          <div className="play-color-legend-item"><span className="play-color-swatch play-color-red" /> Destroyed aircraft</div>
-          <div className="play-color-legend-item"><span className="play-color-swatch play-color-green" /> Completed mission</div>
-        </div>
+        <button className="play-color-toggle" onClick={() => setShowColorLegend(v => !v)}>
+          Aircraft colors {showColorLegend ? '▲' : '▼'}
+        </button>
+        {showColorLegend && (
+          <div className="play-color-legend">
+            <div className="play-color-legend-item"><span className="play-color-swatch play-color-blue" /> Healthy aircraft at base</div>
+            <div className="play-color-legend-item"><span className="play-color-swatch play-color-orange" /> Aircraft needs repair</div>
+            <div className="play-color-legend-item"><span className="play-color-swatch play-color-red" /> Destroyed aircraft</div>
+            <div className="play-color-legend-item"><span className="play-color-swatch play-color-green" /> Completed mission</div>
+          </div>
+        )}
       </aside>
 
       <section className="mission-section">
