@@ -1,0 +1,28 @@
+{
+  "name": "frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "GAT_PYTHON_BIN=mamba GAT_PYTHON_ARGS='run -n gat-train python' next dev",
+    "build": "GAT_PYTHON_BIN=mamba GAT_PYTHON_ARGS='run -n gat-train python' next build",
+    "start": "GAT_PYTHON_BIN=mamba GAT_PYTHON_ARGS='run -n gat-train python' next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.1",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "babel-plugin-react-compiler": "1.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^4.2.1",
+    "typescript": "^5"
+  }
+}

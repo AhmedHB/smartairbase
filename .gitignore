@@ -41,3 +41,20 @@ build/
 # Cloud secrets
 MCPClient/env/cloud.env.properties
 MCPClient/env/cloud-gemini.env.properties
+
+# Python / RL project
+.venv/
+venv/
+*.venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Reinforcement project generated files
+reinforcement_project/.fleet_web_sessions/
+reinforcement_project/logs/
+reinforcement_project/artifacts/
+reinforcement_project/models/
+reinforcement_project/frontend/.next/
+reinforcement_project/frontend/node_modules/
+events.out.tfevents.*
