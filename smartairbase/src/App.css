@@ -376,30 +376,148 @@
 }
 
 .slot {
-  min-height: 54px;
-  border: 1.5px solid var(--color-border-2);
+  min-height: 84px;
+  border: 1.5px dashed var(--color-border-2);
   border-radius: var(--radius-sm);
   display: grid;
-  align-items: start;
+  align-items: stretch;
   justify-items: stretch;
   color: var(--color-muted-2);
   font-weight: 600;
   font-size: 0.78rem;
-  background: var(--color-surface-2);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(148, 163, 184, 0.04)), var(--color-surface-2);
   padding: 7px 8px;
 }
 
 .slot-filled,
-.slot-repairing {
-  background: var(--color-primary);
-  color: var(--color-primary-text);
-  border-color: var(--color-primary);
+.slot-repairing,
+.slot-needs-repair {
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  border-color: transparent;
 }
 
-.slot-needs-repair {
-  background: var(--color-warning-bg);
-  border-color: var(--color-warning-bdr);
-  color: var(--color-warning);
+.warehouse-empty-slot {
+  min-height: 100%;
+  display: grid;
+  place-content: center;
+  gap: 4px;
+  border: 1px dashed rgba(148, 163, 184, 0.35);
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(148, 163, 184, 0.06));
+  text-align: center;
+}
+
+.warehouse-empty-slot-label {
+  color: var(--color-text-2);
+  font-size: 0.76rem;
+}
+
+.warehouse-empty-slot-copy {
+  color: var(--color-muted);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.warehouse-flight-tile {
+  position: relative;
+  min-height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 6px;
+  padding: 8px;
+  overflow: hidden;
+  border-radius: inherit;
+  border: 1px solid var(--warehouse-flight-border);
+  background: var(--warehouse-flight-bg);
+  color: var(--warehouse-flight-text);
+  box-shadow: 0 16px 26px -18px var(--warehouse-flight-shadow);
+}
+
+.warehouse-flight-tile::after {
+  content: "";
+  position: absolute;
+  inset: auto -18% -42% 18%;
+  height: 90px;
+  background: radial-gradient(circle, var(--warehouse-flight-glow) 0%, rgba(255, 255, 255, 0) 70%);
+  pointer-events: none;
+}
+
+.warehouse-flight-tile-repair::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.12) 0 10px,
+    rgba(255, 255, 255, 0.02) 10px 20px
+  );
+  pointer-events: none;
+}
+
+.warehouse-flight-topline,
+.warehouse-flight-visual,
+.warehouse-flight-copy {
+  position: relative;
+  z-index: 1;
+}
+
+.warehouse-flight-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.warehouse-flight-slot {
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.82;
+}
+
+.warehouse-flight-status {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--warehouse-flight-badge-bg);
+  border: 1px solid var(--warehouse-flight-badge-border);
+  color: var(--warehouse-flight-badge-text);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.warehouse-flight-visual {
+  min-height: 20px;
+  display: grid;
+  place-items: center;
+}
+
+.warehouse-flight-image {
+  width: 52px;
+  height: 20px;
+  object-fit: contain;
+  opacity: 0.72;
+  filter: drop-shadow(0 4px 8px rgba(15, 23, 42, 0.18));
+}
+
+.warehouse-flight-copy {
+  display: grid;
+  gap: 1px;
+}
+
+.warehouse-flight-copy strong {
+  font-size: 0.88rem;
+  line-height: 1;
+}
+
+.warehouse-flight-copy span {
+  font-size: 0.6rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  opacity: 0.84;
 }
 
 /* ─── Missions ───────────────────────────────────────────────────────── */

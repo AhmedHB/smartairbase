@@ -53,6 +53,7 @@ const BASE_TYPE_LABELS = {
   B: 'Forward Base',
   C: 'Fuel Outpost',
 };
+const GRIPEN_IMAGE_URL = `${process.env.PUBLIC_URL || ''}/gripen.png`;
 const TOOL_WRAPPER_MESSAGE_PATTERN = /text=([^,\]]+)/;
 const SIMULATION_POLL_INTERVAL_MS = 500;
 
@@ -3022,12 +3023,22 @@ async function request(path, options = {}) {
                     {Array.from({ length: base.parkingCapacity }).map((_, index) => {
                       const aircraft = base.parked[index];
                       const needsRepair = aircraftNeedsRepair(aircraft);
+                      const slotLabel = `Slot ${index + 1}`;
                       return (
                         <div
                           key={`${base.code}-park-${index}`}
                           className={`slot slot-${aircraft ? 'filled' : 'empty'}${needsRepair ? ' slot-needs-repair' : ''}`}
                         >
-                          {aircraft ? <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} compact /> : `Slot ${index + 1}`}
+                          {aircraft ? (
+                            <WarehouseAircraftTile
+                              aircraft={aircraft}
+                              additions={aircraftAdditionsByCode[aircraft.code]}
+                              slotLabel={slotLabel}
+                              mode={needsRepair ? 'repair' : 'park'}
+                            />
+                          ) : (
+                            <WarehouseEmptySlot slotLabel={slotLabel} />
+                          )}
                         </div>
                       );
                     })}
@@ -3039,9 +3050,19 @@ async function request(path, options = {}) {
                     <div className="slots">
                       {Array.from({ length: base.maintenanceCapacity }).map((_, index) => {
                         const aircraft = base.maintenance[index];
+                        const slotLabel = `Slot ${index + 1}`;
                         return (
                           <div key={`${base.code}-repair-${index}`} className={`slot slot-${aircraft ? 'repairing' : 'empty'}${aircraft ? ' slot-needs-repair' : ''}`}>
-                            {aircraft ? <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} compact /> : `Slot ${index + 1}`}
+                            {aircraft ? (
+                              <WarehouseAircraftTile
+                                aircraft={aircraft}
+                                additions={aircraftAdditionsByCode[aircraft.code]}
+                                slotLabel={slotLabel}
+                                mode="repair"
+                              />
+                            ) : (
+                              <WarehouseEmptySlot slotLabel={slotLabel} />
+                            )}
                           </div>
                         );
                       })}
@@ -3253,6 +3274,59 @@ function MetricCard({ label, value }) {
       <span>{label}</span>
       {typeof value === 'string' || typeof value === 'number' ? <strong>{value}</strong> : <div className="metric-card-rich-value">{value}</div>}
     </article>
+  );
+}
+
+function WarehouseAircraftTile({ aircraft, additions, slotLabel, mode }) {
+  const repairRequired = mode === 'repair' || aircraftNeedsRepair(aircraft);
+  const theme = warehouseFlightTheme(aircraft, mode);
+  const titleParts = [
+    aircraft?.code || 'Unknown aircraft',
+    `Fuel ${aircraft?.fuel ?? 0}/100`,
+    `Weapons ${aircraft?.weapons ?? 0}/6`,
+    `Flight hours ${aircraft?.remainingFlightHours ?? 0}/20`,
+    aircraft?.damage && aircraft.damage !== 'NONE' ? `Repair ${humanizeStatus(aircraft.damage)}` : 'Repair none',
+    additions?.fuel ? `Fuel +${additions.fuel}` : null,
+    additions?.weapons ? `Weapons +${additions.weapons}` : null,
+    additions?.hours ? `Flight hours +${additions.hours}` : null,
+  ].filter(Boolean);
+
+  return (
+    <div
+      className={`warehouse-flight-tile${repairRequired ? ' warehouse-flight-tile-repair' : ''}`}
+      style={{
+        '--warehouse-flight-bg': theme.background,
+        '--warehouse-flight-border': theme.border,
+        '--warehouse-flight-text': theme.text,
+        '--warehouse-flight-shadow': theme.shadow,
+        '--warehouse-flight-badge-bg': theme.badgeBackground,
+        '--warehouse-flight-badge-border': theme.badgeBorder,
+        '--warehouse-flight-badge-text': theme.badgeText,
+        '--warehouse-flight-glow': theme.glow,
+      }}
+      title={titleParts.join(' | ')}
+    >
+      <div className="warehouse-flight-topline">
+        <span className="warehouse-flight-slot">{slotLabel}</span>
+        <span className="warehouse-flight-status">{repairRequired ? 'Repair' : 'Ready'}</span>
+      </div>
+      <div className="warehouse-flight-visual">
+        <img className="warehouse-flight-image" src={GRIPEN_IMAGE_URL} alt={`Gripen aircraft ${aircraft.code}`} />
+      </div>
+      <div className="warehouse-flight-copy">
+        <strong>{aircraft.code}</strong>
+        <span>{repairRequired ? humanizeStatus(aircraft.damage || aircraft.status) : 'Flight ID'}</span>
+      </div>
+    </div>
+  );
+}
+
+function WarehouseEmptySlot({ slotLabel }) {
+  return (
+    <div className="warehouse-empty-slot">
+      <span className="warehouse-empty-slot-label">{slotLabel}</span>
+      <span className="warehouse-empty-slot-copy">Available</span>
+    </div>
   );
 }
 
@@ -3585,6 +3659,61 @@ function extractMissionAssignments(autoAssignments) {
       .map((entry) => String(entry).split(' -> '))
       .filter((parts) => parts.length === 2)
   );
+}
+
+function warehouseFlightTheme(aircraft, mode) {
+  const repairRequired = mode === 'repair' || aircraftNeedsRepair(aircraft);
+  const status = aircraft?.status;
+
+  if (status === 'CRASHED' || status === 'DESTROYED') {
+    return {
+      background: 'var(--color-danger-bg)',
+      border: 'var(--color-danger-bdr)',
+      text: 'var(--color-danger)',
+      shadow: 'rgba(220, 38, 38, 0.18)',
+      badgeBackground: 'rgba(220, 38, 38, 0.12)',
+      badgeBorder: 'rgba(220, 38, 38, 0.24)',
+      badgeText: 'var(--color-danger)',
+      glow: 'rgba(220, 38, 38, 0.08)',
+    };
+  }
+
+  if (repairRequired) {
+    return {
+      background: 'var(--color-warning-bg)',
+      border: 'var(--color-warning-bdr)',
+      text: 'var(--color-warning)',
+      shadow: 'rgba(217, 119, 6, 0.16)',
+      badgeBackground: 'rgba(217, 119, 6, 0.12)',
+      badgeBorder: 'rgba(217, 119, 6, 0.22)',
+      badgeText: 'var(--color-warning)',
+      glow: 'rgba(217, 119, 6, 0.08)',
+    };
+  }
+
+  if (status === 'COMPLETED') {
+    return {
+      background: 'var(--color-success)',
+      border: 'rgba(22, 163, 74, 0.35)',
+      text: '#f0fdf4',
+      shadow: 'rgba(22, 163, 74, 0.18)',
+      badgeBackground: 'rgba(240, 253, 244, 0.12)',
+      badgeBorder: 'rgba(240, 253, 244, 0.2)',
+      badgeText: '#f0fdf4',
+      glow: 'rgba(240, 253, 244, 0.12)',
+    };
+  }
+
+  return {
+    background: 'var(--color-primary)',
+    border: 'rgba(191, 219, 254, 0.18)',
+    text: 'var(--color-primary-text)',
+    shadow: 'rgba(30, 58, 95, 0.22)',
+    badgeBackground: 'rgba(255, 255, 255, 0.12)',
+    badgeBorder: 'rgba(255, 255, 255, 0.2)',
+    badgeText: 'var(--color-primary-text)',
+    glow: 'rgba(255, 255, 255, 0.12)',
+  };
 }
 
 function renderEventDetails(entry, rules) {
