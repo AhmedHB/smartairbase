@@ -3017,19 +3017,29 @@ async function request(path, options = {}) {
           </div>
           {analysisFeed.length ? (
             <div ref={analysisFeedListRef} className="event-list analysis-feed-list">
-              {analysisFeed.map((item) => (
-                <article key={item.id} className="event-item analysis-feed-item">
-                  <div className="analysis-feed-meta">
-                    <strong>{item.role}</strong>
-                    <div className="analysis-feed-meta-right">
-                      <span className={`analysis-source-badge analysis-source-${String(item.source || 'rule-based').toLowerCase()}`}>{item.source || 'Rule-based'}</span>
-                      <span>Round {item.round}</span>
+              {(() => {
+                const rounds = [...new Set(analysisFeed.map(i => i.round))].sort((a, b) => a - b);
+                return rounds.map(round => (
+                  <div key={round} className="analysis-round-group">
+                    <div className="analysis-round-divider">
+                      <span className="analysis-round-label">Round {round}</span>
                     </div>
+                    {analysisFeed.filter(i => i.round === round).map(item => (
+                      <article key={item.id} className={`event-item analysis-feed-item ${getRoleClass(item.role)}`}>
+                        <div className="analysis-feed-meta">
+                          <div className="analysis-feed-meta-left">
+                            <span className={`analysis-role-avatar ${getRoleClass(item.role)}`}>{getRoleInitials(item.role)}</span>
+                            <strong>{item.role}</strong>
+                          </div>
+                          <span className={`analysis-source-badge analysis-source-${String(item.source || 'rule-based').toLowerCase().replace(/\s+/g, '-')}`}>{item.source || 'Rule-based'}</span>
+                        </div>
+                        <p>{item.summary}</p>
+                        {item.details ? <p className="muted-copy">{item.details}</p> : null}
+                      </article>
+                    ))}
                   </div>
-                  <p>{item.summary}</p>
-                  {item.details ? <p className="muted-copy">{item.details}</p> : null}
-                </article>
-              ))}
+                ));
+              })()}
             </div>
           ) : (
             <div className="analysis-feed-empty">
@@ -3042,6 +3052,25 @@ async function request(path, options = {}) {
       ) : null}
     </main>
   );
+}
+
+function getRoleClass(roleName) {
+  if (!roleName) return '';
+  const n = roleName.toLowerCase();
+  if (n.includes('pilot') || n.includes('erik')) return 'role-pilot';
+  if (n.includes('ground crew') || n.includes('sara')) return 'role-ground';
+  if (n.includes('maintenance') || n.includes('johan')) return 'role-maintenance';
+  if (n.includes('command') || n.includes('anna') || n.includes('colonel')) return 'role-command';
+  return '';
+}
+
+function getRoleInitials(roleName) {
+  if (!roleName) return '?';
+  if (roleName.includes('Erik')) return 'EH';
+  if (roleName.includes('Sara')) return 'SL';
+  if (roleName.includes('Johan')) return 'JB';
+  if (roleName.includes('Anna') || roleName.includes('berg')) return 'AS';
+  return roleName.charAt(0);
 }
 
 function formatElapsedTime(totalSeconds) {

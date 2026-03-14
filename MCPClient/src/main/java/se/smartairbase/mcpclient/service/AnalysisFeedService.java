@@ -81,7 +81,7 @@ public class AnalysisFeedService {
                         createdAt),
                 item(gameId, round, phase, AnalysisRole.MAINTENANCE_TECHNICIANS,
                         facts,
-                        combine(facts.maintenanceAircraft(), facts.fullServiceAircraft()),
+                        combine(facts.underRepairAircraft(), facts.awaitingRepairAircraft()),
                         facts.affectedBases(),
                         createdAt),
                 item(gameId, round, phase, AnalysisRole.COMMAND_OPERATIONS,

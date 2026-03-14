@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import se.smartairbase.mcpclient.controller.dto.AutoPlayResponseDTO;
 import se.smartairbase.mcpclient.domain.GameRulesReference;
+import se.smartairbase.mcpclient.service.AnalysisFeedService;
 import se.smartairbase.mcpclient.service.AutoPlayService;
 import se.smartairbase.mcpclient.service.GameRulesReferenceService;
 import se.smartairbase.mcpclient.service.SmartAirBaseMcpClient;
@@ -52,13 +53,16 @@ public class GameController {
     private final SmartAirBaseMcpClient mcpClient;
     private final AutoPlayService autoPlayService;
     private final GameRulesReferenceService gameRulesReferenceService;
+    private final AnalysisFeedService analysisFeedService;
 
     public GameController(SmartAirBaseMcpClient mcpClient,
                           AutoPlayService autoPlayService,
-                          GameRulesReferenceService gameRulesReferenceService) {
+                          GameRulesReferenceService gameRulesReferenceService,
+                          AnalysisFeedService analysisFeedService) {
         this.mcpClient = mcpClient;
         this.autoPlayService = autoPlayService;
         this.gameRulesReferenceService = gameRulesReferenceService;
+        this.analysisFeedService = analysisFeedService;
     }
 
     /**
@@ -192,7 +196,11 @@ public class GameController {
      */
     @PostMapping("/games/{gameId}/rounds/next")
     public AutoPlayResponseDTO startNextRound(@PathVariable String gameId) {
-        return autoPlayService.startNextRound(gameId);
+        AutoPlayResponseDTO response = autoPlayService.startNextRound(gameId);
+        if (response.gameFinished()) {
+            analysisFeedService.generateRoundAnalysis(gameId);
+        }
+        return response;
     }
 
     /**

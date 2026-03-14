@@ -1,5 +1,7 @@
 package se.smartairbase.mcpclient.service.analysis;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +13,8 @@ import se.smartairbase.mcpclient.domain.AnalysisRole;
  * Generates optional LLM-based round narration for one analysis role.
  */
 public class LlmNarrationService {
+
+    private static final Logger log = LoggerFactory.getLogger(LlmNarrationService.class);
 
     private final ObjectProvider<ChatClient.Builder> chatClientBuilderProvider;
     private final RolePromptFactory rolePromptFactory;
@@ -46,7 +50,8 @@ public class LlmNarrationService {
                 return null;
             }
             return new AnalysisNarration("LLM", content.trim(), null);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            log.warn("LLM narration failed for role {} round {} (mode={}): {}", role, facts.round(), mode, e.getMessage());
             return null;
         }
     }

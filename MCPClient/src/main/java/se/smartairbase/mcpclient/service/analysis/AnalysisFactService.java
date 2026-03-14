@@ -20,20 +20,31 @@ public class AnalysisFactService {
 
     public AnalysisRoundFacts buildFacts(GameStateDTO currentState, Snapshot previousSnapshot) {
         Snapshot currentSnapshot = snapshot(currentState);
+        int completedMissions = currentSnapshot.completedMissionCount();
+        int totalMissions = currentSnapshot.missionCount();
         return new AnalysisRoundFacts(
                 currentState.game().gameId(),
                 currentState.game().currentRound(),
                 currentState.game().roundPhase(),
                 currentState.game().status(),
-                currentSnapshot.completedMissionCount(),
-                currentSnapshot.missionCount(),
+                currentState.game().scenarioName(),
+                currentState.game().maxRounds(),
+                completedMissions,
+                totalMissions,
+                totalMissions - completedMissions,
                 currentSnapshot.aircraftByStatus("READY").size(),
+                currentSnapshot.aircraft().size(),
                 currentSnapshot.aircraftByStatus("CRASHED").size() + currentSnapshot.aircraftByStatus("DESTROYED").size(),
-                landedAircraft(currentSnapshot),
+                landedAircraft(currentSnapshot, previousSnapshot),
                 currentSnapshot.aircraftByStatus("HOLDING"),
                 statusTransitionedTo(currentSnapshot, previousSnapshot, Set.of("CRASHED", "DESTROYED")),
                 currentSnapshot.aircraft().values().stream()
-                        .filter(aircraft -> "IN_MAINTENANCE".equals(aircraft.status()) || "WAITING_MAINTENANCE".equals(aircraft.status()))
+                        .filter(aircraft -> "IN_MAINTENANCE".equals(aircraft.status()))
+                        .map(AircraftStateDTO::code)
+                        .sorted()
+                        .toList(),
+                currentSnapshot.aircraft().values().stream()
+                        .filter(aircraft -> "WAITING_MAINTENANCE".equals(aircraft.status()))
                         .map(AircraftStateDTO::code)
                         .sorted()
                         .toList(),
@@ -70,9 +81,20 @@ public class AnalysisFactService {
         );
     }
 
-    private List<String> landedAircraft(Snapshot current) {
+    private List<String> landedAircraft(Snapshot current, Snapshot previous) {
+        if (previous == null) {
+            return current.aircraft().values().stream()
+                    .filter(aircraft -> aircraft.currentBase() != null)
+                    .map(AircraftStateDTO::code)
+                    .sorted()
+                    .toList();
+        }
         return current.aircraft().values().stream()
                 .filter(aircraft -> aircraft.currentBase() != null)
+                .filter(aircraft -> {
+                    AircraftStateDTO prev = previous.aircraft().get(aircraft.code());
+                    return prev == null || prev.currentBase() == null;
+                })
                 .map(AircraftStateDTO::code)
                 .sorted()
                 .toList();

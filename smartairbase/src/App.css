@@ -1021,7 +1021,7 @@ button:disabled {
 }
 
 .analysis-feed-list {
-  max-height: 290px;
+  max-height: 360px;
   overflow: auto;
 }
 
@@ -1073,6 +1073,75 @@ button:disabled {
 .analysis-source-rule-based {
   background: rgba(85, 101, 127, 0.14);
   color: #4a5972;
+}
+
+/* Role-colored left border */
+.analysis-feed-item.role-pilot       { border-left: 3px solid #3b82f6; }
+.analysis-feed-item.role-ground      { border-left: 3px solid #f59e0b; }
+.analysis-feed-item.role-maintenance { border-left: 3px solid #10b981; }
+.analysis-feed-item.role-command     { border-left: 3px solid #ef4444; }
+
+/* Role avatar circle */
+.analysis-role-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 0.62rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  background: rgba(84, 97, 123, 0.12);
+  color: #4b5668;
+}
+.analysis-role-avatar.role-pilot       { background: rgba(59, 130, 246, 0.14); color: #2563eb; }
+.analysis-role-avatar.role-ground      { background: rgba(245, 158, 11, 0.14);  color: #b45309; }
+.analysis-role-avatar.role-maintenance { background: rgba(16, 185, 129, 0.14);  color: #047857; }
+.analysis-role-avatar.role-command     { background: rgba(239, 68, 68, 0.14);   color: #dc2626; }
+
+/* Meta row with avatar */
+.analysis-feed-meta-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.analysis-feed-meta {
+  align-items: center;
+}
+
+/* Round group & divider */
+.analysis-round-group {
+  display: grid;
+  gap: 8px;
+}
+
+.analysis-round-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.analysis-round-divider::before,
+.analysis-round-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(84, 97, 123, 0.14);
+}
+
+.analysis-round-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #9aa3b0;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+
+.analysis-feed-list {
+  gap: 14px;
 }
 
 @keyframes next-step-pulse {
