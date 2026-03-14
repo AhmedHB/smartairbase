@@ -711,7 +711,7 @@
 }
 
 .slot {
-  min-height: 62px;
+  min-height: 148px;
   border: 2px solid #c9c9c9;
   display: grid;
   align-items: start;
@@ -719,14 +719,124 @@
   color: #8e8e8e;
   font-weight: 700;
   background: rgba(255, 255, 255, 0.9);
-  padding: 8px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 14px;
 }
 
 .slot-filled,
 .slot-repairing {
-  background: #55657f;
-  color: #f6f7fb;
+  background: transparent;
+  color: inherit;
   border-color: #55657f;
+}
+
+.warehouse-aircraft-slot {
+  --warehouse-slot-bg: linear-gradient(135deg, #eef3fa 0%, #d5dfea 100%);
+  --warehouse-slot-border: #c0cad8;
+  --warehouse-slot-badge: rgba(84, 97, 123, 0.12);
+  --warehouse-slot-text: #5a6678;
+  --warehouse-slot-shadow: rgba(84, 97, 123, 0.18);
+  min-height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 8px;
+  padding: 10px;
+  background: var(--warehouse-slot-bg);
+  color: var(--warehouse-slot-text);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+
+.warehouse-aircraft-slot-filled {
+  box-shadow: 0 12px 24px var(--warehouse-slot-shadow), inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+
+.warehouse-aircraft-slot-repair {
+  position: relative;
+}
+
+.warehouse-aircraft-slot-repair::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 214, 102, 0.14) 0 10px,
+    rgba(255, 214, 102, 0) 10px 20px
+  );
+  pointer-events: none;
+}
+
+.warehouse-aircraft-slot-header,
+.warehouse-aircraft-slot-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.warehouse-aircraft-slot-badge,
+.warehouse-aircraft-slot-state,
+.warehouse-aircraft-slot-footer span {
+  position: relative;
+  z-index: 1;
+}
+
+.warehouse-aircraft-slot-badge {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--warehouse-slot-badge);
+  color: inherit;
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.warehouse-aircraft-slot-state {
+  font-size: 0.72rem;
+  opacity: 0.92;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.warehouse-aircraft-slot-visual {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+}
+
+.warehouse-aircraft-slot-image {
+  position: relative;
+  z-index: 1;
+  width: clamp(58px, 34%, 74px);
+  height: auto;
+  object-fit: contain;
+  transform: rotate(-7deg);
+  filter: drop-shadow(0 12px 12px rgba(23, 30, 42, 0.24));
+}
+
+.warehouse-aircraft-slot-repair .warehouse-aircraft-slot-image {
+  width: clamp(52px, 42%, 68px);
+}
+
+.warehouse-aircraft-slot-footer {
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
+
+.warehouse-aircraft-slot-footer span {
+  padding: 3px 0;
+}
+
+.warehouse-aircraft-slot:not(.warehouse-aircraft-slot-filled) .warehouse-aircraft-slot-image {
+  opacity: 0.26;
+  filter: grayscale(1);
+}
+
+.warehouse-aircraft-slot:not(.warehouse-aircraft-slot-filled) .warehouse-aircraft-slot-footer {
+  justify-content: flex-start;
 }
 
 .event-panel,

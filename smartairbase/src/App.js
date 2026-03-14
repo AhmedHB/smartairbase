@@ -47,6 +47,51 @@ const INITIAL_DASHBOARD_FILTERS = {
 };
 const DASHBOARD_PAGE_SIZE = 20;
 const INITIAL_DASHBOARD_EXPORT_FILE_NAME = 'dashboard_export';
+const GRIPEN_IMAGE_URL = `${process.env.PUBLIC_URL}/gripen.png`;
+const WAREHOUSE_AIRCRAFT_PALETTES = [
+  {
+    background: 'linear-gradient(135deg, #0b6e4f 0%, #1ba672 100%)',
+    border: '#0a5b41',
+    badge: 'rgba(255, 255, 255, 0.18)',
+    text: '#f4fff9',
+    shadow: 'rgba(11, 110, 79, 0.28)',
+  },
+  {
+    background: 'linear-gradient(135deg, #1f4f96 0%, #3d80d8 100%)',
+    border: '#173d74',
+    badge: 'rgba(255, 255, 255, 0.2)',
+    text: '#f5f9ff',
+    shadow: 'rgba(31, 79, 150, 0.28)',
+  },
+  {
+    background: 'linear-gradient(135deg, #8f3f1f 0%, #d96f2b 100%)',
+    border: '#733218',
+    badge: 'rgba(255, 255, 255, 0.2)',
+    text: '#fff9f5',
+    shadow: 'rgba(143, 63, 31, 0.28)',
+  },
+  {
+    background: 'linear-gradient(135deg, #6d2e8b 0%, #a04ec4 100%)',
+    border: '#54236d',
+    badge: 'rgba(255, 255, 255, 0.2)',
+    text: '#fcf7ff',
+    shadow: 'rgba(109, 46, 139, 0.28)',
+  },
+  {
+    background: 'linear-gradient(135deg, #8d1f4d 0%, #cc4f83 100%)',
+    border: '#6f193d',
+    badge: 'rgba(255, 255, 255, 0.2)',
+    text: '#fff7fb',
+    shadow: 'rgba(141, 31, 77, 0.28)',
+  },
+  {
+    background: 'linear-gradient(135deg, #5a5f12 0%, #9fae31 100%)',
+    border: '#4a4e10',
+    badge: 'rgba(255, 255, 255, 0.2)',
+    text: '#fdfff3',
+    shadow: 'rgba(90, 95, 18, 0.28)',
+  },
+];
 
 const BASE_TYPE_LABELS = {
   A: 'Main Airbase',
@@ -83,6 +128,19 @@ export function automatedDiceSelectionMode(strategy) {
 
 export function manualDiceSelectionMode(useRandomDice) {
   return useRandomDice ? 'MANUAL_RANDOM_SELECTION' : 'MANUAL_DIRECT_SELECTION';
+}
+
+function warehousePaletteForAircraft(aircraftCode) {
+  if (!aircraftCode) {
+    return null;
+  }
+
+  const colorIndex = [...String(aircraftCode)].reduce(
+    (hash, character) => hash + character.charCodeAt(0),
+    0,
+  ) % WAREHOUSE_AIRCRAFT_PALETTES.length;
+
+  return WAREHOUSE_AIRCRAFT_PALETTES[colorIndex];
 }
 
 function App() {
@@ -2965,7 +3023,7 @@ async function request(path, options = {}) {
                       const aircraft = base.parked[index];
                       return (
                         <div key={`${base.code}-park-${index}`} className={`slot slot-${aircraft ? 'filled' : 'empty'}`}>
-                          {aircraft ? <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} compact /> : `Slot ${index + 1}`}
+                          <WarehouseAircraftSlot aircraft={aircraft} slotNumber={index + 1} slotType="park" />
                         </div>
                       );
                     })}
@@ -2979,7 +3037,7 @@ async function request(path, options = {}) {
                         const aircraft = base.maintenance[index];
                         return (
                           <div key={`${base.code}-repair-${index}`} className={`slot slot-${aircraft ? 'repairing' : 'empty'}`}>
-                            {aircraft ? <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} compact /> : `Slot ${index + 1}`}
+                            <WarehouseAircraftSlot aircraft={aircraft} slotNumber={index + 1} slotType="repair" />
                           </div>
                         );
                       })}
@@ -3175,6 +3233,51 @@ function AircraftStatusCard({ aircraft, additions, compact = false }) {
           <li>{aircraft.damage === 'NONE' ? 'Repair none' : `Repair ${humanizeStatus(aircraft.damage)}`}</li>
         </ul>
         {positiveAdditions.length ? <p className="aircraft-added-copy">Added: {positiveAdditions.join(', ')}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function WarehouseAircraftSlot({ aircraft, slotNumber, slotType }) {
+  const colorPalette = warehousePaletteForAircraft(aircraft?.code);
+  const isRepairSlot = slotType === 'repair';
+  const slotStateLabel = aircraft ? (isRepairSlot ? 'Repair' : 'Ready') : 'Available';
+  const style = colorPalette ? {
+    '--warehouse-slot-bg': colorPalette.background,
+    '--warehouse-slot-border': colorPalette.border,
+    '--warehouse-slot-badge': colorPalette.badge,
+    '--warehouse-slot-text': colorPalette.text,
+    '--warehouse-slot-shadow': colorPalette.shadow,
+  } : undefined;
+  const tooltip = aircraft
+    ? `${aircraft.code} | Fuel ${aircraft.fuel}/100 | Weapons ${aircraft.weapons}/6 | Flight hours ${aircraft.remainingFlightHours}/20`
+    : `Open ${isRepairSlot ? 'repair' : 'parking'} slot ${slotNumber}`;
+
+  return (
+    <div
+      className={`warehouse-aircraft-slot${aircraft ? ' warehouse-aircraft-slot-filled' : ''}${isRepairSlot ? ' warehouse-aircraft-slot-repair' : ''}`}
+      style={style}
+      title={tooltip}
+    >
+      <div className="warehouse-aircraft-slot-header">
+        <span className="warehouse-aircraft-slot-badge">
+          {aircraft ? aircraft.code : `Slot ${slotNumber}`}
+        </span>
+        <span className="warehouse-aircraft-slot-state">{slotStateLabel}</span>
+      </div>
+      <div className="warehouse-aircraft-slot-visual" aria-hidden="true">
+        <img className="warehouse-aircraft-slot-image" src={GRIPEN_IMAGE_URL} alt="" />
+      </div>
+      <div className="warehouse-aircraft-slot-footer">
+        {aircraft ? (
+          <>
+            <span>Fuel {aircraft.fuel}</span>
+            <span>W {aircraft.weapons}</span>
+            <span>FH {aircraft.remainingFlightHours}</span>
+          </>
+        ) : (
+          <span>Open slot</span>
+        )}
       </div>
     </div>
   );
