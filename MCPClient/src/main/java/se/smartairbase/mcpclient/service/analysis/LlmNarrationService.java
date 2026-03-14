@@ -51,6 +51,30 @@ public class LlmNarrationService {
         }
     }
 
+    public AnalysisNarration narrateFinal(AnalysisRole role, AnalysisGameFacts facts) {
+        if (!isEnabled()) {
+            return null;
+        }
+        ChatClient.Builder builder = chatClientBuilderProvider.getIfAvailable();
+        if (builder == null) {
+            return null;
+        }
+        try {
+            String content = builder.build()
+                    .prompt()
+                    .system(rolePromptFactory.finalSystemPrompt(role))
+                    .user(rolePromptFactory.finalUserPrompt(role, facts))
+                    .call()
+                    .content();
+            if (content == null || content.isBlank()) {
+                return null;
+            }
+            return new AnalysisNarration("LLM", content.trim(), null);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
     private boolean isEnabled() {
         return !"rule-based".equalsIgnoreCase(mode);
     }

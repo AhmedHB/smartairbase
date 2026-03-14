@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import se.smartairbase.mcpclient.controller.dto.AnalysisFeedResponseDTO;
+import se.smartairbase.mcpclient.controller.dto.GameSummaryResponseDTO;
 import se.smartairbase.mcpclient.service.AnalysisFeedService;
 
 @RestController
@@ -30,5 +31,15 @@ public class AnalysisController {
     @PostMapping("/games/{gameId}/analysis/generate")
     public AnalysisFeedResponseDTO generateAnalysis(@PathVariable String gameId) {
         return analysisFeedService.generateRoundAnalysis(gameId);
+    }
+
+    @PostMapping("/games/{gameId}/analysis/generate-final")
+    public GameSummaryResponseDTO generateFinalAnalysis(@PathVariable String gameId) {
+        return analysisFeedService.generateFinalAnalysis(gameId);
+    }
+
+    @GetMapping("/games/{gameId}/summary")
+    public GameSummaryResponseDTO getGameSummary(@PathVariable String gameId) {
+        return analysisFeedService.getGameSummary(gameId);
     }
 }

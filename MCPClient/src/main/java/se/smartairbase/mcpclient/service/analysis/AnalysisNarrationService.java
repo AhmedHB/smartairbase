@@ -22,6 +22,17 @@ public class AnalysisNarrationService {
         this.ruleBasedNarrationService = ruleBasedNarrationService;
     }
 
+    public AnalysisNarration narrateFinal(AnalysisRole role, AnalysisGameFacts facts) {
+        AnalysisNarration llmNarration = llmNarrationService.narrateFinal(role, facts);
+        if (llmNarration != null) {
+            log.debug("Final narration for role {} generated via {}", role, llmNarration.source());
+            return llmNarration;
+        }
+        AnalysisNarration fallback = ruleBasedNarrationService.narrateFinal(role, facts);
+        log.debug("Final narration for role {} fell back to {}", role, fallback.source());
+        return fallback;
+    }
+
     public AnalysisNarration narrate(AnalysisRole role, AnalysisRoundFacts facts) {
         // LLM output is optional. The client always has a deterministic fallback so
         // the feed can still be persisted even when narration generation fails.

@@ -109,6 +109,7 @@ function App() {
   const [eventLog, setEventLog] = useState([]);
   const [analysisFeed, setAnalysisFeed] = useState([]);
   const [analysisPending, setAnalysisPending] = useState(false);
+  const [postGameSummary, setPostGameSummary] = useState(null);
   const [status, setStatus] = useState({ kind: 'idle', message: 'Create a game to begin.' });
   const [simulationStatus, setSimulationStatus] = useState({
     running: false,
@@ -144,6 +145,7 @@ function App() {
   const missionPreviewTimerRef = useRef(null);
   const autoDiceTimerRef = useRef(null);
   const lastAnalysisRequestKeyRef = useRef(null);
+  const lastFinalAnalysisRequestKeyRef = useRef(null);
   const analysisFeedListRef = useRef(null);
   const [missionPreviewActive, setMissionPreviewActive] = useState(false);
   const [manualMissionPreviewAssignments, setManualMissionPreviewAssignments] = useState({});
@@ -1010,6 +1012,41 @@ async function request(path, options = {}) {
   }, [gameId, gameState]);
 
   useEffect(() => {
+    const statusValue = gameState?.game?.status;
+    if (!isValidGameId(gameId) || !['WON', 'LOST'].includes(statusValue)) {
+      return undefined;
+    }
+    const requestKey = `${gameId}-final-${statusValue}`;
+    if (lastFinalAnalysisRequestKeyRef.current === requestKey) {
+      return undefined;
+    }
+    let ignore = false;
+    lastFinalAnalysisRequestKeyRef.current = requestKey;
+
+    async function generateFinalAnalysis() {
+      try {
+        const summaryResponse = await request(`/games/${gameId}/analysis/generate-final`, { method: 'POST' });
+        if (!ignore) {
+          setPostGameSummary(summaryResponse);
+          const feedResponse = await request(`/games/${gameId}/analysis-feed`);
+          if (!ignore) {
+            setAnalysisFeed(feedResponse.items || []);
+          }
+        }
+      } catch (error) {
+        if (isAbortError(error)) {
+          return;
+        }
+      }
+    }
+
+    void generateFinalAnalysis();
+    return () => {
+      ignore = true;
+    };
+  }, [gameId, gameState]);
+
+  useEffect(() => {
     const container = analysisFeedListRef.current;
     if (!container) {
       return;
@@ -1102,7 +1139,9 @@ async function request(path, options = {}) {
     setEventLog([]);
     setAnalysisFeed([]);
     setAnalysisPending(false);
+    setPostGameSummary(null);
     lastAnalysisRequestKeyRef.current = null;
+    lastFinalAnalysisRequestKeyRef.current = null;
   }
 
   async function handleCreateGame(event) {
@@ -1129,7 +1168,9 @@ async function request(path, options = {}) {
     setEventLog([]);
     setAnalysisFeed([]);
     setAnalysisPending(false);
+    setPostGameSummary(null);
     lastAnalysisRequestKeyRef.current = null;
+    lastFinalAnalysisRequestKeyRef.current = null;
     setPreviousGameState(null);
     stopAutomation();
     await refreshGameState(nextGameId);
@@ -1165,7 +1206,9 @@ async function request(path, options = {}) {
     setEventLog([]);
     setAnalysisFeed([]);
     setAnalysisPending(false);
+    setPostGameSummary(null);
     lastAnalysisRequestKeyRef.current = null;
+    lastFinalAnalysisRequestKeyRef.current = null;
 
     if (previousGameId) {
       pushLog('Game aborted', {
@@ -3029,7 +3072,49 @@ async function request(path, options = {}) {
             <h3>Analysis feed</h3>
             {analysisPending ? <span className="analysis-pending">Pending...</span> : null}
           </div>
-          {analysisFeed.length ? (
+          {postGameSummary?.snapshot ? (
+            <div className="post-game-summary">
+              <div className={`post-game-outcome post-game-outcome-${postGameSummary.snapshot.isWin ? 'won' : 'lost'}`}>
+                {postGameSummary.snapshot.isWin ? 'Mission accomplished' : 'Mission failed'} — {postGameSummary.snapshot.gameStatus}
+              </div>
+              <div className="post-game-stats">
+                <div className="post-game-stat"><span>Missions</span><strong>{postGameSummary.snapshot.completedMissionCount ?? '—'}/{postGameSummary.snapshot.missionCount ?? '—'}</strong></div>
+                <div className="post-game-stat"><span>Rounds</span><strong>{postGameSummary.snapshot.roundsToOutcome ?? '—'}</strong></div>
+                <div className="post-game-stat"><span>Survived</span><strong>{postGameSummary.snapshot.survivingAircraftCount ?? '—'}/{postGameSummary.snapshot.aircraftCount ?? '—'}</strong></div>
+                <div className="post-game-stat"><span>Lost</span><strong>{postGameSummary.snapshot.destroyedAircraftCount ?? '—'}</strong></div>
+              </div>
+              {(postGameSummary.finalFeed || []).map((item) => (
+                <article key={item.id} className="event-item analysis-feed-item post-game-feed-item">
+                  <div className="analysis-feed-meta">
+                    <strong>{item.role}</strong>
+                    <span className={`analysis-source-badge analysis-source-${String(item.source || 'rule-based').toLowerCase()}`}>{item.source || 'Rule-based'}</span>
+                  </div>
+                  <p>{item.summary}</p>
+                  {item.details ? <p className="muted-copy">{item.details}</p> : null}
+                </article>
+              ))}
+              {analysisFeed.filter((item) => item.round > 0).length > 0 ? (
+                <details className="post-game-round-feed">
+                  <summary>Round-by-round feed ({analysisFeed.filter((item) => item.round > 0).length} entries)</summary>
+                  <div ref={analysisFeedListRef} className="event-list analysis-feed-list">
+                    {analysisFeed.filter((item) => item.round > 0).map((item) => (
+                      <article key={item.id} className="event-item analysis-feed-item">
+                        <div className="analysis-feed-meta">
+                          <strong>{item.role}</strong>
+                          <div className="analysis-feed-meta-right">
+                            <span className={`analysis-source-badge analysis-source-${String(item.source || 'rule-based').toLowerCase()}`}>{item.source || 'Rule-based'}</span>
+                            <span>Round {item.round}</span>
+                          </div>
+                        </div>
+                        <p>{item.summary}</p>
+                        {item.details ? <p className="muted-copy">{item.details}</p> : null}
+                      </article>
+                    ))}
+                  </div>
+                </details>
+              ) : null}
+            </div>
+          ) : analysisFeed.length ? (
             <div ref={analysisFeedListRef} className="event-list analysis-feed-list">
               {analysisFeed.map((item) => (
                 <article key={item.id} className="event-item analysis-feed-item">

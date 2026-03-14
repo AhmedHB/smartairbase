@@ -9,6 +9,7 @@ public enum SmartAirBaseTool {
     CREATE_SIMULATION_BATCH("create_simulation_batch"),
     GET_SIMULATION_BATCH("get_simulation_batch"),
     LIST_GAME_ANALYTICS_SNAPSHOTS("list_game_analytics_snapshots"),
+    GET_GAME_ANALYTICS_SNAPSHOT("get_game_analytics_snapshot"),
     GET_GAME_STATE("get_game_state"),
     LIST_SCENARIOS("list_scenarios"),
     GET_SCENARIO("get_scenario"),

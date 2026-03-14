@@ -3,9 +3,12 @@ package se.smartairbase.mcpclient.service;
 import org.springframework.stereotype.Service;
 import se.smartairbase.mcpclient.controller.dto.AnalysisFeedItemDTO;
 import se.smartairbase.mcpclient.controller.dto.AnalysisFeedResponseDTO;
+import se.smartairbase.mcpclient.controller.dto.GameAnalyticsSnapshotDTO;
 import se.smartairbase.mcpclient.controller.dto.GameStateDTO;
+import se.smartairbase.mcpclient.controller.dto.GameSummaryResponseDTO;
 import se.smartairbase.mcpclient.domain.AnalysisRole;
 import se.smartairbase.mcpclient.service.analysis.AnalysisFactService;
+import se.smartairbase.mcpclient.service.analysis.AnalysisGameFacts;
 import se.smartairbase.mcpclient.service.analysis.AnalysisNarration;
 import se.smartairbase.mcpclient.service.analysis.AnalysisNarrationService;
 import se.smartairbase.mcpclient.service.analysis.AnalysisRoundFacts;
@@ -61,6 +64,58 @@ public class AnalysisFeedService {
         return persistedFeed;
     }
 
+    public GameSummaryResponseDTO generateFinalAnalysis(String gameId) {
+        GameAnalyticsSnapshotDTO snapshot = mcpClient.getGameAnalyticsSnapshot(gameId);
+        if (snapshot == null) {
+            return new GameSummaryResponseDTO(null, List.of());
+        }
+        AnalysisGameFacts facts = new AnalysisGameFacts(
+                snapshot.gameId(),
+                snapshot.gameStatus(),
+                snapshot.roundsToOutcome() != null ? snapshot.roundsToOutcome() : 0,
+                snapshot.completedMissionCount() != null ? snapshot.completedMissionCount() : 0,
+                snapshot.missionCount() != null ? snapshot.missionCount() : 0,
+                snapshot.survivingAircraftCount() != null ? snapshot.survivingAircraftCount() : 0,
+                snapshot.destroyedAircraftCount() != null ? snapshot.destroyedAircraftCount() : 0,
+                snapshot.diceSelectionProfile()
+        );
+        String createdAt = OffsetDateTime.now().toString();
+        List<AnalysisFeedItemDTO> items = List.of(
+                finalItem(gameId, AnalysisRole.PILOT, facts, createdAt),
+                finalItem(gameId, AnalysisRole.GROUND_CREW, facts, createdAt),
+                finalItem(gameId, AnalysisRole.MAINTENANCE_TECHNICIANS, facts, createdAt),
+                finalItem(gameId, AnalysisRole.COMMAND_OPERATIONS, facts, createdAt)
+        );
+        mcpClient.appendAnalysisFeedItems(gameId, items);
+        return new GameSummaryResponseDTO(snapshot, items);
+    }
+
+    public GameSummaryResponseDTO getGameSummary(String gameId) {
+        GameAnalyticsSnapshotDTO snapshot = mcpClient.getGameAnalyticsSnapshot(gameId);
+        AnalysisFeedResponseDTO feed = mcpClient.listAnalysisFeed(gameId);
+        List<AnalysisFeedItemDTO> finalFeed = (feed.items() == null ? List.<AnalysisFeedItemDTO>of() : feed.items()).stream()
+                .filter(item -> item.round() != null && item.round() == 0)
+                .toList();
+        return new GameSummaryResponseDTO(snapshot, finalFeed);
+    }
+
+    private AnalysisFeedItemDTO finalItem(String gameId, AnalysisRole role, AnalysisGameFacts facts, String createdAt) {
+        AnalysisNarration narration = analysisNarrationService.narrateFinal(role, facts);
+        return new AnalysisFeedItemDTO(
+                gameId + "-0-" + role.name(),
+                facts.gameId(),
+                0,
+                "GAME_SUMMARY",
+                role.displayName(),
+                narration.source(),
+                narration.summary(),
+                narration.details(),
+                List.of(),
+                List.of(),
+                createdAt
+        );
+    }
+
     private List<AnalysisFeedItemDTO> buildItems(GameStateDTO currentState, Snapshot previousSnapshot) {
         AnalysisRoundFacts facts = analysisFactService.buildFacts(currentState, previousSnapshot);
         String createdAt = OffsetDateTime.now().toString();
@@ -71,7 +126,7 @@ public class AnalysisFeedService {
         return List.of(
                 item(gameId, round, phase, AnalysisRole.PILOT,
                         facts,
-                        facts.keyAircraft().isEmpty() ? facts.landedAircraft() : facts.keyAircraft(),
+                        facts.landedAircraft(),
                         List.of(),
                         createdAt),
                 item(gameId, round, phase, AnalysisRole.GROUND_CREW,
@@ -86,7 +141,7 @@ public class AnalysisFeedService {
                         createdAt),
                 item(gameId, round, phase, AnalysisRole.COMMAND_OPERATIONS,
                         facts,
-                        facts.keyAircraft(),
+                        facts.maintenanceAircraft(),
                         facts.keyBases(),
                         createdAt)
         );

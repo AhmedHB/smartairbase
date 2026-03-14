@@ -164,6 +164,14 @@ public class GameTools {
     }
 
     @Tool(
+            name = "get_game_analytics_snapshot",
+            description = "Get the analytics snapshot for one finished game by game id"
+    )
+    public Object getGameAnalyticsSnapshot(Long gameId) {
+        return gameAnalyticsQueryService.getSnapshotByGameId(gameId);
+    }
+
+    @Tool(
             name = "abort_game",
             description = "Abort one game and make it inactive for further play"
     )

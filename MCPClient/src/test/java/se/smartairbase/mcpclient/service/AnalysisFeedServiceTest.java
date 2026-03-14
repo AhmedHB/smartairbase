@@ -49,10 +49,11 @@ class AnalysisFeedServiceTest {
                 List.of(TestStateFactory.mission("M1", "COMPLETED"))
         );
         AnalysisRoundFacts facts = new AnalysisRoundFacts(
-                1L, 4, "ROUND_COMPLETE", "ACTIVE",
-                1, 1, 1, 0,
-                List.of("F1"), List.of(), List.of(), List.of(), List.of(),
-                List.of("F1"), List.of("F1"), List.of("BASE_A"), List.of("F1"), List.of("BASE_A")
+                1L, 4, "ROUND_COMPLETE", "ACTIVE", "smartairbase", 10,
+                1, 1, 0,
+                1, 0,
+                List.of("F1"), List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of(), List.of("F1"), List.of("F1"), List.of("BASE_A"), List.of("BASE_A")
         );
         AnalysisFactService.Snapshot snapshot = new AnalysisFactService.Snapshot(
                 4, "ROUND_COMPLETE", "ACTIVE",

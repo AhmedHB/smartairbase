@@ -120,6 +120,10 @@ public class SmartAirBaseMcpClient {
         );
     }
 
+    public GameAnalyticsSnapshotDTO getGameAnalyticsSnapshot(String gameId) {
+        return toolExecutor.execute(SmartAirBaseTool.GET_GAME_ANALYTICS_SNAPSHOT, Map.of("gameId", gameId), GameAnalyticsSnapshotDTO.class);
+    }
+
     public List<ScenarioSummaryDTO> listScenarios() {
         return objectMapper.convertValue(
                 toolExecutor.execute(SmartAirBaseTool.LIST_SCENARIOS, Map.of(), Object.class),
