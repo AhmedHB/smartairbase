@@ -2751,6 +2751,16 @@ async function request(path, options = {}) {
 
       {controlCenterPanel}
 
+      <aside className="info-panel play-color-sidebar" aria-label="Color legend">
+        <h3>Aircraft colors</h3>
+        <div className="play-color-legend">
+          <div className="play-color-legend-item"><span className="play-color-swatch play-color-blue" /> Healthy aircraft at base</div>
+          <div className="play-color-legend-item"><span className="play-color-swatch play-color-orange" /> Aircraft needs repair</div>
+          <div className="play-color-legend-item"><span className="play-color-swatch play-color-red" /> Destroyed aircraft</div>
+          <div className="play-color-legend-item"><span className="play-color-swatch play-color-green" /> Completed mission</div>
+        </div>
+      </aside>
+
       <section className="mission-section">
         <header className="section-heading">
           <h2>Missions</h2>
@@ -2920,7 +2930,7 @@ async function request(path, options = {}) {
           {destroyedAircraft.length ? (
             <div className="holding-grid">
               {destroyedAircraft.map((aircraft) => (
-                <div key={aircraft.code} className="holding-card">
+                <div key={aircraft.code} className="holding-card holding-card-destroyed">
                   <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} />
                 </div>
               ))}
@@ -2963,8 +2973,12 @@ async function request(path, options = {}) {
                   <div className="slots">
                     {Array.from({ length: base.parkingCapacity }).map((_, index) => {
                       const aircraft = base.parked[index];
+                      const needsRepair = aircraftNeedsRepair(aircraft);
                       return (
-                        <div key={`${base.code}-park-${index}`} className={`slot slot-${aircraft ? 'filled' : 'empty'}`}>
+                        <div
+                          key={`${base.code}-park-${index}`}
+                          className={`slot slot-${aircraft ? 'filled' : 'empty'}${needsRepair ? ' slot-needs-repair' : ''}`}
+                        >
                           {aircraft ? <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} compact /> : `Slot ${index + 1}`}
                         </div>
                       );
@@ -2978,7 +2992,7 @@ async function request(path, options = {}) {
                       {Array.from({ length: base.maintenanceCapacity }).map((_, index) => {
                         const aircraft = base.maintenance[index];
                         return (
-                          <div key={`${base.code}-repair-${index}`} className={`slot slot-${aircraft ? 'repairing' : 'empty'}`}>
+                          <div key={`${base.code}-repair-${index}`} className={`slot slot-${aircraft ? 'repairing' : 'empty'}${aircraft ? ' slot-needs-repair' : ''}`}>
                             {aircraft ? <AircraftStatusCard aircraft={aircraft} additions={aircraftAdditionsByCode[aircraft.code]} compact /> : `Slot ${index + 1}`}
                           </div>
                         );
@@ -3158,6 +3172,7 @@ function AircraftStatusCard({ aircraft, additions, compact = false }) {
     weapons: 6,
     hours: 20,
   };
+  const isDestroyed = aircraft?.status === 'CRASHED' || aircraft?.status === 'DESTROYED';
   const positiveAdditions = [
     additions?.fuel ? `Fuel +${additions.fuel}` : null,
     additions?.weapons ? `Weapons +${additions.weapons}` : null,
@@ -3165,7 +3180,7 @@ function AircraftStatusCard({ aircraft, additions, compact = false }) {
   ].filter(Boolean);
 
   return (
-    <div className={`aircraft-status-card${compact ? ' aircraft-status-card-compact' : ''}`}>
+    <div className={`aircraft-status-card${compact ? ' aircraft-status-card-compact' : ''}${isDestroyed ? ' aircraft-status-card-destroyed' : ''}`}>
       <strong>{aircraft.code}</strong>
       <div className="aircraft-status-card-details">
         <ul className="aircraft-stats-list">
@@ -3463,6 +3478,15 @@ function buildMissionPreviewState(currentState, autoAssignments) {
     aircraft: previewAircraft,
     missions: previewMissions,
   };
+}
+
+function aircraftNeedsRepair(aircraft) {
+  if (!aircraft) {
+    return false;
+  }
+  return aircraft.status === 'IN_MAINTENANCE'
+    || aircraft.status === 'WAITING_MAINTENANCE'
+    || (aircraft.damage && aircraft.damage !== 'NONE');
 }
 
 function extractMissionAssignments(autoAssignments) {

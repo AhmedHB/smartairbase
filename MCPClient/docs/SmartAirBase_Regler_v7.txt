@@ -275,6 +275,15 @@ komponentskada = 2
 större reparation = 3
 full service = 4
 
+Snabböversikt – reservdelar för reparation:
+
+- Mindre reparation: 1 reservdel
+- Komponentskada: 2 reservdelar
+- Större reparation: 3 reservdelar
+- Full service: 4 reservdelar
+
+Reservdelarna dras från basens lager när reparationen startar.
+
 ============================================================
 9. HOLDING
 ============================================================
