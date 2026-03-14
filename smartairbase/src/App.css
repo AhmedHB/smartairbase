@@ -1110,8 +1110,20 @@ button:disabled {
   padding: 16px;
 }
 
-.play-color-sidebar h3 {
+.play-color-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #37465e;
   text-align: center;
+  padding: 4px 0 8px;
+}
+
+.play-color-toggle:hover {
+  color: #1f2430;
 }
 
 .play-color-legend {
@@ -1149,6 +1161,78 @@ button:disabled {
 
 .play-color-green {
   background: #2f7d4f;
+}
+
+.post-game-summary {
+  display: grid;
+  gap: 12px;
+  overflow: auto;
+  max-height: 480px;
+}
+
+.post-game-outcome {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.01em;
+}
+
+.post-game-outcome-won {
+  background: rgba(47, 106, 75, 0.12);
+  color: #2f6a4b;
+  border: 1px solid rgba(47, 106, 75, 0.22);
+}
+
+.post-game-outcome-lost {
+  background: rgba(180, 55, 55, 0.1);
+  color: #9e2f2f;
+  border: 1px solid rgba(180, 55, 55, 0.2);
+}
+
+.post-game-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.post-game-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(245, 247, 252, 0.7);
+  border: 1px solid rgba(84, 97, 123, 0.12);
+}
+
+.post-game-stat span {
+  font-size: 0.72rem;
+  color: #55657f;
+}
+
+.post-game-stat strong {
+  font-size: 1.1rem;
+}
+
+.post-game-feed-item {
+  background: rgba(245, 247, 252, 0.5);
+  border-radius: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(84, 97, 123, 0.1);
+}
+
+.post-game-round-feed {
+  border-top: 1px solid rgba(84, 97, 123, 0.12);
+  padding-top: 8px;
+}
+
+.post-game-round-feed summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: #55657f;
+  padding: 4px 0;
+  user-select: none;
 }
 
 @keyframes next-step-pulse {

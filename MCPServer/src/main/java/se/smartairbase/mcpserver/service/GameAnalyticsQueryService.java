@@ -23,6 +23,13 @@ public class GameAnalyticsQueryService {
     }
 
     @Transactional(readOnly = true)
+    public GameAnalyticsSnapshotDto getSnapshotByGameId(Long gameId) {
+        return gameAnalyticsSnapshotRepository.findByGame_Id(gameId)
+                .map(this::toDto)
+                .orElse(null);
+    }
+
+    @Transactional(readOnly = true)
     public List<GameAnalyticsSnapshotDto> listSnapshots(String scenarioName,
                                                         String createdDate,
                                                         Integer aircraftCount,

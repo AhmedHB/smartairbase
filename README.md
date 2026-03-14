@@ -474,3 +474,6 @@ Open:
 - Each analysis entry shows whether the text came from `LLM` or `Rule-based` narration.
 - `MCPClient` supports `smartairbase.analysis.narration-mode` with `hybrid`, `rule-based`, and `llm`.
 - Analysis entries are now persisted by `MCPServer` in the same PostgreSQL database as the game state, while `MCPClient` still generates the narration text.
+- When a game ends, the `Play` tab shows a post-game summary with a win/loss outcome badge, aggregate stats (rounds, missions, aircraft), and a final per-role narration from each of the four analysis personas.
+- The post-game summary also includes a collapsible round-by-round analysis feed that replays the commentary from the full game.
+- An always-visible color legend on the right side of the `Play` tab explains the active color mapping: green for completed missions, blue for healthy aircraft on base slots, orange for aircraft needing repair, and red for destroyed aircraft.
