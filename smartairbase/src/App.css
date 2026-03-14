@@ -552,7 +552,9 @@
 }
 
 .mission-completed {
-  opacity: 0.76;
+  background: #2f7d4f;
+  color: #f3fbf6;
+  border-color: rgba(47, 125, 79, 0.5);
 }
 
 .plan-strip {
@@ -593,6 +595,11 @@
   color: #f5f7fb;
 }
 
+.holding-card-destroyed {
+  border: 1px solid rgb(255, 0, 0);
+  background: rgb(255, 0, 0);
+}
+
 .aircraft-status-card {
   display: grid;
   gap: 4px;
@@ -611,6 +618,18 @@
 
 .aircraft-status-card strong {
   font-size: 0.94rem;
+}
+
+.aircraft-status-card-destroyed {
+  border: 1px solid rgb(255, 0, 0);
+  border-radius: 8px;
+  background: rgb(255, 0, 0);
+  color: #ffffff;
+  padding: 8px;
+}
+
+.aircraft-status-card-destroyed strong {
+  color: #ffffff;
 }
 
 .aircraft-stats-list {
@@ -645,8 +664,8 @@
   min-width: 180px;
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px solid rgba(69, 86, 119, 0.22);
-  background: rgba(85, 101, 127, 0.98);
+  border: 1px solid #000000;
+  background: #3f4d65;
   box-shadow: 0 16px 28px rgba(31, 36, 48, 0.2);
 }
 
@@ -727,6 +746,12 @@
   background: #55657f;
   color: #f6f7fb;
   border-color: #55657f;
+}
+
+.slot-needs-repair {
+  background: #d67e25;
+  border-color: #d67e25;
+  color: #fff6e8;
 }
 
 .event-panel,
@@ -1075,6 +1100,57 @@ button:disabled {
   color: #4a5972;
 }
 
+.play-color-sidebar {
+  position: fixed;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 280px;
+  z-index: 7;
+  padding: 16px;
+}
+
+.play-color-sidebar h3 {
+  text-align: center;
+}
+
+.play-color-legend {
+  display: grid;
+  gap: 8px;
+}
+
+.play-color-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #37465e;
+}
+
+.play-color-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(31, 36, 48, 0.3);
+  flex: 0 0 auto;
+}
+
+.play-color-blue {
+  background: #55657f;
+}
+
+.play-color-orange {
+  background: #d67e25;
+}
+
+.play-color-red {
+  background: rgb(255, 0, 0);
+}
+
+.play-color-green {
+  background: #2f7d4f;
+}
+
 @keyframes next-step-pulse {
   0%, 100% {
     box-shadow: 0 0 0 3px rgba(212, 107, 44, 0.18), 0 14px 28px rgba(180, 85, 28, 0.24);
@@ -1105,6 +1181,13 @@ button:disabled {
 
   .status-stack {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .play-color-sidebar {
+    position: static;
+    transform: none;
+    width: auto;
+    margin-top: 16px;
   }
 }
 

@@ -204,6 +204,7 @@ The `Play` tab is also laid out to match that flow more closely:
 - `Mission complete` appears under `On mission` and before `Awaiting dice roll`
 - `Dice Outcome` appears after `Awaiting dice roll`
 - `Event history` and `Analysis feed` are shown below the bases section, stacked vertically at the same content width as the bases area
+- an always-visible right-side `Aircraft colors` legend explains the active color mapping used in the `Play` tab
 
 ### Mission Cards
 
@@ -232,6 +233,13 @@ The main board also includes:
 - flight hours should only increase after full service, not after ordinary landing or ordinary repair
 
 Aircraft cards in `Park` and `Repair` are now compact by default. They show the aircraft ID immediately, while the fuller status text and value details appear on hover.
+The compact hover tooltip uses a black border and a dark steel-blue background to match the current visual theme.
+Color usage in `Play` currently follows:
+
+- completed missions: green mission cards
+- aircraft that need repair on base slots: orange slot cards
+- healthy aircraft on base slots: blue slot cards
+- destroyed aircraft: red cards
 
 ### Event History
 
