@@ -1,0 +1,88 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: smartairbase-postgres
+    environment:
+      POSTGRES_DB: smartairbase
+      POSTGRES_USER: smartairbase
+      POSTGRES_PASSWORD: smartairbase
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartairbase -d smartairbase"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  mcpserver:
+    build:
+      context: ./MCPServer
+    container_name: smartairbase-mcpserver
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/smartairbase
+      SPRING_DATASOURCE_USERNAME: smartairbase
+      SPRING_DATASOURCE_PASSWORD: smartairbase
+    ports:
+      - "9090:9090"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 9090"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  mcpclient:
+    build:
+      context: ./MCPClient
+    container_name: smartairbase-mcpclient
+    depends_on:
+      mcpserver:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${MCPCLIENT_PROFILE:-local}
+      SPRING_AI_MCP_CLIENT_SSE_CONNECTIONS_INTELLIPLAN_URL: http://mcpserver:9090/sse
+      SPRING_AI_OLLAMA_BASE_URL: ${SPRING_AI_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      SMARTAIRBASE_ANALYSIS_NARRATION_MODE: ${SMARTAIRBASE_ANALYSIS_NARRATION_MODE:-hybrid}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./smartairbase
+      args:
+        REACT_APP_API_BASE_URL: /api
+    container_name: smartairbase-frontend
+    depends_on:
+      mcpclient:
+        condition: service_healthy
+    ports:
+      - "3000:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost/ >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
