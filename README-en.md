@@ -34,6 +34,12 @@ Players manage an air base, assigning aircraft to missions and managing fuel, we
   - **Scenario Editor** — customize base/aircraft/supply configs
   - **Dashboard** — analytics on finished games, CSV export
 - Polling-based (no WebSockets); all actions are HTTP requests
+- Color coding in the `Play` tab:
+  - green — completed mission cards
+  - blue — healthy aircraft on base slots
+  - orange — aircraft needing repair on base slots
+  - red — destroyed aircraft
+- An always-visible color legend on the right side of the `Play` tab explains the active mapping
 
 ## MCPClient (`/MCPClient`)
 
@@ -42,6 +48,8 @@ Players manage an air base, assigning aircraft to missions and managing fuel, we
 - `McpToolExecutor` serializes requests and calls MCP tools over SSE
 - `AutoPlayService` handles automated mission assignment and landing decisions
 - `AnalysisFeedService` generates round commentary (rule-based or LLM)
+- `RolePromptFactory` builds phase-aware system and user prompts for each of the four narration personas
+- `GET /api/games/{gameId}/summary` returns a `GameSummaryResponseDTO` combining the analytics snapshot and the final per-role narration for a finished game
 - Pluggable LLM via Maven profiles:
   - `local` — Ollama
   - `cloud` — OpenAI gpt-4o-mini
@@ -93,6 +101,7 @@ Players manage an air base, assigning aircraft to missions and managing fuel, we
 - **Scenario versioning** — SCN_STANDARD is read-only; users duplicate and edit copies
 - **Dual narration** — Analysis feed is either rule-based or LLM-generated (configurable via `smartairbase.analysis.narration-mode`)
 - **Denormalized analytics** — Post-game snapshot table enables fast dashboard queries
+- **Post-game summary** — When a game ends, the `Play` tab shows a summary panel with a win/loss badge, aggregate stats, final per-role narration from all four personas, and a collapsible round-by-round replay of the analysis feed
 
 ## Running Locally
 
@@ -147,3 +156,5 @@ Open:
 - Analysis feed entries show whether text came from `LLM` or `Rule-based` narration, and are persisted in PostgreSQL.
 - The `Scenario editor` tab is disabled while a game is active to keep scenario editing and live play separate.
 - Analytics snapshots are written for every finished game (from both Play and Simulator) and include scenario, win/loss, rounds, dice profile, aircraft counts, mission mix, and resource totals.
+- Each narration persona uses phase-aware prompts: round commentary uses round facts, and end-of-game narration uses a separate final prompt with the full game outcome.
+- The four analysis personas are: `Captain Erik Holm (Pilot)`, `Sara Lind (Ground Crew Chief)`, `Johan Berg (Lead Maintenance Technician)`, and `Colonel Anna Sjöberg (Command / Operations)`.

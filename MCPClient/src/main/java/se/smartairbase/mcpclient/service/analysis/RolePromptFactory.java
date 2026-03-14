@@ -124,7 +124,7 @@ public class RolePromptFactory {
             case MAINTENANCE_TECHNICIANS -> "Round facts:\n"
                     + "round=" + facts.round() + "\n"
                     + "phase=" + phase + "\n"
-                    + "totalAircraftCount=" + facts.totalAircraftCount() + "\n"
+                    + "totalAircraftCount=" + (facts.readyAircraftCount() + facts.destroyedAircraftCount()) + "\n"
                     + "underRepair=" + facts.underRepairAircraft() + "\n"
                     + "awaitingRepair=" + facts.awaitingRepairAircraft() + "\n"
                     + "fullServiceRequired=" + facts.fullServiceAircraft() + "\n"
