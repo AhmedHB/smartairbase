@@ -1,0 +1,14 @@
+.git
+.venv
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.fleet_web_sessions/
+artifacts/
+logs/
+metrics/
+models/
+frontend/node_modules/
+frontend/.next/

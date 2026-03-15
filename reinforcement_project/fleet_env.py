@@ -428,7 +428,8 @@ class FleetEnv(gym.Env):
             equipment_match = all(
                 eid in active_equipment for eid in mission.recommended_equipment
             )
-            mission_outcome = "success" if weapons_met else "partial"
+            mission_success = weapons_met and equipment_match
+            mission_outcome = "success" if mission_success else "partial"
             mission_offer_id = self._mission_offer_ids.get(msn_idx)
 
             mission_event = {
@@ -443,7 +444,7 @@ class FleetEnv(gym.Env):
                 "flight_hours": float(mission.flight_hours),
                 "fuel_cost": float(mission.fuel_cost),
                 "reward_awarded": float(
-                    _R_MISSION_COMPLETE if weapons_met else _R_MISSION_PARTIAL
+                    _R_MISSION_COMPLETE if mission_success else _R_MISSION_PARTIAL
                 ),
                 "outcome": mission_outcome,
                 "weapons_met": weapons_met,
@@ -462,7 +463,7 @@ class FleetEnv(gym.Env):
 
             mission.completed = True
             self.missions_completed += 1
-            reward += _R_MISSION_COMPLETE if weapons_met else _R_MISSION_PARTIAL
+            reward += _R_MISSION_COMPLETE if mission_success else _R_MISSION_PARTIAL
 
         # ── advance simulation clock ──────────────────────────────────
         self.current_time += self.time_step_hours

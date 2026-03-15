@@ -1,5 +1,4 @@
 benchmark:
-  enabled: true
   total_timesteps: 150000
   eval_freq: 30000
   n_eval_episodes: 6
@@ -14,7 +13,6 @@ benchmark:
     - explorer_light
 
 final_training:
-  enabled: true
   selected_profile: null
   total_timesteps: 5000000
   eval_freq: 100000
@@ -35,7 +33,7 @@ common_ppo:
 
 profiles:
   balanced_baseline:
-    description: "Balanced default profile for screening and long training."
+    description: "Balanced default configuration for screening and long training."
     learning_rate: 0.0002
     n_steps: 2048
     batch_size: 256
@@ -47,7 +45,7 @@ profiles:
     hidden_layers: 3
 
   long_horizon:
-    description: "Better delayed credit assignment for maintenance and transfer decisions."
+    description: "Configuration focused on delayed credit assignment for maintenance and transfer decisions."
     learning_rate: 0.0002
     n_steps: 4096
     batch_size: 512
@@ -59,7 +57,7 @@ profiles:
     hidden_layers: 4
 
   stable_conservative:
-    description: "More conservative PPO profile to reduce instability and policy jumps."
+    description: "More conservative PPO configuration to reduce instability and policy jumps."
     learning_rate: 0.00015
     n_steps: 4096
     batch_size: 512
@@ -71,7 +69,7 @@ profiles:
     hidden_layers: 3
 
   explorer_light:
-    description: "Slightly more exploratory profile to test whether broader search helps."
+    description: "Slightly more exploratory configuration to test whether broader search helps."
     learning_rate: 0.00025
     n_steps: 2048
     batch_size: 256

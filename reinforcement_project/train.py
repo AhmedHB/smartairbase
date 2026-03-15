@@ -351,7 +351,9 @@ def format_duration(seconds: float | None) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:02d}"
 
 
-def build_progress_callback(base_callback_cls, total_timesteps: int, enabled: bool):
+def build_progress_callback(
+    base_callback_cls, total_timesteps: int, enabled: bool
+):
     class TrainingProgressCallback(base_callback_cls):
         def __init__(self) -> None:
             super().__init__(verbose=0)

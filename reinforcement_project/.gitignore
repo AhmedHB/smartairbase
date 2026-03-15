@@ -1,0 +1,12 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+artifacts/
+logs/
+metrics/
+models/
+.fleet_web_sessions/
+frontend/node_modules/
+frontend/.next/

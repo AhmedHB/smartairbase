@@ -11,6 +11,8 @@ The repository contains three applications:
 - `smartairbase`
   A React frontend that talks to `MCPClient`.
 
+**Note: We have added another folder called `reinforcement_project`, which contains another prototype solution to this problem using reinforcement learning. It is not part of this Docker Compose setup. Please check the folder to learn more about it.**
+
 ## Docker Quick Start
 
 You can now start the whole stack from the repository root with one command:

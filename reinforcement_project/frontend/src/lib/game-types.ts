@@ -95,7 +95,7 @@ export type GameState = {
       weaponName: string;
       quantity: number;
     }>;
-    recommendedEquipment: Array<{
+    requiredEquipment: Array<{
       id: number;
       name: string;
     }>;
@@ -105,6 +105,11 @@ export type GameState = {
     aircraftName: string;
     baseName: string;
     status: string;
+    totalFlightHours: number;
+    hoursSinceFullService: number;
+    hoursUntilFullService: number;
+    fullServiceIntervalHours: number;
+    fullServiceDue: boolean;
     statusSinceHours: number;
     readyNow: boolean;
     readyForHours: number | null;
@@ -125,6 +130,8 @@ export type GameState = {
     baseName: string;
     status: string;
     fuelLevel: number;
+    fuelMax: number;
+    fuelPercent: number;
     totalFlightHours: number;
     flightHoursSinceLastMission: number;
     weapons: Array<{

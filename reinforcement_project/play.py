@@ -91,9 +91,11 @@ class FleetGame:
     # ── advisor helpers ────────────────────────────────────────────────
 
     def _pick_default_model(self) -> Optional[Path]:
-        candidates = sorted(
-            self.project_root.glob("artifacts/**/best_model/best_model.zip")
-        )
+        candidates = sorted(self.project_root.glob("models/**/best_model/best_model.zip"))
+        if not candidates:
+            candidates = sorted(
+                self.project_root.glob("artifacts/**/best_model/best_model.zip")
+            )
         if not candidates:
             candidates = sorted(self.project_root.glob("artifacts/**/final_model.zip"))
         if not candidates:
@@ -513,7 +515,7 @@ class FleetGame:
             ) or "none"
             label = (
                 f"{m.name}: {m.flight_hours:.1f}h, fuel {m.fuel_cost:.0f}, "
-                f"weapons [{reqs_str}], eqp [{eqp_str}]"
+                f"weapons [{reqs_str}], required eqp [{eqp_str}]"
             )
             valid.append((midx, label))
 
@@ -739,7 +741,7 @@ class FleetGame:
                     ) or "none"
                     label = (
                         f"{m.name}: {m.flight_hours:.1f}h, fuel {m.fuel_cost:.0f}, "
-                        f"weapons [{reqs_str}], eqp [{eqp_str}]"
+                        f"weapons [{reqs_str}], required eqp [{eqp_str}]"
                     )
                 else:
                     continue

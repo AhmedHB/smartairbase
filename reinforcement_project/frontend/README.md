@@ -42,6 +42,21 @@ export GAT_PYTHON_BIN=mamba
 export GAT_PYTHON_ARGS="run -n gat-train python"
 ```
 
+## Docker
+
+The root project now includes a Docker setup that runs:
+
+- the Next.js frontend
+- the Python bridge
+- the trained model you point to with `FLEET_MODEL_PATH` or let `auto` discover
+
+From the repo root:
+
+```bash
+docker compose up --build -d
+docker compose logs -f web
+```
+
 ## Notes
 
 - Session files are stored in `.fleet_web_sessions/` in the project root.

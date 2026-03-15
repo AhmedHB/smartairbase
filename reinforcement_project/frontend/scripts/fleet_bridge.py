@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 import uuid
@@ -21,12 +22,18 @@ if str(PROJECT_ROOT) not in sys.path:
 from aircraft import AircraftStatus, NUM_EQUIPMENT_SLOTS, NUM_HARDPOINTS
 from play import FleetGame
 
-DEFAULT_CONFIG = "config.yml"
-DEFAULT_MODEL = (
-    "models/hackathon_sweep_20260314_134135_balanced_baseline_seed42/"
-    "best_model/best_model.zip"
+DEFAULT_CONFIG = os.getenv("FLEET_CONFIG_PATH", "config.yml")
+DEFAULT_MISSIONS_FILE = os.getenv("FLEET_MISSIONS_FILE", "generated_missions_100.json")
+DEFAULT_MODEL = os.getenv(
+    "FLEET_MODEL_PATH",
+    (
+        "models/hackathon_sweep_20260314_134135_balanced_baseline_seed42/"
+        "best_model/best_model.zip"
+    ),
 )
-SESSIONS_DIR = PROJECT_ROOT / ".fleet_web_sessions"
+SESSIONS_DIR = Path(
+    os.getenv("FLEET_SESSIONS_DIR", str(PROJECT_ROOT / ".fleet_web_sessions"))
+)
 SESSION_ID_RE = re.compile(r"^[a-f0-9]{32}$")
 
 
@@ -92,7 +99,7 @@ def _mission_requirements(game: FleetGame, mission) -> List[dict]:
     ]
 
 
-def _recommended_equipment(game: FleetGame, mission) -> List[dict]:
+def _required_equipment(game: FleetGame, mission) -> List[dict]:
     return [
         {
             "id": int(eid),
@@ -108,11 +115,11 @@ def _mission_label(game: FleetGame, mission) -> str:
         f"{item['weaponName']} x{item['quantity']}" for item in reqs
     ) or "none"
     eqp_text = ", ".join(
-        item["name"] for item in _recommended_equipment(game, mission)
+        item["name"] for item in _required_equipment(game, mission)
     ) or "none"
     return (
         f"{mission.name}: {mission.flight_hours:.1f}h, fuel {mission.fuel_cost:.0f}, "
-        f"weapons [{reqs_text}], eqp [{eqp_text}]"
+        f"weapons [{reqs_text}], required eqp [{eqp_text}]"
     )
 
 
@@ -416,7 +423,7 @@ def _serialize_game(
                 "flightHours": float(mission.flight_hours),
                 "fuelCost": float(mission.fuel_cost),
                 "weaponRequirements": _mission_requirements(game, mission),
-                "recommendedEquipment": _recommended_equipment(game, mission),
+                "requiredEquipment": _required_equipment(game, mission),
             }
         )
 
@@ -427,6 +434,18 @@ def _serialize_game(
         form = _build_aircraft_form(game, aircraft_id)
         suggested_action = game.ai_suggestions.get(aircraft_id)
         tracker_entry = (status_tracker or {}).get(aircraft_id, {})
+        full_service_interval_hours = float(env.maintenance_cfg.full_service_interval_hours)
+        hours_since_full_service = float(
+            max(
+                0.0,
+                float(ac.total_flight_hours)
+                - float(env._hours_at_last_service.get(aircraft_id, ac.total_flight_hours)),
+            )
+        )
+        hours_until_full_service = float(
+            max(0.0, full_service_interval_hours - hours_since_full_service)
+        )
+        full_service_due = hours_until_full_service <= 0.0
         status_since_hours = float(
             max(
                 0.0,
@@ -456,6 +475,16 @@ def _serialize_game(
                 "baseName": game.base_names.get(ac.base_id, f"Base {ac.base_id}"),
                 "status": ac.status.name,
                 "fuelLevel": float(ac.fuel_level),
+                "fuelMax": float(env.bounds.max_fuel),
+                "fuelPercent": float(
+                    max(
+                        0.0,
+                        min(
+                            100.0,
+                            (float(ac.fuel_level) / float(env.bounds.max_fuel)) * 100.0,
+                        ),
+                    )
+                ) if float(env.bounds.max_fuel) > 0 else 0.0,
                 "totalFlightHours": float(ac.total_flight_hours),
                 "flightHoursSinceLastMission": float(
                     ac.flight_hours_since_last_mission
@@ -515,6 +544,11 @@ def _serialize_game(
                 "aircraftName": ac.name,
                 "baseName": game.base_names.get(ac.base_id, f"Base {ac.base_id}"),
                 "status": ac.status.name,
+                "totalFlightHours": float(ac.total_flight_hours),
+                "hoursSinceFullService": hours_since_full_service,
+                "hoursUntilFullService": hours_until_full_service,
+                "fullServiceIntervalHours": full_service_interval_hours,
+                "fullServiceDue": bool(full_service_due),
                 "statusSinceHours": status_since_hours,
                 "readyNow": ready_now,
                 "readyForHours": status_since_hours if ready_now else None,
@@ -731,7 +765,7 @@ def _new_session(payload: dict) -> dict:
         "created_at": datetime.now(timezone.utc).isoformat(),
         "seed": int(payload.get("seed", 42)),
         "config_path": payload.get("configPath", DEFAULT_CONFIG),
-        "missions_file": payload.get("missionsFile"),
+        "missions_file": payload.get("missionsFile", DEFAULT_MISSIONS_FILE),
         "model_path": payload.get("modelPath", DEFAULT_MODEL),
         "history": [],
     }
