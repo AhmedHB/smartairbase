@@ -17,7 +17,7 @@ Simple Next.js client for the same turn-based fleet controls exposed in `play.py
 The bridge uses this model by default:
 
 ```bash
-models/hackathon_sweep_20260314_134135_balanced_baseline_seed42/best_model/best_model.zip
+models/best_model.zip
 ```
 
 ## Run it
@@ -48,7 +48,7 @@ The root project now includes a Docker setup that runs:
 
 - the Next.js frontend
 - the Python bridge
-- the trained model you point to with `FLEET_MODEL_PATH` or let `auto` discover
+- the trained model from `FLEET_MODEL_PATH` (defaults to `models/best_model.zip`)
 
 From the repo root:
 

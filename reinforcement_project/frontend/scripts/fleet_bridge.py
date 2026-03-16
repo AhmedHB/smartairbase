@@ -38,10 +38,7 @@ DEFAULT_CONFIG = os.getenv("FLEET_CONFIG_PATH", "config.yml")
 DEFAULT_MISSIONS_FILE = os.getenv("FLEET_MISSIONS_FILE", "generated_missions_100.json")
 DEFAULT_MODEL = os.getenv(
     "FLEET_MODEL_PATH",
-    (
-        "models/hackathon_sweep_20260314_134135_balanced_baseline_seed42/"
-        "best_model/best_model.zip"
-    ),
+    "models/best_model.zip",
 )
 SESSIONS_DIR = Path(
     os.getenv("FLEET_SESSIONS_DIR", str(PROJECT_ROOT / ".fleet_web_sessions"))
@@ -802,7 +799,7 @@ def _new_session(payload: dict) -> dict:
         "seed": int(payload.get("seed", 42)),
         "config_path": payload.get("configPath", DEFAULT_CONFIG),
         "missions_file": payload.get("missionsFile", DEFAULT_MISSIONS_FILE),
-        "model_path": payload.get("modelPath", DEFAULT_MODEL),
+        "model_path": DEFAULT_MODEL,
         "history": [],
     }
 
@@ -816,12 +813,18 @@ def handle_start(payload: dict) -> dict:
 
 def handle_state(session_id: str) -> dict:
     session = _load_session(session_id)
+    if session.get("model_path") != DEFAULT_MODEL:
+        session["model_path"] = DEFAULT_MODEL
+        _save_session(session)
     game, last_turn, status_tracker = _replay_session(session)
     return _serialize_game(session, game, last_turn, status_tracker)
 
 
 def handle_step(session_id: str, payload: dict) -> dict:
     session = _load_session(session_id)
+    if session.get("model_path") != DEFAULT_MODEL:
+        session["model_path"] = DEFAULT_MODEL
+        _save_session(session)
     game, last_turn, status_tracker = _replay_session(session)
     if last_turn and (last_turn.get("terminated") or last_turn.get("truncated")):
         return _serialize_game(session, game, last_turn, status_tracker)

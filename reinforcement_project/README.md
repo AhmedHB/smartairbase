@@ -1,51 +1,38 @@
 ![Frontend](frontend.png)
 
-# SmartAirbase - Autonomous Airbase Management
+# Autonomous Air Core - Autonomous Airbase Management
 
 **Description**
 
-SmartAirbase is an autonomous airbase management system that uses reinforcement learning to optimize aircraft maintenance and transfer decisions. The system is designed to operate in a simulated environment where an AI agent controls a fleet of aircraft and makes decisions about maintenance, transfers, refueling, and mission assignments to maximize mission success and minimize downtime.
+Autonomous Air Core is an autonomous airbase management system that uses reinforcement learning to optimize aircraft maintenance and transfer decisions. The system is designed to operate in a simulated environment where an AI agent controls a fleet of aircraft and makes decisions about maintenance, transfers, refueling, and mission assignments to maximize mission success and minimize downtime.
 
-This project is part of the SAAB Hackathon 2026, which challenged participants to create a smart airbase. Our team had already built another part of the project that simulates the airbase and the aircraft for educational purposes, and this repository focuses on training a reinforcement learning agent to control the airbase and the aircraft.
+This project is part of the SAAB Hackathon 2026, where participants were challenged to design a smart airbase. Our team had previously developed another component of a separate project that simulates an airbase and its aircraft for educational purposes. This repository focuses on reinforcement learning, where an agent is trained to manage the airbase and coordinate aircraft operations.
 
-I did not have enough time to deploy a fully trained model for the hackathon, so we had to use a "stupid" trained model that could not make optimal decisions. It would sometimes refuel an aircraft even when it already had 100% fuel, which was pretty funny. There may also be a bug in the code that caused the agent to refuel an aircraft even when it already had more than about 80% fuel.
+I did not have enough time to deploy a fully trained model for the hackathon, so we had to use a "stupid" trained model that could not make optimal decisions. It would sometimes refuel an aircraft even when it already had 100% fuel, which was pretty funny. There may also be a bug in the code that caused the agent to refuel an aircraft even when it already had more than 80% fuel.
 
 The project does not have a very clean folder structure because it was built quickly, like a real hackathon project.
 
-The hackathon was fun, and we learned a lot.
+The hackathon was fun and we learned a lot.
 
 
 // *Björn*
 
 -----
 
-## Reinforcement Learning Agent
-
-**Description**
-
-My goal was to create a reinforcement learning agent that can control the airbase and the aircraft so that it can make optimal decisions about maintenance, transfers, refueling, and mission assignments to maximize mission success and minimize downtime.
-
-One thing I hoped to achieve was a system that could recognize when it should move aircraft with the highest flight hours back to the main base. When an aircraft is getting close to full service, it may break down more often, although not dramatically more often than usual. This was one of the main behaviors I wanted the model to learn, but it may not be possible yet because the model havent been trained enough. For example, I did not add constraints such as preventing a seriously damaged aircraft from being transferred to the main base. Right now, even if an aircraft is damaged, it can still fly to another airbase, so the model may not prioritize moving high-flight-hour aircraft back to the main base.
-
-Another thing I hoped to achieve was a system that could recognize when it should change an aircraft's weapons. Right now, we have 3 types of weapons and 6 hardpoints for each aircraft, controlled as 3 paired groups: H1/H2, H3/H4, and H5/H6. Weapons need to be swapped carefully because each hardpoint pair can support only certain weapon types, and not all of them at the same time. Changing weapons takes time, so it should be done wisely.
-
-For now, we have not added mission timing because this was only meant to be a prototype and time was limited.
-
-You can also check `game.ipynb` to see how the trained agent is performing.
-
 **Technical Details**
 
-The RL agent is trained using the Stable Baselines3 library and the PPO algorithm. It is trained in a simulated airbase environment where it can make decisions about maintenance, transfers, refueling, and mission assignments.
+- The RL agent is trained using the Stable Baselines3 library and the PPO algorithm.
+- Training takes place in a simulated airbase environment where the agent makes decisions about maintenance aircraft transfers, refueling, and mission assignments.
+- The agent is first trained using a hyperparameter tuning sweep.
+- The final model should then be trained again using the best hyperparameter configuration found during the sweep.
+- Due to time constraints, this final training step was not completed, so the best configuration from the sweep was used directly.
+- The agent uses a masked action space, since some actions are not valid in certain states of the environment.
+- This prevents the agent from selecting impossible actions and improves training efficiency.
 
-The agent is first trained with a hyperparameter tuning sweep and should then be trained again as the final model using the best hyperparameter configuration. I did not have enough time for this last step, so I used the best hyperparameter configuration from the sweep.
-
-The agent uses a masked action space because some actions are not valid in certain situations. This helps avoid wasting training time.
-
-If no aircraft are ready for a mission, the agent receives a penalty.
-
-If the airbase does not have enough fuel for refueling, the agent receives a penalty.
-
-If the airbase does not have enough weapons available for a loadout change, the agent receives a penalty.
+**Penalty rules**
+- If no aircraft are ready for a mission, the agent receives a penalty.
+- If the airbase does not have enough fuel for refueling, the agent receives a penalty.
+- If the airbase does not have enough weapons available for a loadout change, the agent receives a penalty.
 
 ----
 
@@ -67,10 +54,9 @@ mamba run -n gat-train python sweep_train.py --final
 
 ----
 
-## Quick Start for Demo (Requires Docker)
+## Quick Start for Demo
 
-1. Update `.env` with `DISCORD_WEBHOOK_URL` and any training overrides you want.
-2. Run the command: `docker compose up --build -d`
+* Run `cd frontend && npm i && npm run dev` in the terminal.
 
 ----
 
@@ -85,10 +71,9 @@ Discord notifications are optional. When enabled with `DISCORD_WEBHOOK_URL`:
 
 ----
 
-# Watch How the Trained Agent Is Performing
+## Todo
 
-**Description**
-
-By running `mamba run -n gat-train python play.py`, you can watch how the trained agent performs in the CLI.
-
-If you prefer a web interface, you can run `cd frontend && npm run dev`.
+- [ ] Adjust the reward function so the agent learns to make better decisions
+- [ ] Adjust the configuration for the hyperparameter sweep and start training the agents
+- [ ] Run the final training with the best hyperparameter configuration
+- [ ] Evaluate the results in jupyter notebook

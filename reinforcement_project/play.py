@@ -51,6 +51,8 @@ STATUS_COLORS = {
     AircraftStatus.ON_MISSION: CYAN,
 }
 
+DEFAULT_MODEL_PATH = "models/best_model.zip"
+
 
 def c(text, *styles):
     return "".join(styles) + str(text) + RESET
@@ -67,7 +69,7 @@ class FleetGame:
         self,
         config_path: str = "config.yml",
         missions_file: Optional[str] = None,
-        model_path: Optional[str] = "auto",
+        model_path: Optional[str] = DEFAULT_MODEL_PATH,
     ):
         self.project_root = Path(__file__).resolve().parent
         self.env = FleetEnv(config_path, mission_manifest_path=missions_file)
@@ -103,16 +105,10 @@ class FleetGame:
     # ── advisor helpers ────────────────────────────────────────────────
 
     def _pick_default_model(self) -> Optional[Path]:
-        candidates = sorted(self.project_root.glob("models/**/best_model/best_model.zip"))
-        if not candidates:
-            candidates = sorted(
-                self.project_root.glob("artifacts/**/best_model/best_model.zip")
-            )
-        if not candidates:
-            candidates = sorted(self.project_root.glob("artifacts/**/final_model.zip"))
-        if not candidates:
-            return None
-        return max(candidates, key=lambda path: path.stat().st_mtime)
+        direct_best_model = self.project_root / "models" / "best_model.zip"
+        if direct_best_model.exists():
+            return direct_best_model
+        return None
 
     def _display_path(self, path: Optional[Path]) -> str:
         if path is None:
@@ -921,10 +917,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--model",
-        default="auto",
+        default=DEFAULT_MODEL_PATH,
         help=(
-            "Path to a trained model checkpoint. Defaults to the most recent "
-            "artifacts/**/best_model/best_model.zip if one exists."
+            "Path to a trained model checkpoint. Defaults to models/best_model.zip."
         ),
     )
     parser.add_argument(
