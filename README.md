@@ -2,6 +2,7 @@
 
 Smart Air Base is a turn-based air-operations game about missions, aircraft readiness, base capacity, repairs, fuel, weapons, spare parts, and constrained landings.
 
+
 The repository contains three applications:
 
 - `MCPServer`
@@ -10,6 +11,8 @@ The repository contains three applications:
   A Spring Boot HTTP API that talks to `MCPServer` over MCP/SSE and adds autoplay decisions.
 - `smartairbase`
   A React frontend that talks to `MCPClient`.
+
+**Note: We have added another folder called `reinforcement_project`, which contains another prototype solution to this problem using reinforcement learning. It is not part of this Docker Compose setup. Please check the folder to learn more about it.**
 
 `MCPClient` currently supports multiple chat-model runtime profiles:
 
