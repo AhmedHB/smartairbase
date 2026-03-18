@@ -1100,6 +1100,173 @@ button:disabled {
   color: #4a5972;
 }
 
+.dice-stage-panel {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  margin: 14px 0 18px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.95), rgba(233, 238, 248, 0.92)),
+    linear-gradient(135deg, rgba(85, 101, 127, 0.1), rgba(214, 126, 37, 0.08));
+  border: 1px solid rgba(69, 86, 119, 0.16);
+}
+
+.dice-stage {
+  perspective: 900px;
+  perspective-origin: 50% 35%;
+}
+
+.dice-scene {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  display: grid;
+  place-items: center;
+}
+
+.dice-cube {
+  --dice-size: 72px;
+  width: var(--dice-size);
+  height: var(--dice-size);
+  position: relative;
+  transform-style: preserve-3d;
+  transform: var(--dice-final-transform);
+  transition: transform 0.45s ease-out;
+}
+
+.dice-cube-rolling {
+  animation: dice-roll 1.25s cubic-bezier(0.2, 0.75, 0.18, 1) both;
+}
+
+.dice-face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  border: 1px solid rgba(118, 19, 27, 0.3);
+  background:
+    linear-gradient(145deg, rgba(201, 36, 50, 0.98), rgba(143, 19, 31, 0.96));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -8px 16px rgba(90, 6, 14, 0.24);
+  backface-visibility: hidden;
+}
+
+.dice-face-1 {
+  transform: translateZ(calc(var(--dice-size) / 2));
+}
+
+.dice-face-2 {
+  transform: rotateX(90deg) translateZ(calc(var(--dice-size) / 2));
+}
+
+.dice-face-3 {
+  transform: rotateY(-90deg) translateZ(calc(var(--dice-size) / 2));
+}
+
+.dice-face-4 {
+  transform: rotateY(90deg) translateZ(calc(var(--dice-size) / 2));
+}
+
+.dice-face-5 {
+  transform: rotateX(-90deg) translateZ(calc(var(--dice-size) / 2));
+}
+
+.dice-face-6 {
+  transform: rotateY(180deg) translateZ(calc(var(--dice-size) / 2));
+}
+
+.dice-pips {
+  width: 70%;
+  height: 70%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  align-items: center;
+  justify-items: center;
+}
+
+.dice-pip {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.dice-pip-visible {
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(89, 12, 20, 0.28);
+}
+
+.dice-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 58px;
+  height: 16px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(35, 45, 63, 0.26), rgba(35, 45, 63, 0));
+  filter: blur(2px);
+}
+
+.dice-shadow-rolling {
+  animation: dice-shadow-roll 1.25s ease-out both;
+}
+
+.dice-stage-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.dice-stage-copy strong {
+  font-size: 1rem;
+  color: #1f2430;
+}
+
+.dice-stage-copy span {
+  color: #55657f;
+  font-size: 0.92rem;
+}
+
+@keyframes dice-roll {
+  0% {
+    transform: translate3d(0, -6px, 0) rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+  }
+  18% {
+    transform: translate3d(-10px, -34px, 10px) rotateX(320deg) rotateY(200deg) rotateZ(140deg);
+  }
+  42% {
+    transform: translate3d(10px, -48px, 24px) rotateX(700deg) rotateY(520deg) rotateZ(220deg);
+  }
+  68% {
+    transform: translate3d(-6px, -18px, 10px) rotateX(980deg) rotateY(760deg) rotateZ(310deg);
+  }
+  100% {
+    transform: var(--dice-final-transform);
+  }
+}
+
+@keyframes dice-shadow-roll {
+  0% {
+    transform: translateX(-50%) scale(0.9);
+    opacity: 0.36;
+  }
+  35% {
+    transform: translateX(-50%) scale(1.2);
+    opacity: 0.18;
+  }
+  100% {
+    transform: translateX(-50%) scale(1);
+    opacity: 0.28;
+  }
+}
+
 .play-color-sidebar {
   position: fixed;
   right: 10px;
@@ -1313,5 +1480,11 @@ button:disabled {
 
   .scenario-config-head {
     display: none;
+  }
+
+  .dice-stage-panel {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
   }
 }

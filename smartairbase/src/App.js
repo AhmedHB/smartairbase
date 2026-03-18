@@ -1,7 +1,7 @@
 import './App.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:7080/api';
 
 const INITIAL_CREATE_FORM = {
   scenarioName: 'SCN_STANDARD',
@@ -145,11 +145,19 @@ function App() {
   const [nextRoundCountdown, setNextRoundCountdown] = useState(null);
   const missionPreviewTimerRef = useRef(null);
   const autoDiceTimerRef = useRef(null);
+  const diceAnimationTimerRef = useRef(null);
   const lastAnalysisRequestKeyRef = useRef(null);
   const lastFinalAnalysisRequestKeyRef = useRef(null);
   const analysisFeedListRef = useRef(null);
   const [missionPreviewActive, setMissionPreviewActive] = useState(false);
   const [manualMissionPreviewAssignments, setManualMissionPreviewAssignments] = useState({});
+  const [diceAnimation, setDiceAnimation] = useState({
+    aircraftCode: '',
+    automated: false,
+    value: 1,
+    isRolling: false,
+    throwKey: 0,
+  });
 
   const pendingDiceAircraft = useMemo(() => {
     if (!gameState?.aircraft) {
@@ -962,6 +970,9 @@ async function request(path, options = {}) {
       if (autoDiceTimerRef.current) {
         window.clearTimeout(autoDiceTimerRef.current);
       }
+      if (diceAnimationTimerRef.current) {
+        window.clearTimeout(diceAnimationTimerRef.current);
+      }
     };
   }, []);
 
@@ -1114,6 +1125,17 @@ async function request(path, options = {}) {
       window.clearTimeout(autoDiceTimerRef.current);
       autoDiceTimerRef.current = null;
     }
+    if (diceAnimationTimerRef.current) {
+      window.clearTimeout(diceAnimationTimerRef.current);
+      diceAnimationTimerRef.current = null;
+    }
+    setDiceAnimation({
+      aircraftCode: '',
+      automated: false,
+      value: 1,
+      isRolling: false,
+      throwKey: 0,
+    });
     clearMissionPreview();
   }
 
@@ -1795,6 +1817,7 @@ async function request(path, options = {}) {
       return;
     }
 
+    triggerDiceAnimation(aircraftCode, resolvedDiceValue, automated);
     setStatus({
       kind: 'loading',
       message: automated
@@ -1857,6 +1880,29 @@ async function request(path, options = {}) {
       }
       setStatus({ kind: 'error', message: error.message });
     }
+  }
+
+  function triggerDiceAnimation(aircraftCode, resolvedDiceValue, automated) {
+    if (diceAnimationTimerRef.current) {
+      window.clearTimeout(diceAnimationTimerRef.current);
+    }
+
+    const normalizedValue = clampDiceValue(resolvedDiceValue);
+    setDiceAnimation((current) => ({
+      aircraftCode,
+      automated,
+      value: normalizedValue,
+      isRolling: true,
+      throwKey: current.throwKey + 1,
+    }));
+
+    diceAnimationTimerRef.current = window.setTimeout(() => {
+      setDiceAnimation((current) => ({
+        ...current,
+        isRolling: false,
+      }));
+      diceAnimationTimerRef.current = null;
+    }, 1250);
   }
 
   return (
@@ -2940,6 +2986,13 @@ async function request(path, options = {}) {
               </button>
             </div>
           </form>
+          <DiceRollDisplay
+            aircraftCode={diceAnimation.aircraftCode}
+            automated={diceAnimation.automated}
+            isRolling={diceAnimation.isRolling}
+            value={diceAnimation.value}
+            visible={diceAnimation.throwKey > 0}
+          />
           {automationEnabled ? <p>Automated dice handling is active.</p> : null}
           {lastAutoResponse?.autoLandings?.length ? (
             <ul className="compact-list">
@@ -3529,6 +3582,99 @@ function automatedDiceValue(strategy) {
     return [1, 2, 3][Math.floor(Math.random() * 3)];
   }
   return randomDiceValue();
+}
+
+function clampDiceValue(value) {
+  const normalizedValue = Number(value);
+  if (!Number.isFinite(normalizedValue)) {
+    return 1;
+  }
+  return Math.min(6, Math.max(1, Math.round(normalizedValue)));
+}
+
+function diceFaceTransform(value) {
+  switch (clampDiceValue(value)) {
+    case 2:
+      return 'rotateX(-90deg)';
+    case 3:
+      return 'rotateY(90deg)';
+    case 4:
+      return 'rotateY(-90deg)';
+    case 5:
+      return 'rotateX(90deg)';
+    case 6:
+      return 'rotateY(180deg)';
+    case 1:
+    default:
+      return 'rotateX(0deg) rotateY(0deg)';
+  }
+}
+
+function DiceRollDisplay({
+  aircraftCode,
+  automated,
+  isRolling,
+  value,
+  visible,
+}) {
+  const normalizedValue = clampDiceValue(value);
+
+  if (!visible) {
+    return null;
+  }
+
+  return (
+    <div className="dice-stage-panel">
+      <div className="dice-stage" aria-live="polite">
+        <div className={`dice-scene ${isRolling ? 'dice-scene-rolling' : ''}`}>
+          <div
+            className={`dice-cube ${isRolling ? 'dice-cube-rolling' : ''}`}
+            style={{ '--dice-final-transform': diceFaceTransform(normalizedValue) }}
+          >
+            {[1, 2, 3, 4, 5, 6].map((face) => (
+              <div key={face} className={`dice-face dice-face-${face}`}>
+                <DicePips value={face} />
+              </div>
+            ))}
+          </div>
+          <div className={`dice-shadow ${isRolling ? 'dice-shadow-rolling' : ''}`} />
+        </div>
+      </div>
+      <div className="dice-stage-copy">
+        <strong>{isRolling ? 'Dice in flight' : `Dice landed on ${normalizedValue}`}</strong>
+        <span>
+          {aircraftCode
+            ? `${automated ? 'Auto-resolving' : 'Resolving'} ${aircraftCode}${isRolling ? '...' : '.'}`
+            : 'Trigger a dice roll to preview the resolved face.'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function DicePips({ value }) {
+  const pipLayout = {
+    1: [5],
+    2: [1, 9],
+    3: [1, 5, 9],
+    4: [1, 3, 7, 9],
+    5: [1, 3, 5, 7, 9],
+    6: [1, 3, 4, 6, 7, 9],
+  };
+
+  return (
+    <div className="dice-pips">
+      {Array.from({ length: 9 }, (_, index) => {
+        const pipNumber = index + 1;
+        return (
+          <span
+            key={pipNumber}
+            className={`dice-pip ${pipLayout[value].includes(pipNumber) ? 'dice-pip-visible' : ''}`}
+          />
+        );
+      })}
+    </div>
+  );
 }
 
 function buildMissionPreviewState(currentState, autoAssignments) {
