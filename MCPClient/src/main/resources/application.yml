@@ -56,7 +56,7 @@ spring:
               url: http://localhost:9090/sse
 
 server:
-  port: 7080
+  port: 8080
 
 management:
   server:
